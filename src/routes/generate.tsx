@@ -48,6 +48,7 @@ import {
   advancedSetupFilename,
   parseAdvancedSetup,
   splitKnownValues,
+  mergeAdvancedSetupValues as mergeValues,
   type AdvancedGeneratorSetup,
 } from "@/lib/advanced-generator-setup";
 import { AppShell } from "@/components/promptbeats/AppShell";
@@ -285,17 +286,6 @@ function localizeAiError(
   }
 
   return t(fallbackKey);
-}
-
-function mergeValues(selected: string[], custom: string) {
-  const out: string[] = [];
-  for (const v of [...selected, ...custom.split(",")]) {
-    const text = v.trim();
-    if (!text) continue;
-    if (out.some((x) => x.toLowerCase() === text.toLowerCase())) continue;
-    out.push(text);
-  }
-  return out;
 }
 
 function ChipGroup({

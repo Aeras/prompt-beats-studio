@@ -1,0 +1,523 @@
+{
+  "format": "promptbeats-atlas-v4-research-manifest",
+  "schemaVersion": 1,
+  "researchOnly": true,
+  "executable": false,
+  "approved": false,
+  "taskCount": 636,
+  "decisionCounts": {
+    "source_supported_bounded": 396,
+    "supported_no_universal_rule": 20,
+    "insufficient_evidence": 220,
+    "not_applicable_with_reason": 0
+  },
+  "files": [
+    {
+      "path": "research/atlas-v4-merged-evidence-20261027.json",
+      "bytes": 1801703,
+      "sha256": "0d2aa2f20e5645c69a26e054de77bc8a821baf1406c910644754bf19222cdd56"
+    },
+    {
+      "path": "research/atlas-v4-636-evidence-tasks.json",
+      "bytes": 894739,
+      "sha256": "296a7af7eaa8dce4b959fe196ec1a4b6b09ec380b40141c4c57baf15ef3ea48f"
+    },
+    {
+      "path": "src/data/song-atlas/v4/library.json",
+      "bytes": 1440053,
+      "sha256": "33218da0de5adb32ccb78f2692f14df3f4ef065f2246a1a02a1c176c680525a9"
+    }
+  ],
+  "validation": {
+    "quarantinedGapIds": [
+      "ru.russian_rock_80.gap.production",
+      "ru.social_rock.gap.instrumentation",
+      "ru.social_rock.gap.production",
+      "ru.social_rock.gap.era",
+      "ru.social_rock.gap.cultural_context",
+      "ru.russian_rock_ballad.gap.instrumentation",
+      "ru.russian_rock_ballad.gap.vocals",
+      "ru.russian_rock_ballad.gap.production",
+      "ru.russian_rock_ballad.gap.lyrics",
+      "ru.russian_alt_rock.gap.structure",
+      "ru.russian_alt_rock.gap.groove",
+      "ru.shoegaze.gap.structure",
+      "ru.shoegaze.gap.melody",
+      "ru.shoegaze.gap.lyrics",
+      "ru.rap_rock.gap.vocals",
+      "ru.rap_rock.gap.production",
+      "ru.rap_rock.gap.lyrics",
+      "ru.rap_rock.gap.era"
+    ],
+    "eligibleTaskCount": 618,
+    "originalDecisionCounts": {
+      "source_supported_bounded": 396,
+      "supported_no_universal_rule": 20,
+      "insufficient_evidence": 220,
+      "not_applicable_with_reason": 0
+    },
+    "eligibleDecisionCounts": {
+      "source_supported_bounded": 378,
+      "supported_no_universal_rule": 20,
+      "insufficient_evidence": 220,
+      "not_applicable_with_reason": 0
+    }
+  },
+  "historicalOverstrictDiagnostics": {
+    "superseded": true,
+    "notice": "Previous validator incorrectly rejected unknown years, author arrays and background citations. These are not current defects.",
+    "issues": [
+      {
+        "path": "tasks.9.citations.1.year",
+        "gapId": "ru.chastushka.gap.groove",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.12.citations.1.year",
+        "gapId": "ru.chastushka.gap.era",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.47",
+        "gapId": "ru.bylina.gap.harmony",
+        "message": "Insufficient evidence must have null statements and no citations"
+      },
+      {
+        "path": "tasks.49",
+        "gapId": "ru.bylina.gap.groove",
+        "message": "Insufficient evidence must have null statements and no citations"
+      },
+      {
+        "path": "tasks.52",
+        "gapId": "ru.bylina.gap.dynamics",
+        "message": "Insufficient evidence must have null statements and no citations"
+      },
+      {
+        "path": "tasks.53",
+        "gapId": "ru.bylina.gap.era",
+        "message": "Insufficient evidence must have null statements and no citations"
+      },
+      {
+        "path": "tasks.79.citations.0.year",
+        "gapId": "ru.folk_rock.gap.vocals",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.129.citations.0.year",
+        "gapId": "ru.bard_song.gap.lyrics",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.136.citations.0.year",
+        "gapId": "ru.satirical_bard.gap.instrumentation",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.138.citations.0.year",
+        "gapId": "ru.satirical_bard.gap.production",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.142.citations.0.year",
+        "gapId": "ru.satirical_bard.gap.cultural_context",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.150.citations.0.year",
+        "gapId": "ru.hiking_song.gap.production",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.151.citations.0.year",
+        "gapId": "ru.hiking_song.gap.lyrics",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.153.citations.0.year",
+        "gapId": "ru.hiking_song.gap.era",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.154.citations.0.year",
+        "gapId": "ru.hiking_song.gap.cultural_context",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.200.citations.0.year",
+        "gapId": "ru.lyrical_chanson.gap.structure",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.202.citations.0.year",
+        "gapId": "ru.lyrical_chanson.gap.harmony",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.203.citations.0.year",
+        "gapId": "ru.lyrical_chanson.gap.rhythm",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.204.citations.0.year",
+        "gapId": "ru.lyrical_chanson.gap.groove",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.204.citations.1.year",
+        "gapId": "ru.lyrical_chanson.gap.groove",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.205.citations.0.year",
+        "gapId": "ru.lyrical_chanson.gap.instrumentation",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.207.citations.2.year",
+        "gapId": "ru.lyrical_chanson.gap.production",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.209.citations.0.year",
+        "gapId": "ru.lyrical_chanson.gap.dynamics",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.209.citations.1.year",
+        "gapId": "ru.lyrical_chanson.gap.dynamics",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.221.citations.1.year",
+        "gapId": "ru.post_chanson.gap.dynamics",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.221.citations.2.year",
+        "gapId": "ru.post_chanson.gap.dynamics",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.251.citations.0.authors",
+        "gapId": "ru.soviet_estrada_80.gap.groove",
+        "value": ["Владимир Лакодин"],
+        "message": "Invalid input: expected string, received array"
+      },
+      {
+        "path": "tasks.256.citations.0.authors",
+        "gapId": "ru.soviet_estrada_80.gap.dynamics",
+        "value": ["Бари Алибасов (quoted eyewitness); WomanHit editorial publication"],
+        "message": "Invalid input: expected string, received array"
+      },
+      {
+        "path": "tasks.263.citations.0.authors",
+        "gapId": "ru.via.gap.groove",
+        "value": [
+          "Анжела Гергель; Валерий Дайнеко (site/book project)",
+          "Дмитрий Явтухович (quoted participant)"
+        ],
+        "message": "Invalid input: expected string, received array"
+      },
+      {
+        "path": "tasks.263.citations.0.year",
+        "gapId": "ru.via.gap.groove",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.268.citations.0.authors",
+        "gapId": "ru.via.gap.dynamics",
+        "value": ["Валерий Яшкин (attributed author)"],
+        "message": "Invalid input: expected string, received array"
+      },
+      {
+        "path": "tasks.281.citations.0.year",
+        "gapId": "ru.russian_pop_90.gap.structure",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.360.citations.0.year",
+        "gapId": "ru.rock_70.gap.lyrics",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.367.citations.0.year",
+        "gapId": "ru.russian_rock_80.gap.rhythm",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.371.citations.1.accessedEvidence",
+        "gapId": "ru.russian_rock_80.gap.production",
+        "value": "full webpage, interview body",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.379.citations.0.year",
+        "gapId": "ru.soviet_postpunk.gap.rhythm",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.404.citations.0.accessedEvidence",
+        "gapId": "ru.social_rock.gap.instrumentation",
+        "value": "web search indexed original album credit excerpt",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.406.citations.0.accessedEvidence",
+        "gapId": "ru.social_rock.gap.production",
+        "value": "web search indexed original album production credit excerpt",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.409.citations.0.authors",
+        "gapId": "ru.social_rock.gap.era",
+        "value": "",
+        "message": "Must contain non-whitespace text"
+      },
+      {
+        "path": "tasks.410.citations.0.authors",
+        "gapId": "ru.social_rock.gap.cultural_context",
+        "value": "",
+        "message": "Must contain non-whitespace text"
+      },
+      {
+        "path": "tasks.416.citations.0.year",
+        "gapId": "ru.russian_rock_ballad.gap.instrumentation",
+        "value": "2016",
+        "message": "Invalid input: expected number, received string"
+      },
+      {
+        "path": "tasks.417.citations.0.year",
+        "gapId": "ru.russian_rock_ballad.gap.vocals",
+        "value": "2010",
+        "message": "Invalid input: expected number, received string"
+      },
+      {
+        "path": "tasks.418.citations.0.year",
+        "gapId": "ru.russian_rock_ballad.gap.production",
+        "value": "2010",
+        "message": "Invalid input: expected number, received string"
+      },
+      {
+        "path": "tasks.419.citations.0.year",
+        "gapId": "ru.russian_rock_ballad.gap.lyrics",
+        "value": "2016",
+        "message": "Invalid input: expected number, received string"
+      },
+      {
+        "path": "tasks.435.citations.0.accessedEvidence",
+        "gapId": "ru.russian_alt_rock.gap.structure",
+        "value": "search_excerpt_only",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.439.citations.0.accessedEvidence",
+        "gapId": "ru.russian_alt_rock.gap.groove",
+        "value": "search_excerpt_only",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.455.citations.0.accessedEvidence",
+        "gapId": "ru.shoegaze.gap.structure",
+        "value": "search_extract",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.456.citations.0.accessedEvidence",
+        "gapId": "ru.shoegaze.gap.melody",
+        "value": "search-indexed full interview excerpts",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.461.citations.0.accessedEvidence",
+        "gapId": "ru.shoegaze.gap.lyrics",
+        "value": "search_extract",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.480.citations.0.year",
+        "gapId": "ru.rap_90.gap.production",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.488.citations.0.year",
+        "gapId": "ru.rap_00.gap.instrumentation",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.490.citations.0.year",
+        "gapId": "ru.rap_00.gap.production",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.493.citations.0.year",
+        "gapId": "ru.rap_00.gap.era",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.540.citations.0.year",
+        "gapId": "ru.melodic_rap.gap.cultural_context",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.611.citations.0.year",
+        "gapId": "ru.folk_electronic.gap.era",
+        "value": null,
+        "message": "Invalid input: expected number, received null"
+      },
+      {
+        "path": "tasks.630.citations.0.accessedEvidence",
+        "gapId": "ru.rap_rock.gap.vocals",
+        "value": "search-indexed full interview excerpts",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.631.citations.0.accessedEvidence",
+        "gapId": "ru.rap_rock.gap.production",
+        "value": "search-indexed full interview excerpts",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.632.citations.0.accessedEvidence",
+        "gapId": "ru.rap_rock.gap.lyrics",
+        "value": "search-indexed full interview excerpts",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      },
+      {
+        "path": "tasks.634.citations.0.accessedEvidence",
+        "gapId": "ru.rap_rock.gap.era",
+        "value": "search-indexed full interview excerpts",
+        "message": "Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      }
+    ]
+  },
+  "quarantineDiagnostics": [
+    {
+      "gapId": "ru.russian_rock_80.gap.production",
+      "issues": [
+        "tasks.371.citations.1.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.social_rock.gap.instrumentation",
+      "issues": [
+        "tasks.404.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.social_rock.gap.production",
+      "issues": [
+        "tasks.406.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.social_rock.gap.era",
+      "issues": ["tasks.409.citations.0.authors: Must contain non-whitespace text"]
+    },
+    {
+      "gapId": "ru.social_rock.gap.cultural_context",
+      "issues": ["tasks.410.citations.0.authors: Must contain non-whitespace text"]
+    },
+    {
+      "gapId": "ru.russian_rock_ballad.gap.instrumentation",
+      "issues": ["tasks.416.citations.0.year: Invalid input: expected number, received string"]
+    },
+    {
+      "gapId": "ru.russian_rock_ballad.gap.vocals",
+      "issues": ["tasks.417.citations.0.year: Invalid input: expected number, received string"]
+    },
+    {
+      "gapId": "ru.russian_rock_ballad.gap.production",
+      "issues": ["tasks.418.citations.0.year: Invalid input: expected number, received string"]
+    },
+    {
+      "gapId": "ru.russian_rock_ballad.gap.lyrics",
+      "issues": ["tasks.419.citations.0.year: Invalid input: expected number, received string"]
+    },
+    {
+      "gapId": "ru.russian_alt_rock.gap.structure",
+      "issues": [
+        "tasks.435.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.russian_alt_rock.gap.groove",
+      "issues": [
+        "tasks.439.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.shoegaze.gap.structure",
+      "issues": [
+        "tasks.455.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.shoegaze.gap.melody",
+      "issues": [
+        "tasks.456.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.shoegaze.gap.lyrics",
+      "issues": [
+        "tasks.461.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.rap_rock.gap.vocals",
+      "issues": [
+        "tasks.630.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.rap_rock.gap.production",
+      "issues": [
+        "tasks.631.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.rap_rock.gap.lyrics",
+      "issues": [
+        "tasks.632.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    },
+    {
+      "gapId": "ru.rap_rock.gap.era",
+      "issues": [
+        "tasks.634.citations.0.accessedEvidence: Invalid option: expected one of \"full_text\"|\"extract\"|\"abstract\"|\"catalog_record\"|\"listening\""
+      ]
+    }
+  ]
+}

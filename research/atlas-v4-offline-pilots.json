@@ -1,0 +1,360 @@
+{
+  "format": "promptbeats-atlas-v4-offline-pilot-plan",
+  "schemaVersion": 1,
+  "libraryVersion": "4.0.0-review.1",
+  "purpose": "Offline contract fixtures, not generated music or creative approval",
+  "providerCalls": 0,
+  "paidAuthorization": false,
+  "generatorActivation": false,
+  "musicalQualityAssessment": "not_performed",
+  "cases": [
+    {
+      "id": "offline-pilot-01",
+      "techniqueId": "ru.protyazhnaya.v4.alternative.1",
+      "profileId": "ru.protyazhnaya",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-02",
+      "techniqueId": "ru.chastushka.v4.alternative.1",
+      "profileId": "ru.chastushka",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-03",
+      "techniqueId": "ru.bard_song.v4.alternative.1",
+      "profileId": "ru.bard_song",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-04",
+      "techniqueId": "ru.russian_pop_ballad.v4.alternative.1",
+      "profileId": "ru.russian_pop_ballad",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-05",
+      "techniqueId": "ru.shoegaze.v4.alternative.1",
+      "profileId": "ru.shoegaze",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-06",
+      "techniqueId": "ru.melodic_rap.v4.alternative.1",
+      "profileId": "ru.melodic_rap",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-07",
+      "techniqueId": "ru.hyperpop.v4.alternative.1",
+      "profileId": "ru.hyperpop",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-08",
+      "techniqueId": "ru.folk_electronic.v4.alternative.1",
+      "profileId": "ru.folk_electronic",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-09",
+      "techniqueId": "ru.via.v4.alternative.1",
+      "profileId": "ru.via",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-10",
+      "techniqueId": "ru.soviet_estrada_80.v4.alternative.1",
+      "profileId": "ru.soviet_estrada_80",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-11",
+      "techniqueId": "ru.downtempo.v4.alternative.1",
+      "profileId": "ru.downtempo",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    },
+    {
+      "id": "offline-pilot-12",
+      "techniqueId": "ru.conscious_rap.v4.alternative.1",
+      "profileId": "ru.conscious_rap",
+      "userBrief": {
+        "el": "Διατήρησε το προσωπικό θέμα και την επιλεγμένη γλώσσα. Εξέτασε μόνο την προαιρετική τεχνική, χωρίς αλλαγή BPM ή ενορχήστρωσης.",
+        "en": "Preserve the personal theme and chosen language. Consider only the optional technique, without changing BPM or arrangement."
+      },
+      "control": "No technique applied",
+      "candidate": "Exact canonical optional instruction in a synthetic-only fixture",
+      "protectedFields": [
+        "theme",
+        "language",
+        "bpmMode",
+        "customBpm",
+        "songStructure",
+        "songBlueprint"
+      ],
+      "checks": [
+        "explicit_opt_in",
+        "manual_conflict_skip",
+        "no_phantom_values",
+        "remove_round_trip",
+        "empty_registry_rejects",
+        "stale_preview_rejects"
+      ],
+      "humanMusicalReview": "not_performed",
+      "paidRun": "not_authorized"
+    }
+  ]
+}

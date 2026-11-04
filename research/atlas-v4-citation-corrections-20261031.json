@@ -1,0 +1,245 @@
+{
+  "format": "promptbeats-atlas-v4-citation-corrections",
+  "schemaVersion": 1,
+  "revision": "2026-10-31.1",
+  "sourceSha256": "0d2aa2f20e5645c69a26e054de77bc8a821baf1406c910644754bf19222cdd56",
+  "reviewScope": "metadata_normalization_only_not_claim_certification",
+  "independentHumanApproval": false,
+  "executable": false,
+  "corrections": [
+    {
+      "gapId": "ru.russian_rock_80.gap.production",
+      "changes": [
+        {
+          "citationIndex": 1,
+          "field": "accessedEvidence",
+          "expected": "full webpage, interview body",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://daily.afisha.ru/music/16589-ya-uveren-chto-byl-pervym-fanatom-kino-kto-zapisal-albom-gruppa-krovi/"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.social_rock.gap.instrumentation",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "web search indexed original album credit excerpt",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.kursivom.ru/%D0%B4%D0%B4%D1%82-%D0%B8%D1%81%D1%82%D0%BE%D1%80%D0%B8%D1%8F-%D0%B0%D0%BB%D1%8C%D0%B1%D0%BE%D0%BC%D0%B0-%D0%B0%D0%BA%D1%82%D1%80%D0%B8%D1%81%D0%B0-%D0%B2%D0%B5%D1%81%D0%BD%D0%B0-1992/"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.social_rock.gap.production",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "web search indexed original album production credit excerpt",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.kursivom.ru/%D0%B4%D0%B4%D1%82-%D0%B8%D1%81%D1%82%D0%BE%D1%80%D0%B8%D1%8F-%D0%B0%D0%BB%D1%8C%D0%B1%D0%BE%D0%BC%D0%B0-%D0%B0%D0%BA%D1%82%D1%80%D0%B8%D1%81%D0%B0-%D0%B2%D0%B5%D1%81%D0%BD%D0%B0-1992/"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.social_rock.gap.era",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "authors",
+          "expected": "",
+          "value": "Mark Yoffe",
+          "basis": "Publisher author/DOI metadata; abstract only, not access to full chapter.",
+          "verificationUrl": "https://academic.oup.com/edited-volume/34707/chapter-abstract/337898822"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.social_rock.gap.cultural_context",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "authors",
+          "expected": "",
+          "value": "Mark Yoffe",
+          "basis": "Publisher author/DOI metadata; abstract only, not access to full chapter.",
+          "verificationUrl": "https://academic.oup.com/edited-volume/34707/chapter-abstract/337898822"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.russian_rock_ballad.gap.instrumentation",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "year",
+          "expected": "2016",
+          "value": 2016,
+          "basis": "Representation-only conversion of the supplied four-digit year; does not independently certify publication chronology.",
+          "verificationUrl": "https://www.kursivom.ru/%D0%BD%D0%B0%D1%83%D1%82%D0%B8%D0%BB%D1%83%D1%81-%D0%BF%D0%BE%D0%BC%D0%BF%D0%B8%D0%BB%D0%B8%D1%83%D1%81-%D0%BF%D1%80%D0%BE%D0%B3%D1%83%D0%BB%D0%BA%D0%B8-%D0%BF%D0%BE-%D0%B2%D0%BE%D0%B4%D0%B5/"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.russian_rock_ballad.gap.vocals",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "year",
+          "expected": "2010",
+          "value": 2010,
+          "basis": "Representation-only conversion of the supplied four-digit year; does not independently certify publication chronology.",
+          "verificationUrl": "https://naunaunau.narod.ru/articles/0229-duraki-chudaki/"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.russian_rock_ballad.gap.production",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "year",
+          "expected": "2010",
+          "value": 2010,
+          "basis": "Representation-only conversion of the supplied four-digit year; does not independently certify publication chronology.",
+          "verificationUrl": "https://naunaunau.narod.ru/articles/0229-duraki-chudaki/"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.russian_rock_ballad.gap.lyrics",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "year",
+          "expected": "2016",
+          "value": 2016,
+          "basis": "Representation-only conversion of the supplied four-digit year; does not independently certify publication chronology.",
+          "verificationUrl": "https://www.kursivom.ru/%D0%BD%D0%B0%D1%83%D1%82%D0%B8%D0%BB%D1%83%D1%81-%D0%BF%D0%BE%D0%BC%D0%BF%D0%B8%D0%BB%D0%B8%D1%83%D1%81-%D0%BF%D1%80%D0%BE%D0%B3%D1%83%D0%BB%D0%BA%D0%B8-%D0%BF%D0%BE-%D0%B2%D0%BE%D0%B4%D0%B5/"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.russian_alt_rock.gap.structure",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search_excerpt_only",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.rockarchive.ru/text/n-1/300/index.shtml"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.russian_alt_rock.gap.groove",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search_excerpt_only",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.rockarchive.ru/text/n-1/300/index.shtml"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.shoegaze.gap.structure",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search_extract",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://notion.online/interview-pinkshinyultrablast-talk-shoegaze-l-new-album-grandfeathered/"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.shoegaze.gap.melody",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search-indexed full interview excerpts",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.colta.ru/articles/music_modern/6279-pinkshinyultrablast-ne-hotim-byt-luchshey-gruppoy-v-gorode-gde-est-piknik"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.shoegaze.gap.lyrics",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search_extract",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://drownedinsound.com/in_depth/4148874-eastern-delights--dis-meets-pinkshinyultrablast"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.rap_rock.gap.vocals",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search-indexed full interview excerpts",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.rockarchive.ru/text/n-1/86/index.shtml"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.rap_rock.gap.production",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search-indexed full interview excerpts",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.rockarchive.ru/text/n-1/86/index.shtml"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.rap_rock.gap.lyrics",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search-indexed full interview excerpts",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.rockarchive.ru/text/n-1/86/index.shtml"
+        }
+      ]
+    },
+    {
+      "gapId": "ru.rap_rock.gap.era",
+      "changes": [
+        {
+          "citationIndex": 0,
+          "field": "accessedEvidence",
+          "expected": "search-indexed full interview excerpts",
+          "value": "extract",
+          "basis": "Conservative normalization of the original non-enum access description to extract. Original wording retained here; no full-text or musicological certification inferred.",
+          "verificationUrl": "https://www.rockarchive.ru/text/n-1/86/index.shtml"
+        }
+      ]
+    }
+  ]
+}

@@ -39,6 +39,18 @@ export const advancedSetupSchema = z
 
 export type AdvancedGeneratorSetup = z.infer<typeof advancedSetupSchema>;
 
+/** Shared with the Advanced Generator and its offline rendering adapter. */
+export function mergeAdvancedSetupValues(selected: string[], custom: string) {
+  const out: string[] = [];
+  for (const v of [...selected, ...custom.split(",")]) {
+    const text = v.trim();
+    if (!text) continue;
+    if (out.some((x) => x.toLowerCase() === text.toLowerCase())) continue;
+    out.push(text);
+  }
+  return out;
+}
+
 const envelopeSchema = z
   .object({
     format: z.literal(ADVANCED_SETUP_FORMAT),

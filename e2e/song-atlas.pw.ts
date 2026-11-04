@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readAtlasCatalog } from "../src/lib/song-atlas-data.server";
+import { readAtlasResearchProfile } from "../src/lib/atlas-research.server";
 import { ATLAS_HANDOFF_KEY, ATLAS_SOURCE_SHA } from "../src/lib/song-atlas.shared";
 
 async function fixture(page: Page, initiallyAllowed = true, approvedFixture = false) {
@@ -110,7 +111,13 @@ async function fixture(page: Page, initiallyAllowed = true, approvedFixture = fa
       await route.fulfill({ status: 403, body: "Atlas transfer requires independent validation" });
       return;
     }
-    if (name.includes("getMyFeatureAccess")) result = { allowed };
+    if (name.includes("getSongAtlasResearch")) {
+      if (!allowed) {
+        await route.fulfill({ status: 403, body: "Denied" });
+        return;
+      }
+      result = readAtlasResearchProfile("ru.protyazhnaya");
+    } else if (name.includes("getMyFeatureAccess")) result = { allowed };
     else if (name.includes("getSongAtlasPreview")) {
       previewCalls++;
       if (!allowed) {
@@ -159,6 +166,91 @@ async function browseRussia(page: Page) {
   await page.getByRole("combobox", { name: /^(Country|Χώρα)$/ }).click();
   await page.getByRole("option", { name: /Russia \/ Russophone|Ρωσία \/ ρωσόφωνη/ }).click();
 }
+
+test("V4 evidence is lazy, localized, scoped and never enables transfer", async ({ page }) => {
+  await fixture(page);
+  await expect(
+    page.getByText(/No independently approved techniques|Δεν υπάρχουν ακόμη ανεξάρτητα/),
+  ).toBeVisible();
+  const card = page.locator('[data-atlas-id="ru.protyazhnaya"]');
+  const notes = card.getByTestId("atlas-research");
+  await expect(notes.getByRole("heading")).toHaveCount(0);
+  await notes.getByRole("button", { name: /View V4 research|Προβολή έρευνας V4/ }).click();
+  await expect(
+    notes.getByRole("heading", { name: /New V4 research evidence|Νέα ερευνητική τεκμηρίωση V4/ }),
+  ).toBeVisible();
+  await expect(notes.getByText(/Research evidence is not|Η τεκμηρίωση δεν αποτελεί/)).toBeVisible();
+  await expect(notes.locator("article")).toHaveCount(
+    readAtlasResearchProfile("ru.protyazhnaya").tasks.length,
+  );
+  await expect(
+    page.getByRole("button", { name: /Review transfer|Έλεγχος μεταφοράς/ }),
+  ).toBeDisabled();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
+  await page.evaluate(() => localStorage.setItem("pb:interface-language", "el"));
+  await page.reload();
+  await notes.getByRole("button", { name: "Προβολή έρευνας V4" }).click();
+  await expect(notes.getByRole("heading", { name: "Νέα ερευνητική τεκμηρίωση V4" })).toBeVisible();
+  await expect(notes.locator('p[lang="el"]').first()).toBeVisible();
+});
+
+test("V4 research access failure reveals no cached evidence", async ({ page }) => {
+  const f = await fixture(page);
+  await page.route("**/_serverFn/**", async (route) => {
+    const name = Buffer.from(
+      new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
+      "base64url",
+    ).toString();
+    if (name.includes("getSongAtlasResearch")) await route.fulfill({ status: 403, body: "Denied" });
+    else await route.fallback();
+  });
+  const notes = page.locator('[data-atlas-id="ru.protyazhnaya"]').getByTestId("atlas-research");
+  await notes.getByRole("button", { name: /View V4 research|Προβολή έρευνας V4/ }).click();
+  await expect(notes.getByRole("alert")).toContainText(
+    /Evidence is unavailable|Η τεκμηρίωση δεν είναι διαθέσιμη/,
+  );
+  await expect(notes.locator("article")).toHaveCount(0);
+  expect(f.validationCount()).toBe(0);
+});
+
+test("quarantined evidence never exposes its statement or enables transfer", async ({ page }) => {
+  const f = await fixture(page);
+  const research = readAtlasResearchProfile("ru.protyazhnaya");
+  research.tasks[0] = {
+    ...research.tasks[0]!,
+    quarantined: true,
+    researchDecision: null,
+    suggestedStatementEl: null,
+    suggestedStatementEn: null,
+    citations: [],
+    validationIssues: ["Synthetic invalid source metadata"],
+  };
+  await page.route("**/_serverFn/**", async (route) => {
+    const name = Buffer.from(
+      new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
+      "base64url",
+    ).toString();
+    if (name.includes("getSongAtlasResearch"))
+      await route.fulfill({ json: { result: research, context: {} } });
+    else await route.fallback();
+  });
+  const notes = page.locator('[data-atlas-id="ru.protyazhnaya"]').getByTestId("atlas-research");
+  await notes.getByRole("button", { name: /View V4 research|Προβολή έρευνας V4/ }).click();
+  const quarantined = notes.locator("article").first();
+  await expect(quarantined).toContainText(
+    /Source metadata needs correction|Απαιτείται διόρθωση μεταδεδομένων/,
+  );
+  await expect(quarantined).toContainText(
+    /No musical rule proposed|Δεν προτείνεται μουσικός κανόνας/,
+  );
+  await expect(quarantined.getByRole("link")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Review transfer|Έλεγχος μεταφοράς/ }),
+  ).toBeDisabled();
+  expect(f.validationCount()).toBe(0);
+});
 
 for (const scenario of [
   {
