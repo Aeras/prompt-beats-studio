@@ -226,6 +226,9 @@ jobs:
       - name: Tavily adapter in offline Cloudflare runtime
         run: bun scripts/tests/tavily-workerd.ts
 
+      - name: Polar55 adapter in offline Cloudflare runtime
+        run: bun scripts/tests/polar55-workerd.ts
+
       - name: Complete Bun test suite
         run: bun test
 

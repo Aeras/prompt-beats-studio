@@ -53,7 +53,7 @@ describe("Polar55 read-only proxy", () => {
         env,
         fetch: async (url, init) => {
           expect(url).toBe("https://kino-api.promptbeats.app/lab-v1.php");
-          expect(init?.redirect).toBe("error");
+          expect(init?.redirect).toBe("manual");
           expect(init?.credentials).toBe("omit");
           const headers = new Headers(init?.headers);
           expect(headers.get("Authorization")).toBe(`Bearer ${env.KINO_POLAR55_READ_TOKEN}`);
