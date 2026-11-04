@@ -47,12 +47,25 @@ function labReadDb(array $config): PDO {
 }
 function labAssertReadPrivileges(PDO $pdo):void {
     $tables=['kino_draws'=>false,'kino_draw_revisions'=>false];
+    // SHOW GRANTS is server-owned, but parse whole statements: never normalize
+    // escapes in privileges, grantees, authentication details or unknown clauses.
+    $account="(?:`(?:[^`\r\n]|``)+`|'(?:[^'\\\\\r\n]|''|\\\\.)*')";
+    $grantee=$account.'@'.$account;
+    $identifier='(?:`[^`\r\n]+`|[a-zA-Z0-9_]+)';
+    $usage='~\AGRANT USAGE ON \*\.\* TO '.$grantee."(?: IDENTIFIED BY PASSWORD '(?:\\*[a-fA-F0-9]{40})?')?\\z~i";
+    $select='~\AGRANT SELECT ON ('.$identifier.')\.(\*|'.$identifier.') TO '.$grantee.'\z~i';
     foreach($pdo->query('SHOW GRANTS')->fetchAll(PDO::FETCH_COLUMN) as $grant){
-        if(preg_match('/WITH\s+GRANT\s+OPTION/i',$grant))throw new RuntimeException('read_only_account_required');
-        if(preg_match('/^GRANT USAGE ON \*\.\* TO /i',$grant))continue;
-        if(!preg_match('/^GRANT SELECT ON `?promptbe_kino_history`?\.(\*|`?kino_draws`?|`?kino_draw_revisions`?) TO /i',$grant,$m))throw new RuntimeException('read_only_account_required');
-        $table=str_replace('`','',$m[1]);
-        if($table==='*')$tables=array_fill_keys(array_keys($tables),true);else $tables[$table]=true;
+        if(!is_string($grant)||strlen($grant)>4096||preg_match('/[\x00-\x1f\x7f]/',$grant))throw new RuntimeException('read_only_account_required');
+        if(preg_match($usage,$grant))continue;
+        if(!preg_match($select,$grant,$m))throw new RuntimeException('read_only_account_required');
+        $database=trim($m[1],'`');$table=trim($m[2],'`');
+        // Only the known database's escaped underscores are decoded. Database
+        // grants use LIKE patterns; require every underscore escaped for db.*.
+        // Table-level scopes use literal names and retain existing compatibility.
+        if(str_replace('\\_','_',$database)!=='promptbe_kino_history'||($table==='*'&&$database!=='promptbe\\_kino\\_history'))throw new RuntimeException('read_only_account_required');
+        if($table==='*')$tables=array_fill_keys(array_keys($tables),true);
+        elseif(array_key_exists($table,$tables))$tables[$table]=true;
+        else throw new RuntimeException('read_only_account_required');
     }
     if(in_array(false,$tables,true))throw new RuntimeException('read_permissions_incomplete');
 }
