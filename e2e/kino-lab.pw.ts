@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { makePolar55Fixture } from "../src/lib/__fixtures__/kino-polar55-analysis";
 
 const user = {
   id: "bb000000-0000-4000-8000-000000000006",
@@ -10,7 +11,7 @@ const user = {
   user_metadata: {},
   created_at: "2026-01-01T00:00:00Z",
 };
-async function fixture(page: Page, allowed = true) {
+async function fixture(page: Page, allowed = true, polar: unknown = { status: "not_configured" }) {
   let permitted = allowed,
     labCalls = 0;
   const token =
@@ -68,6 +69,10 @@ async function fixture(page: Page, allowed = true) {
       labCalls++;
       if (!permitted) return route.fulfill({ status: 403, body: "Denied" });
       result = { allowed: true, mode: "offline-exploratory" };
+    } else if (name.includes("queryPrivateKinoPolar55")) {
+      labCalls++;
+      if (!permitted) return route.fulfill({ status: 403, body: "Denied" });
+      result = polar;
     } else if (name.includes("getPrivateKinoLiveSnapshot"))
       result = { last: null, active: null, fetchedAt: Date.now() };
     else if (name.includes("getPrivateFootballResearchHistory")) result = [];
@@ -196,4 +201,140 @@ test("switching away clears Lab state and dropdown uses themed keyboard picker",
   await page.getByRole("button", { name: "Ζωντανά", exact: true }).click();
   await page.getByRole("button", { name: "Εργαστήριο", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "0 κληρώσεις" })).toBeVisible();
+});
+
+test("Polar55 is explicit, default-off, bounded and keeps JSON/Live independent", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  await openLab(page);
+  const source = page.getByRole("combobox", { name: "Πηγή δεδομένων", exact: true });
+  await source.click();
+  await page.getByRole("option", { name: "Polar55", exact: true }).click();
+  expect(f.calls()).toBe(0);
+  const n = page.getByRole("combobox", { name: "Αποθηκευμένες κληρώσεις", exact: true });
+  await n.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("option", { name: "100000", exact: true })).toBeVisible();
+  await page.getByRole("option", { name: "100000", exact: true }).click();
+  await page.getByRole("button", { name: "Ανάλυση", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("δεν έχει ενεργοποιηθεί");
+  expect(f.calls()).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const a = await new AxeBuilder({ page })
+    .include('[aria-label="Εργαστήριο Polar55"]')
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(a.violations).toEqual([]);
+  await source.click();
+  await page.getByRole("option", { name: "Εισαγωγή JSON", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Εισαγωγή JSON", exact: true })).toBeVisible();
+});
+
+test("Polar55 revoked access clears results; small stored history is honestly partial", async ({
+  page,
+}) => {
+  const analysis = makePolar55Fixture();
+  const f = await fixture(page, true, { status: "ok", analysis });
+  await openLab(page);
+  await page.getByRole("combobox", { name: "Πηγή δεδομένων", exact: true }).click();
+  await page.getByRole("option", { name: "Polar55", exact: true }).click();
+  await page.getByRole("button", { name: "Ανάλυση", exact: true }).click();
+  await expect(page.getByText(/Αναλύθηκαν 11 έγκυρες.*Μερικό δείγμα/)).toBeVisible();
+  await expect(page.getByLabel("Συχνότητες Polar55").locator(":scope > div")).toHaveCount(80);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("kino-polar55-partial.png"),
+    fullPage: true,
+  });
+  f.revoke();
+  await page.getByRole("button", { name: "Εξαγωγή ανάλυσης", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Δεν επιβεβαιώθηκε η πρόσβαση");
+  await expect(page.getByLabel("Συχνότητες Polar55")).toHaveCount(0);
+});
+
+test("cancelled Polar55 reads cannot restore stale data or trigger source requests", async ({
+  page,
+}) => {
+  await fixture(page);
+  await openLab(page);
+  await page.getByRole("combobox", { name: "Πηγή δεδομένων", exact: true }).click();
+  await page.getByRole("option", { name: "Polar55", exact: true }).click();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested!: () => void;
+  const started = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  let direct = 0;
+  page.on("request", (r) => {
+    if (/kino-api\.promptbeats|api\.opap/.test(r.url())) direct++;
+  });
+  await page.route("**/_serverFn/**", async (route) => {
+    const name = Buffer.from(
+      new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
+      "base64url",
+    ).toString();
+    if (!name.includes("queryPrivateKinoPolar55")) return route.fallback();
+    requested();
+    await held;
+    await route
+      .fulfill({ json: { result: { status: "unavailable" }, context: {} } })
+      .catch(() => undefined);
+  });
+  await page.getByRole("button", { name: "Ανάλυση", exact: true }).click();
+  await started;
+  await page.getByRole("button", { name: "Ακύρωση αναμονής", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Η αναμονή ακυρώθηκε");
+  await expect(page.getByRole("button", { name: "Ανάλυση", exact: true })).toBeEnabled();
+  release();
+  await expect(page.getByLabel("Συχνότητες Polar55")).toHaveCount(0);
+  expect(direct).toBe(0);
+});
+
+test("cancelled export preserves the snapshot and successful export only rechecks auth", async ({
+  page,
+}) => {
+  await fixture(page, true, { status: "ok", analysis: makePolar55Fixture() });
+  let hold = true,
+    reads = 0,
+    release!: () => void,
+    started!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    }),
+    requested = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+  await page.route("**/_serverFn/**", async (route) => {
+    const name = Buffer.from(
+      new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
+      "base64url",
+    ).toString();
+    if (name.includes("queryPrivateKinoPolar55")) reads++;
+    if (!name.includes("getPrivateKinoLabAccess") || !hold) return route.fallback();
+    started();
+    await blocked;
+    await route
+      .fulfill({ json: { result: { allowed: true, mode: "offline-exploratory" }, context: {} } })
+      .catch(() => undefined);
+  });
+  await openLab(page);
+  await page.getByRole("combobox", { name: "Πηγή δεδομένων", exact: true }).click();
+  await page.getByRole("option", { name: "Polar55", exact: true }).click();
+  await page.getByRole("button", { name: "Ανάλυση", exact: true }).click();
+  await expect(page.getByLabel("Συχνότητες Polar55")).toBeVisible();
+  await page.getByRole("button", { name: "Εξαγωγή ανάλυσης", exact: true }).click();
+  await requested;
+  await page.getByRole("button", { name: "Ακύρωση αναμονής", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Η εξαγωγή ακυρώθηκε");
+  await expect(page.getByLabel("Συχνότητες Polar55").locator(":scope > div")).toHaveCount(80);
+  hold = false;
+  release();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Εξαγωγή ανάλυσης", exact: true }).click();
+  expect((await download).suggestedFilename()).toBe("kino-polar55-analysis.json");
+  expect(reads).toBe(1);
 });

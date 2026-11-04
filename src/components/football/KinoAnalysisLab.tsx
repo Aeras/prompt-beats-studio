@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getPrivateKinoLabAccess } from "@/lib/kino-lab.functions";
+import KinoPolar55Lab from "./KinoPolar55Lab";
 import {
   filterLabDraws,
   KINO_LAB_MAX_BYTES,
@@ -27,6 +28,26 @@ const fmt = (n: number | null) =>
 const card = "min-w-0 rounded-xl border border-border bg-card p-3";
 type Proposal = { numbers: number[]; seed: string; method: LabMethod; k: number };
 export default function KinoAnalysisLab() {
+  const [source, setSource] = useState("json");
+  return (
+    <div className="mx-auto max-w-6xl min-w-0 space-y-3 px-3 pt-3">
+      <label className="block text-xs">
+        Πηγή δεδομένων
+        <Select value={source} onValueChange={setSource}>
+          <SelectTrigger aria-label="Πηγή δεδομένων" className="h-10">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="json">Εισαγωγή JSON</SelectItem>
+            <SelectItem value="polar55">Polar55</SelectItem>
+          </SelectContent>
+        </Select>
+      </label>
+      {source === "polar55" ? <KinoPolar55Lab /> : <OfflineKinoAnalysisLab />}
+    </div>
+  );
+}
+function OfflineKinoAnalysisLab() {
   const [dataset, setDataset] = useState<LabDataset | null>(null),
     [sourceHash, setSourceHash] = useState("");
   const [windowMode, setWindowMode] = useState("latest"),
