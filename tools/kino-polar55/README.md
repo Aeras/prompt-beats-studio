@@ -124,3 +124,26 @@ The read API's `backfill=DISABLED` means it cannot start backfill; it does not
 assert the state of a separately configured CLI scheduler. Inspect that job
 directly. The unchanged original cron remains independent. Test actual batch
 headroom/coexistence before approving any backfill schedule.
+
+## MariaDB escaped database grants hotfix
+
+The read-privilege gate understands MariaDB `SHOW GRANTS` database identifiers
+such as `promptbe\_kino\_history`. Only this database identifier is decoded;
+no blanket replacement is applied to authentication, account names or privilege
+clauses. Whole statements must match the supported USAGE/SELECT grammar.
+
+For database-wide SELECT, **both underscores must be escaped**: unescaped `_`
+is a database-grant wildcard, even inside backticks, and is deliberately rejected.
+The existing literal per-table SELECT grants on `kino_draws` and
+`kino_draw_revisions` remain supported. No grant changes are performed by this
+package. Global SELECT, writes, roles, PROXY, GRANT OPTION, missing required
+SELECT coverage and malformed/unknown statements fail closed. Supported USAGE
+account tails are no authentication suffix or MariaDB native password-hash syntax;
+other authentication/TLS/resource-clause formats need independent fixtures and
+review, never silently broad acceptance. Grant strings/hashes are never logged.
+
+Release remains separate: approved installation replaces only the new
+`kino-private/lab-service.php` after preserving a private copy and comparing the
+current deployed file. Do not overwrite the existing manager/config/writer/cron,
+change production grants/data, enable the API or start backfill. No Supabase
+migration or app-code change is required by this PHP-only hotfix.

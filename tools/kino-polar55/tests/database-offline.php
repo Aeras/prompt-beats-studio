@@ -73,6 +73,21 @@ $native=labReadDb(['enabled'=>true,'schema_verified'=>true,'database'=>['host'=>
 $nativeResult=labReadAnalysis($native,['op'=>'analysis','n'=>1000,'method'=>'F00','k'=>5,'seed'=>'native-config-fixture'],sys_get_temp_dir());
 check($nativeResult['loaded']===1000&&count($nativeResult['result']['proposal'])===5,'real_read_config_and_unix_socket');
 echo "ACTUAL_READ_CONFIG_SOCKET_PRIVILEGE_AND_ANALYSIS_PASS\n";
+// Reproduce Polar55's MariaDB database-level escaped-underscore grant.
+// Entirely synthetic: no production user, grants, database or credentials.
+$root->exec("CREATE USER 'lab_db_read'@'%' IDENTIFIED BY 'SYNTHETIC_FIXTURE_ONLY'");
+$root->exec("GRANT SELECT ON `promptbe\_kino\_history`.* TO 'lab_db_read'@'%'");
+$dbRead=labReadDb(['enabled'=>true,'schema_verified'=>true,'database'=>['host'=>'localhost','name'=>'promptbe_kino_history','user'=>'lab_db_read','password'=>'SYNTHETIC_FIXTURE_ONLY']]);
+$hasEscaped=false;foreach($dbRead->query('SHOW GRANTS')->fetchAll(PDO::FETCH_COLUMN)as $grant)if(str_contains($grant,'`promptbe\_kino\_history`.*'))$hasEscaped=true;
+check($hasEscaped,'actual_mariadb_escaped_grant_fixture');
+$dbStatus=labReadAnalysis($dbRead,['op'=>'status'],sys_get_temp_dir());
+check($dbStatus['stored']===100005,'escaped_database_grant_read_connection');
+foreach(['INSERT INTO kino_draw_revisions (draw_id) VALUES (999999)','UPDATE kino_draws SET draw_id=draw_id WHERE draw_id=1','DELETE FROM kino_draws WHERE draw_id=1']as $write){
+    $denied=false;try{$dbRead->exec($write);}catch(PDOException){$denied=true;}check($denied,'escaped_database_reader_cannot_write');
+}
+$root->exec("GRANT UPDATE ON `promptbe\_kino\_history`.* TO 'lab_db_read'@'%'");
+$denied=false;try{labAssertReadPrivileges($dbRead);}catch(RuntimeException){$denied=true;}check($denied,'escaped_database_with_write_rejected');
+echo "MARIADB_ESCAPED_DATABASE_READ_ONLY_GRANTS_PASS\n";
 $root->exec('ALTER TABLE kino_draws MODIFY draw_id VARCHAR(20) NOT NULL');
 $denied=false;try{labAssertSchema($read);}catch(RuntimeException){$denied=true;}check($denied,'lexical_draw_identity_rejected');
 $root->exec('ALTER TABLE kino_draws MODIFY draw_id BIGINT NOT NULL');

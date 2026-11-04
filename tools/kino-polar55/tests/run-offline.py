@@ -22,7 +22,7 @@ db_image = "mariadb:11.4@sha256:d1891ede5a559f1086f55053bb8cc1569b0298338c4d72d7
 mount = f"type=bind,source={root.as_posix()},target=/src,readonly"
 for file in sorted(root.rglob("*.php")):
     run("docker", "run", "--rm", "--network", "none", "--mount", mount, image, "php", "-l", "/src/" + file.relative_to(root).as_posix())
-for name in ["core-offline.php", "http-offline.php", "backfill-offline.php", "review-offline.php"]:
+for name in ["core-offline.php", "http-offline.php", "backfill-offline.php", "review-offline.php", "grants-offline.php"]:
     run("docker", "run", "--rm", "--network", "none", "--memory", "128m", "--cpus", "1", "--mount", mount, image, "php", "-d", "memory_limit=64M", "/src/tests/" + name)
 tag = "pb-kino-php-test:" + uuid.uuid4().hex[:12]
 run("docker", "build", "-t", tag, str(root / "tests"))
