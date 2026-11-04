@@ -7,6 +7,7 @@ src/data/song-atlas/v4/library.json -text
 src/data/song-atlas/v4/source-access.json -text
 research/atlas-v4-citation-corrections-20261031.json text eol=lf
 research/atlas-v4-offline-pilots.json text eol=lf
+research/atlas-v4-completion-20261031.zip -text
 
 
 # Canonical Creative Master V2 research candidate: preserve supplied bytes.
