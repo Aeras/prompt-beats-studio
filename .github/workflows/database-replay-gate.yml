@@ -76,7 +76,11 @@ jobs:
           SQL
 
       - name: Replay all migrations on a fresh local database
-        run: supabase db start
+        run: |
+          # Isolate the ephemeral CI database from runners already using 54322.
+          # Tests address the database through the project-specific Docker container.
+          printf '\n[db]\nport = 55439\n' >> supabase/config.toml
+          supabase db start
 
       - name: AI usage receipt, permissions and recovery invariants (local only)
         run: |
@@ -88,6 +92,8 @@ jobs:
           # race harness fail-closed assertion; isolate the fixture explicitly.
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "DELETE FROM public.app_settings WHERE key IN ('runner_url','runner_token');"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/ai_usage_recovery.sql
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/private_football_research.sql
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/private_football_ai_search.sql
           bash scripts/tests/ai-usage-db-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/upload_integrity.sql
           bash scripts/tests/upload-receipt-races.sh "$PROJECT_ID"

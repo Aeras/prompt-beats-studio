@@ -54,3 +54,15 @@ Applies to **ChatGPT, Codex, Lovable, and any other automated coding assistant**
 ## 6. Enforcement limits
 
 The GitHub workflow guard can verify presence of this contract, evidence structure, and checks; it **cannot prove comprehension or total functional correctness**. ChatGPT conversations do **not automatically ingest GitHub files**: ChatGPT must explicitly fetch/read this file on every new repository work session. Codex with repository access can automatically discover root `AGENTS.md`. Project Instructions must separately reference this file; changes to those instructions cannot be made by editing the repository alone.
+
+## 7. GitHub Actions budget and final-push approval
+
+- Investigate and complete each whole task in one branch/PR without intermediate remote commits or pushes. Prepare changes and local verification first.
+- Require explicit user approval **before** a branch update, PR creation or any other action capable of triggering GitHub Actions.
+- After approval, perform one consolidated final push; await Regression, Browser Quality and Database Replay for the exact final HEAD before merge.
+- If a gate fails, inspect all failures and fix them together before asking for approval for another CI-triggering update. No experimental re-runs or piecemeal remote fixes.
+- Local git commits do not normally trigger remote workflows; GitHub API commits referenced by a branch, push events, PR events and other triggers may do so. No force push or rewrite of Lovable-synced history.
+
+## 8. Architecture rules
+
+- AI-discovered football fixtures are written only by server code via service-role RPCs after independent HTTP corroboration; model output and citations are never persisted as verified. Why: AI output is untrusted and paid analysis must target real fixtures.

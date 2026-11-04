@@ -46,6 +46,8 @@ export type ModelCall = {
   prompt: string;
   /** Output token budget for non-reasoning providers / visible-output baseline. */
   maxTokens?: number;
+  /** OpenRouter only: omit application max_tokens, use provider/model limits. */
+  omitOpenRouterMaxTokens?: boolean;
   /** Optional structured-output JSON schema (used where the provider supports it). */
   schema?: Record<string, unknown>;
   /** Server-only opt-in for supported OpenRouter JSON-object output; other callers are unchanged. */
@@ -807,7 +809,9 @@ async function callOpenAiCompatible(
         { role: "system", content: call.system },
         { role: "user", content: call.prompt },
       ],
-      max_tokens: call.maxTokens ?? 8192,
+      ...(providerName === "openrouter" && call.omitOpenRouterMaxTokens
+        ? {}
+        : { max_tokens: call.maxTokens ?? 8192 }),
       ...(providerName === "openrouter" && call.reasoningEffort
         ? {
             reasoning:

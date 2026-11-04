@@ -29,6 +29,8 @@ export function featureKeysForAiOperation(operation: AiOperation): readonly stri
       return ["ai_generator", "song_universe"];
     case "music_inspiration":
       return ["ai_generator", "ai_music_inspiration"];
+    case "football_research":
+      return ["ai_generator"];
     default: {
       const exhaustive: never = operation;
       return exhaustive;
