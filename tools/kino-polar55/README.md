@@ -28,7 +28,7 @@ only after that check. Configure the matching server-only
 separate approval; never `VITE_*`. Publication is a separately approved step.
 
 POST `lab-v1.php` accepts only `status`, or `analysis` with canonical N,
-P00/F00/P01, k=5/8/10 and an ASCII seed. Exact Host/direct TLS, no Origin,
+P00/F00/P01, k=1–12 and an ASCII seed. Exact Host/direct TLS, no Origin,
 constant-time token check, no CORS, no redirects, bounded body and a cross-process
 nonblocking lock guard admission. `X-Kino-Owner` is a server-generated pseudonym,
 not browser authentication. The shared token grants only this read capability;

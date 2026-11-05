@@ -1,6 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { makePolar55Fixture } from "../src/lib/__fixtures__/kino-polar55-analysis";
+import { KINO_HISTORY_WINDOWS, formatKinoCount } from "../src/lib/kino-lab.presentation";
+
+type WireNode = { t?: number; s?: unknown; p?: { k?: string[]; v?: WireNode[] } };
+function decode(node: WireNode): unknown {
+  if (node.p?.k) return Object.fromEntries(node.p.k.map((key, i) => [key, decode(node.p!.v![i]!)]));
+  if (node.t === 2) return node.s === 2;
+  return node.s;
+}
 
 const user = {
   id: "bb000000-0000-4000-8000-000000000006",
@@ -122,7 +130,7 @@ test("compact Lab import, research, paired backtest, export and no paid dispatch
   expect(f.calls()).toBe(1);
   await page.getByRole("tab", { name: "Πρόταση", exact: true }).click();
   await page.getByRole("button", { name: "Παραγωγή επιλογής" }).click();
-  await expect(page.getByLabel("Πειραματικοί αριθμοί").locator("span")).toHaveCount(8);
+  await expect(page.getByLabel("Πειραματικοί αριθμοί").locator("span")).toHaveCount(5);
   await page.getByRole("tab", { name: "Έλεγχος", exact: true }).click();
   await page.getByRole("button", { name: "Ιστορικός έλεγχος", exact: true }).click();
   await expect(page.locator("dd").first()).toHaveText("35");
@@ -177,7 +185,7 @@ test("375px import errors stay inert and changed sample invalidates proposal", a
   await upload(page);
   await page.getByRole("tab", { name: "Πρόταση", exact: true }).click();
   await page.getByRole("button", { name: "Παραγωγή επιλογής" }).click();
-  await expect(page.getByLabel("Πειραματικοί αριθμοί").locator("span")).toHaveCount(8);
+  await expect(page.getByLabel("Πειραματικοί αριθμοί").locator("span")).toHaveCount(5);
   await page.getByRole("combobox", { name: "Κληρώσεις", exact: true }).click();
   await page.getByRole("option", { name: "10", exact: true }).click();
   await expect(page.getByRole("listbox")).toHaveCount(0);
@@ -212,11 +220,11 @@ test("Polar55 is explicit, default-off, bounded and keeps JSON/Live independent"
   await source.click();
   await page.getByRole("option", { name: "Polar55", exact: true }).click();
   expect(f.calls()).toBe(0);
-  const n = page.getByRole("combobox", { name: "Αποθηκευμένες κληρώσεις", exact: true });
+  const n = page.getByRole("combobox", { name: "Κληρώσεις", exact: true });
   await n.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("option", { name: "100000", exact: true })).toBeVisible();
-  await page.getByRole("option", { name: "100000", exact: true }).click();
+  await expect(page.getByRole("option", { name: "100.000", exact: true })).toBeVisible();
+  await page.getByRole("option", { name: "100.000", exact: true }).click();
   await page.getByRole("button", { name: "Ανάλυση", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("δεν έχει ενεργοποιηθεί");
   expect(f.calls()).toBe(1);
@@ -337,4 +345,169 @@ test("cancelled export preserves the snapshot and successful export only recheck
   await page.getByRole("button", { name: "Εξαγωγή ανάλυσης", exact: true }).click();
   expect((await download).suggestedFilename()).toBe("kino-polar55-analysis.json");
   expect(reads).toBe(1);
+});
+
+test("all history windows reach analysis unchanged, refresh counts and preserve partial selections", async ({
+  page,
+}) => {
+  await fixture(page);
+  const received: Array<{ n: number; k: number; method: string }> = [];
+  await page.route("**/_serverFn/**", async (route) => {
+    const name = Buffer.from(
+      new URL(route.request().url()).pathname.split("/_serverFn/")[1] ?? "",
+      "base64url",
+    ).toString();
+    if (!name.includes("queryPrivateKinoPolar55")) return route.fallback();
+    const body = route.request().postDataJSON();
+    const input = (body.t ? (decode(body.t) as { data: unknown }).data : body.data) as {
+      n: number;
+      k: number;
+      method: "P00" | "F00" | "P01";
+    };
+    received.push(input);
+    const analysis = makePolar55Fixture(Math.min(input.n, 50208), input.k, input.n);
+    analysis.options.method = input.method;
+    await route.fulfill({ json: { result: { status: "ok", analysis }, context: {} } });
+  });
+  await openLab(page);
+  await page.getByRole("combobox", { name: "Πηγή δεδομένων", exact: true }).click();
+  await page.getByRole("option", { name: "Polar55", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Αριθμοί", exact: true })).toHaveText("5");
+  const window = page.getByRole("combobox", { name: "Κληρώσεις", exact: true });
+  for (const n of KINO_HISTORY_WINDOWS) {
+    await window.click();
+    await expect(page.getByRole("option")).toHaveCount(12);
+    await page.getByRole("option", { name: formatKinoCount(n), exact: true }).click();
+    await expect(page.getByLabel("Συχνότητες Polar55")).toHaveCount(0);
+    await page.getByRole("button", { name: "Ανάλυση", exact: true }).click();
+    await expect(
+      page.getByText(`Αναλύθηκαν ${formatKinoCount(Math.min(n, 50208))} έγκυρες`, { exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel("Συχνότητες Polar55").locator(":scope > div").first().locator("span"),
+    ).toHaveText(formatKinoCount(Math.min(n, 50208)));
+  }
+  expect(received.map((r) => r.n)).toEqual([...KINO_HISTORY_WINDOWS]);
+  expect(received.every((r) => r.k === 5)).toBe(true);
+  await expect(window).toHaveText("100.000");
+  await expect(page.getByText(/Μερικό δείγμα/)).toBeVisible();
+});
+
+test("heatmap stays 10 by 8 and aligned at 320px, landscape, tablet and desktop", async ({
+  page,
+}) => {
+  await fixture(page, true, { status: "ok", analysis: makePolar55Fixture(100000, 5, 100000) });
+  await openLab(page);
+  await page.getByRole("combobox", { name: "Πηγή δεδομένων", exact: true }).click();
+  await page.getByRole("option", { name: "Polar55", exact: true }).click();
+  await page.getByRole("combobox", { name: "Κληρώσεις", exact: true }).click();
+  await page.getByRole("option", { name: "100.000", exact: true }).click();
+  await page.getByRole("button", { name: "Ανάλυση", exact: true }).click();
+  const grid = page.getByLabel("Συχνότητες Polar55");
+  await expect(grid.locator(":scope > div")).toHaveCount(80);
+  for (const viewport of [
+    { width: 320, height: 640 },
+    { width: 360, height: 740 },
+    { width: 390, height: 844 },
+    { width: 667, height: 375 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect
+      .poll(() =>
+        grid.evaluate((element) => {
+          const cells = Array.from(element.children) as HTMLElement[];
+          return {
+            columns: getComputedStyle(element).gridTemplateColumns.split(" ").length,
+            rows: new Set(cells.map((c) => c.offsetTop)).size,
+            fits: cells.every((c) => c.scrollWidth <= c.clientWidth),
+            equal: new Set(cells.map((c) => Math.round(c.getBoundingClientRect().width))).size <= 2,
+          };
+        }),
+      )
+      .toEqual({ columns: 10, rows: 8, fits: true, equal: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    const boxes = await Promise.all(
+      ["Κληρώσεις", "Αριθμοί", "Μέθοδος"].map((name) =>
+        page.getByRole("combobox", { name, exact: true }).boundingBox(),
+      ),
+    );
+    expect(new Set(boxes.map((b) => b?.y)).size).toBe(1);
+    expect(boxes.every((b) => b?.height === 44)).toBe(true);
+    await page.screenshot({
+      path: test.info().outputPath(`heatmap-${viewport.width}.png`),
+      fullPage: true,
+    });
+  }
+  const audit = await new AxeBuilder({ page })
+    .include('[aria-label="Εργαστήριο Polar55"]')
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(audit.violations).toEqual([]);
+});
+
+test("all twelve pick sizes and three methods produce the chosen offline selection", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await fixture(page);
+  await openLab(page);
+  await upload(page);
+  await page.getByRole("tab", { name: "Πρόταση", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Αριθμοί", exact: true })).toHaveText("5");
+  for (const method of ["P00 · Τυχαία", "F00 · Συχνότητες", "P01 · Πρόσφατες"]) {
+    await page.getByRole("combobox", { name: "Μέθοδος", exact: true }).click();
+    await page.getByRole("option", { name: method, exact: true }).click();
+    for (let k = 1; k <= 12; k++) {
+      await page.getByRole("combobox", { name: "Αριθμοί", exact: true }).click();
+      await expect(page.getByRole("option")).toHaveCount(12);
+      await page.getByRole("option", { name: String(k), exact: true }).click();
+      await page.getByRole("button", { name: "Παραγωγή επιλογής", exact: true }).click();
+      await expect(page.getByLabel("Πειραματικοί αριθμοί").locator("span")).toHaveCount(k);
+    }
+  }
+});
+
+test("real imported counts map to all four heatmap levels and refresh with the selected window", async ({
+  page,
+}) => {
+  await fixture(page);
+  await openLab(page);
+  const observations = rows.slice(0, 5).map((row, i) => ({
+    ...row,
+    winningNumbers: { list: Array.from({ length: 20 }, (_, j) => i * 5 + j + 1) },
+  }));
+  await page.getByLabel(/Αρχείο κληρώσεων JSON/).setInputFiles({
+    name: "five-observations.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(observations)),
+  });
+  await expect(page.getByRole("status")).toContainText("5 κληρώσεις");
+  await page.getByRole("tab", { name: "Δεδομένα", exact: true }).click();
+  const cells = page.getByLabel("Εμφανίσεις αριθμών 1–80").locator(":scope > div");
+  await expect(cells.locator("strong")).toHaveText(
+    Array.from({ length: 80 }, (_, i) => String(i + 1)),
+  );
+  const expected = Array.from(
+    { length: 80 },
+    (_, i) => observations.filter((r) => r.winningNumbers.list.includes(i + 1)).length,
+  );
+  await expect(cells.locator("span")).toHaveText(expected.map(String));
+  const levels = await cells.evaluateAll((elements) =>
+    elements.map((el) => el.getAttribute("data-intensity")),
+  );
+  expect([...new Set(levels)].sort()).toEqual(["0", "1", "2", "3"]);
+  expect(levels).toEqual(expected.map((c) => String(Math.min(3, c))));
+  await page.getByRole("combobox", { name: "Κληρώσεις", exact: true }).click();
+  await page.getByRole("option", { name: "5", exact: true }).click();
+  await expect(page.getByRole("status")).not.toContainText("Μερικό δείγμα");
+  await expect(cells.locator("span")).toHaveText(expected.map(String));
+  await page.getByRole("combobox", { name: "Κληρώσεις", exact: true }).click();
+  await page.getByRole("option", { name: "100.000", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Ζητήθηκαν 100.000");
+  await expect(page.getByRole("status")).toContainText("Μερικό δείγμα");
+  await expect(cells.locator("span")).toHaveText(expected.map(String));
 });

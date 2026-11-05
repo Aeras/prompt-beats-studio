@@ -11,6 +11,9 @@ import { queryPrivateKinoPolar55 } from "@/lib/kino-polar55.functions";
 import { getPrivateKinoLabAccess } from "@/lib/kino-lab.functions";
 import { POLAR_WINDOWS, type PolarAnalysis } from "@/lib/kino-polar55.shared";
 
+import KinoFrequencyHeatmap from "./KinoFrequencyHeatmap";
+import { KINO_PICK_SIZES, formatKinoCount } from "@/lib/kino-lab.presentation";
+
 const number = (v: number | null) =>
   v === null ? "—" : v.toLocaleString("el-GR", { maximumFractionDigits: 3 });
 const date = (v: number | undefined) =>
@@ -18,7 +21,7 @@ const date = (v: number | undefined) =>
 
 export default function KinoPolar55Lab() {
   const [n, setN] = useState("1000"),
-    [k, setK] = useState("8"),
+    [k, setK] = useState("5"),
     [method, setMethod] = useState("P01");
   const [result, setResult] = useState<PolarAnalysis | null>(null),
     [message, setMessage] = useState("");
@@ -39,7 +42,7 @@ export default function KinoPolar55Lab() {
     setter: (v: string) => void,
     options: string[],
   ) => (
-    <label className="min-w-0 space-y-1 text-xs">
+    <label className="flex min-w-0 flex-col gap-1 text-xs">
       {label}
       <Select
         value={value}
@@ -50,13 +53,13 @@ export default function KinoPolar55Lab() {
           setMessage("");
         }}
       >
-        <SelectTrigger aria-label={label} className="h-10 w-full min-w-0">
+        <SelectTrigger aria-label={label} className="h-11 w-full min-w-0 px-2 text-xs sm:text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent position="popper">
           {options.map((v) => (
             <SelectItem value={v} key={v}>
-              {v}
+              {/^\d+$/.test(v) ? formatKinoCount(+v) : v}
             </SelectItem>
           ))}
         </SelectContent>
@@ -77,7 +80,7 @@ export default function KinoPolar55Lab() {
         data: {
           op: "analysis",
           n: +n as (typeof POLAR_WINDOWS)[number],
-          k: +k as 5 | 8 | 10,
+          k: +k,
           method: method as "P00" | "F00" | "P01",
           seed: "kino-lab-v1-retrospective",
         },
@@ -144,8 +147,8 @@ export default function KinoPolar55Lab() {
     >
       <h2 className="text-lg font-semibold">KINO LAB · Polar55</h2>
       <div className="grid grid-cols-3 gap-2">
-        {control("Αποθηκευμένες κληρώσεις", n, setN, POLAR_WINDOWS.map(String))}
-        {control("Αριθμοί", k, setK, ["5", "8", "10"])}
+        {control("Κληρώσεις", n, setN, POLAR_WINDOWS.map(String))}
+        {control("Αριθμοί", k, setK, KINO_PICK_SIZES.map(String))}
         {control("Μέθοδος", method, setMethod, ["P00", "F00", "P01"])}
       </div>
       <Button variant="outline" disabled={busy} onClick={() => void run()} className="min-h-11">
@@ -200,14 +203,7 @@ export default function KinoPolar55Lab() {
             επαληθευμένη. Η επιλογή είναι πειραματική, όχι πρόβλεψη.
           </p>
           <p className="text-sm">Επιλογή: {result.result.proposal.join(" · ") || "—"}</p>
-          <div className="grid grid-cols-8 gap-1 sm:grid-cols-10" aria-label="Συχνότητες Polar55">
-            {result.result.stats.counts.map((v, i) => (
-              <div key={i} className="rounded border border-border p-1 text-center text-xs">
-                <strong>{i + 1}</strong>
-                <span className="block text-muted-foreground">{number(v)}</span>
-              </div>
-            ))}
-          </div>
+          <KinoFrequencyHeatmap counts={result.result.stats.counts} label="Συχνότητες Polar55" />
           <p className="break-all text-xs text-muted-foreground">
             Snapshot: {result.snapshotAt} · SHA-256: {result.sha256}
           </p>

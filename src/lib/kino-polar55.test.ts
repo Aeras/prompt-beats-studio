@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readPolar55 } from "./kino-polar55.server";
-import { polarRequest, polarAnalysis } from "./kino-polar55.shared";
+import { polarRequest, polarAnalysis, POLAR_WINDOWS } from "./kino-polar55.shared";
 import { labBacktest, labPick, labRandomPick, labStats } from "./kino-lab.shared";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -195,7 +195,7 @@ test.skipIf(process.env["KINO_POLAR55_DOCKER_TEST"] !== "1")(
       time: 1793491200000 + Math.floor((i + 2) / 2) * 300000,
       numbers: labRandomPick(20, `fixture-${i + 1}`),
     }));
-    for (const n of [1000, 5000, 20000, 50000, 100000]) {
+    for (const n of POLAR_WINDOWS) {
       const draws = all.slice(0, n);
       const chunks: Array<ReturnType<typeof labStats>> = [];
       for (let start = 0; start < n; start += 5000)
@@ -263,7 +263,7 @@ test.skipIf(process.env["KINO_POLAR55_DOCKER_TEST"] !== "1")(
         expect(actual.stats.n).toBe(n);
         expect(actual.stats.counts).toEqual(counts);
         const tailStats = labStats(draws.slice(-Math.min(n, 5000)));
-        expect(tailStats.gaps.every((v) => v !== null)).toBe(true);
+        if (n >= 1000) expect(tailStats.gaps.every((v) => v !== null)).toBe(true);
         expect(actual.stats.gaps).toEqual(tailStats.gaps);
         if (n <= 5000) expect(actual.stats).toEqual(labStats(draws));
         const expected = labBacktest(draws.slice(0, Math.min(n, 5000)), {
@@ -290,5 +290,5 @@ test.skipIf(process.env["KINO_POLAR55_DOCKER_TEST"] !== "1")(
       }
     }
   },
-  60000,
+  120000,
 );

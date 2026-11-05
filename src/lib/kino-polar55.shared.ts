@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-export const POLAR_WINDOWS = [1000, 5000, 20000, 50000, 100000] as const;
+import { KINO_HISTORY_WINDOWS } from "./kino-lab.presentation";
+
+export const POLAR_WINDOWS = KINO_HISTORY_WINDOWS;
 export const polarRequest = z.discriminatedUnion("op", [
   z.object({ op: z.literal("status") }).strict(),
   z
@@ -8,7 +10,7 @@ export const polarRequest = z.discriminatedUnion("op", [
       op: z.literal("analysis"),
       n: z.union(POLAR_WINDOWS.map((n) => z.literal(n))),
       method: z.enum(["P00", "F00", "P01"]),
-      k: z.union([z.literal(5), z.literal(8), z.literal(10)]),
+      k: z.number().int().min(1).max(12),
       seed: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),
     })
     .strict(),
@@ -27,7 +29,7 @@ const base = {
 };
 const picks = z
   .array(num)
-  .max(10)
+  .max(12)
   .refine((v) => new Set(v).size === v.length);
 export const polarAnalysis = z
   .object({
@@ -61,7 +63,7 @@ export const polarAnalysis = z
           .object({
             n: z.number().int().min(0).max(500),
             warmupExcluded: count,
-            meanHits: z.number().min(0).max(10).nullable(),
+            meanHits: z.number().min(0).max(12).nullable(),
             uniformExpected: z.number(),
             uniformLift: z.number().nullable(),
             pairedDiff: z.number().nullable(),
@@ -74,8 +76,8 @@ export const polarAnalysis = z
                     trainingCount: count,
                     selected: picks,
                     baseline: picks,
-                    hits: z.number().int().min(0).max(10),
-                    comparatorHits: z.number().int().min(0).max(10),
+                    hits: z.number().int().min(0).max(12),
+                    comparatorHits: z.number().int().min(0).max(12),
                     pairedNullVariance: z.number().nonnegative(),
                   })
                   .strict(),

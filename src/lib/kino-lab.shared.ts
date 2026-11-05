@@ -1,3 +1,5 @@
+import { KINO_HISTORY_WINDOWS } from "./kino-lab.presentation";
+
 /** Versioned, deterministic local research. No network, betting or prospective eligibility. */
 export const KINO_LAB_VERSION = "kino-lab-1.0.0";
 export const KINO_LAB_MAX_BYTES = 4 * 1024 * 1024;
@@ -331,7 +333,11 @@ function strictUtc(value: string) {
 export function filterLabDraws(draws: readonly LabDraw[], filter: LabFilter) {
   ordered(draws);
   if (filter.kind === "latest") {
-    if (!integer(filter.n) || filter.n < 1 || filter.n > KINO_LAB_MAX_ROWS)
+    if (
+      !integer(filter.n) ||
+      filter.n < 1 ||
+      filter.n > KINO_HISTORY_WINDOWS[KINO_HISTORY_WINDOWS.length - 1]!
+    )
       throw Error("invalid_window");
     return draws.slice(-filter.n);
   }

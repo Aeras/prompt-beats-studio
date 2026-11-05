@@ -22,6 +22,16 @@ for($id=1;$id<=100003;$id++) {
     $canonical=['drawId'=>$id,'drawTime'=>$time,'list'=>$numbers,'bonus'=>null,'secondChance'=>null];
     if($id>=2&&!in_array($id,[100001,100002],true))foreach($numbers as $number)$frozenCounts[$number-1]++;
     $insert->execute([$id,$time,json_encode($numbers),null,null,hash('sha256',json_encode($canonical)),'2026-11-04 12:00:00.000']);
+    if($id===77){
+        $root->commit();
+        $partialRead=new PDO('mysql:host=127.0.0.1;dbname=promptbe_kino_history;charset=utf8mb4','lab_read','SYNTHETIC_FIXTURE_ONLY',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false]);
+        $partialRead->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+        labAssertReadPrivileges($partialRead);
+        $partial=labReadAnalysis($partialRead,['op'=>'analysis','n'=>100000,'method'=>'F00','k'=>12,'seed'=>'partial-fixture'],sys_get_temp_dir());
+        check($partial['requested']===100000&&$partial['stored']===77&&$partial['loaded']===77&&$partial['partial']===true,'honest_partial_without_window_rewrite');
+        check(count($partial['result']['proposal'])===12&&array_sum($partial['result']['stats']['counts'])===77*20,'partial_12_number_analysis');
+        $partialRead=null;$root->beginTransaction();
+    }
 }
 $root->commit();
 $root->exec("UPDATE kino_draws SET content_sha256=REPEAT('0',64) WHERE draw_id=100002");
@@ -57,6 +67,15 @@ check($result['result']['stats']['counts']===$frozenCounts,'concurrent_valid_rev
 check((int)$root->query('SELECT COUNT(*) FROM kino_draws')->fetchColumn()===100004,'no_source_delete');
 check(glob(sys_get_temp_dir().'/lab-*')===[],'temporary_snapshots_removed');
 echo json_encode(['status'=>'PASS','loaded'=>$result['loaded'],'seconds'=>microtime(true)-$started,'peakBytes'=>memory_get_peak_usage(true),'outputBytes'=>strlen(json_encode($result))],JSON_THROW_ON_ERROR)."\n";
+
+// Verify SQL reads use the exact selected window, without old 100/1000 caps.
+foreach([5,10,20,50,100,200,500,1000,5000,20000,50000,100000]as $window){
+    $selected=labReadAnalysis($read,['op'=>'analysis','n'=>$window,'method'=>'F00','k'=>12,'seed'=>'window-fixture'],sys_get_temp_dir());
+    check($selected['requested']===$window&&$selected['loaded']===$window&&!$selected['partial'],'database_window_'.$window);
+    check(array_sum($selected['result']['stats']['counts'])===$window*20,'database_full_counts_'.$window);
+    check(strlen(json_encode($selected))<300000,'bounded_response_'.$window);
+}
+echo "ALL_12_SQL_WINDOWS_AND_HONEST_PARTIAL_PASS\n";
 
 // The actual archived store, not a mock SQL writer; still only this synthetic DB.
 require __DIR__.'/legacy/kino-sync-lib.php';

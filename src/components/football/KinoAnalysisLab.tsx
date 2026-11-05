@@ -10,6 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getPrivateKinoLabAccess } from "@/lib/kino-lab.functions";
+import KinoFrequencyHeatmap from "./KinoFrequencyHeatmap";
+import {
+  KINO_HISTORY_WINDOWS,
+  KINO_PICK_SIZES,
+  formatKinoCount,
+} from "@/lib/kino-lab.presentation";
 import KinoPolar55Lab from "./KinoPolar55Lab";
 import {
   filterLabDraws,
@@ -55,7 +61,7 @@ function OfflineKinoAnalysisLab() {
   const [day, setDay] = useState(""),
     [start, setStart] = useState(""),
     [end, setEnd] = useState("");
-  const [k, setK] = useState("8"),
+  const [k, setK] = useState("5"),
     [method, setMethod] = useState<LabMethod>("P01");
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [report, setReport] = useState<ReturnType<typeof labBacktest> | null>(null);
@@ -175,7 +181,7 @@ function OfflineKinoAnalysisLab() {
     update: (value: string) => void,
     options: Array<[string, string]>,
   ) => (
-    <label className="min-w-0 space-y-1 text-xs">
+    <label className="flex min-w-0 flex-col gap-1 text-xs">
       {label}
       <Select
         disabled={busy}
@@ -185,7 +191,7 @@ function OfflineKinoAnalysisLab() {
           update(v);
         }}
       >
-        <SelectTrigger className="h-10 w-full min-w-0" aria-label={label}>
+        <SelectTrigger className="h-11 w-full min-w-0 px-2 text-xs sm:text-sm" aria-label={label}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent position="popper">
@@ -235,19 +241,32 @@ function OfflineKinoAnalysisLab() {
         >
           Εισαγωγή JSON
         </Button>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {dropdown("Δείγμα", windowMode, setWindowMode, [
-            ["latest", "Τελευταίες"],
-            ["day", "Ημέρα Ελλάδας"],
-            ["utc", "Διάστημα UTC"],
-          ])}
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="col-span-3">
+            {dropdown("Δείγμα", windowMode, setWindowMode, [
+              ["latest", "Τελευταίες"],
+              ["day", "Ημέρα Ελλάδας"],
+              ["utc", "Διάστημα UTC"],
+            ])}
+          </div>
           {windowMode === "latest" &&
             dropdown(
               "Κληρώσεις",
               n,
               setN,
-              [10, 20, 50, 100, 500, 1000, 5000].map((v) => [String(v), String(v)]),
+              KINO_HISTORY_WINDOWS.map((v) => [String(v), formatKinoCount(v)]),
             )}
+          {dropdown(
+            "Αριθμοί",
+            k,
+            setK,
+            KINO_PICK_SIZES.map((v) => [String(v), String(v)]),
+          )}
+          {dropdown("Μέθοδος", method, (v) => setMethod(v as LabMethod), [
+            ["P00", "P00 · Τυχαία"],
+            ["F00", "F00 · Συχνότητες"],
+            ["P01", "P01 · Πρόσφατες"],
+          ])}
           {windowMode === "day" && (
             <label className="text-xs">
               Ημέρα Ελλάδας
@@ -300,7 +319,7 @@ function OfflineKinoAnalysisLab() {
           ? "Έλεγχος…"
           : selection.invalid
             ? "Μη έγκυρο διάστημα"
-            : `${stats.n} κληρώσεις${dataset ? ` · ${dataset.errors.length} απορρίψεις · Πληρότητα ανεπιβεβαίωτη` : " · Εισαγωγή JSON"}`}
+            : `${stats.n} κληρώσεις${dataset && windowMode === "latest" ? ` · Ζητήθηκαν ${formatKinoCount(+n)} · Διαθέσιμες στο αρχείο ${formatKinoCount(dataset.draws.length)}${stats.n < +n ? " · Μερικό δείγμα" : ""}` : ""}${dataset ? ` · ${dataset.errors.length} απορρίψεις · Πληρότητα ανεπιβεβαίωτη` : " · Εισαγωγή JSON"}`}
       </p>
       {error && (
         <p role="alert" className="text-sm text-destructive">
@@ -355,18 +374,6 @@ function OfflineKinoAnalysisLab() {
           </dl>
         </TabsContent>
         <TabsContent value="proposal" className={card}>
-          <div className="grid grid-cols-2 gap-2">
-            {dropdown("Αριθμοί", k, setK, [
-              ["5", "5"],
-              ["8", "8"],
-              ["10", "10"],
-            ])}
-            {dropdown("Μέθοδος", method, (v) => setMethod(v as LabMethod), [
-              ["P00", "P00 · Τυχαία"],
-              ["F00", "F00 · Συχνότητες"],
-              ["P01", "P01 · Πρόσφατες"],
-            ])}
-          </div>
           <Button
             className="my-3 min-h-11"
             disabled={busy || !stats.n || selection.invalid}
@@ -440,14 +447,7 @@ function OfflineKinoAnalysisLab() {
           </p>
         </TabsContent>
         <TabsContent value="data" className={card}>
-          <div className="grid grid-cols-10 gap-1" aria-label="Εμφανίσεις αριθμών 1–80">
-            {stats.counts.map((count, i) => (
-              <div key={i} className="rounded border border-border p-1 text-center text-xs">
-                <strong>{i + 1}</strong>
-                <span className="block text-muted-foreground">{count}</span>
-              </div>
-            ))}
-          </div>
+          <KinoFrequencyHeatmap counts={stats.counts} label="Εμφανίσεις αριθμών 1–80" />
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="outline" disabled={busy || !dataset} onClick={exportReport}>
               Εξαγωγή JSON
