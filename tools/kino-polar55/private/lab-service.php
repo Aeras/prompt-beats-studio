@@ -29,7 +29,7 @@ function labReadAudit(string $directory,string $owner,string $operation,string $
 function labRequest(array $v): array {
     $keys=array_keys($v);sort($keys);
     if (($v['op']??null)==='status' && $keys===['op']) return $v;
-    if ($keys!==['k','method','n','op','seed'] || $v['op']!=='analysis' || !in_array($v['n'],[1000,5000,20000,50000,100000],true) || !in_array($v['k'],[5,8,10],true) || !in_array($v['method'],['P00','F00','P01'],true) || !is_string($v['seed']) || !preg_match('/^[a-zA-Z0-9_-]{1,100}$/D',$v['seed'])) throw new RuntimeException('invalid_request');
+    if ($keys!==['k','method','n','op','seed'] || $v['op']!=='analysis' || !in_array($v['n'],[5,10,20,50,100,200,500,1000,5000,20000,50000,100000],true) || (!is_int($v['k']) || $v['k']<1 || $v['k']>12) || !in_array($v['method'],['P00','F00','P01'],true) || !is_string($v['seed']) || !preg_match('/^[a-zA-Z0-9_-]{1,100}$/D',$v['seed'])) throw new RuntimeException('invalid_request');
     return $v;
 }
 

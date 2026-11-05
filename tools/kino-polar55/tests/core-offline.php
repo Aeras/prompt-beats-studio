@@ -11,7 +11,7 @@ if(($argv[1]??'')==='compare') {
 }
 if(($argv[1]??'')==='generated') {
     $v=json_decode(stream_get_contents(STDIN),true,16,JSON_THROW_ON_ERROR);
-    if(!in_array($v['n'],[1000,5000,20000,50000,100000],true))throw new RuntimeException('invalid_fixture_count');
+    if(!in_array($v['n'],[5,10,20,50,100,200,500,1000,5000,20000,50000,100000],true))throw new RuntimeException('invalid_fixture_count');
     echo json_encode(labAggregate(fixtures($v['n']),$v['method'],$v['k'],$v['seed']),JSON_THROW_ON_ERROR);exit;
 }
 foreach(['P00','F00','P01'] as $method) {
@@ -40,6 +40,19 @@ foreach(['bad_hash','duplicate','bad_bonus','bad_second'] as $test) {
     $rejected=false;try{labRow($r);}catch(Throwable){$rejected=true;}demand($rejected,$test);
 }
 foreach([0,-1,100001,5001,'1000','1 OR 1=1']as $n){$rejected=false;try{labRequest(['op'=>'analysis','n'=>$n,'method'=>'P01','k'=>8,'seed'=>'fixture']);}catch(Throwable){$rejected=true;}demand($rejected,'invalid_request');}
+// Every new admission option must reach the unchanged streaming algorithms.
+foreach([5,10,20,50,100,200,500,1000,5000,20000,50000,100000]as $window)foreach(range(1,12)as $size) {
+    $request=labRequest(['op'=>'analysis','n'=>$window,'k'=>$size,'method'=>'F00','seed'=>'fixture']);
+    demand($request['n']===$window&&$request['k']===$size,'window_and_size_not_truncated');
+}
+foreach(['P00','F00','P01']as $method)foreach(range(1,12)as $size) {
+    $actual=labAggregate(fixtures(65),$method,$size,'fixture');
+    demand(count($actual['proposal'])===$size&&count(array_unique($actual['proposal']))===$size,'all_pick_sizes');
+    demand($actual['backtest']['uniformExpected']===$size/4,'size_reaches_backtest');
+    foreach($actual['backtest']['results']as $target)demand(count($target['selected'])===$size,'backtest_pick_size');
+}
+foreach([0,13,1.5,'5',null]as $size){$rejected=false;try{labRequest(['op'=>'analysis','n'=>5,'k'=>$size,'method'=>'P01','seed'=>'fixture']);}catch(Throwable){$rejected=true;}demand($rejected,'invalid_k');}
+foreach([5,10,20]as $window){$small=labAggregate(fixtures($window),'P01',12,'fixture');demand($small['backtest']['n']===0&&$small['backtest']['warmupExcluded']===$window,'short_window_without_backtest');}
 $audit=sys_get_temp_dir().'/kino-audit-'.bin2hex(random_bytes(8));mkdir($audit,0700);
 for($i=0;$i<105;$i++)labReadAudit($audit,str_repeat('a',64),'analysis','ok');
 $events=json_decode(file_get_contents($audit.'/read-audit.json'),true,16,JSON_THROW_ON_ERROR);

@@ -46,7 +46,7 @@ function labRandom(int $k, string $seed): array {
 
 /** Ascending (time,id) stream; memory bounded independently of total history size. */
 function labAggregate(iterable $draws, string $method, int $k, string $seed): array {
-    if (!in_array($method,['P00','F00','P01'],true) || !in_array($k,[5,8,10],true)) throw new RuntimeException('invalid_options');
+    if (!in_array($method,['P00','F00','P01'],true) || $k<1 || $k>12) throw new RuntimeException('invalid_options');
     labRandom($k,$seed);
     $counts=$training=$recent=array_fill(0,80,0);$gaps=array_fill(0,80,null);
     $ring=[];$groupCounts=array_fill(0,80,0);$groupN=0;$groupLast=[];
