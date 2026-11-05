@@ -1,5 +1,13 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-05 — KINO frequency red/orange/green palette correction — IN_PROGRESS
+
+- **Baseline / confirmed gap:** live main `2f76ad08308d5fa025939347ba24e49f1bd2d3ff`, merged #509. Owner screenshot shows that four primary-purple alpha levels do not implement the requested red → orange → light green → vivid green scale. Root AGENTS/current ledger read; no overlapping open KINO PR. Local branch `codex/kino-frequency-traffic-colors-20261105`.
+- **Correction / owner:** Codex. Only shared heatmap presentation changes: opaque Tailwind red-700/white, orange-400/slate-950, green-200/slate-950, green-500/slate-950; matching named legend. Low frequency is red, highest vivid green. Original four equal-width observed-range classification, zeros/ties/all-equal handling, exact counts, thousands wrapping, memoization, 10×8 layout, controls and all backend/auth contracts unchanged. Applies to JSON and Polar55 heatmaps.
+- **Verification:** full Bun **1,649 PASS / 0 FAIL / 24,544 assertions / 221 files** in existing LF-equivalent snapshot with protected assets unchanged; unrelated Docker parity test skipped because no PHP/DB changes. **12/12** focused existing browser cases PASS across desktop/tablet/mobile, including exact four-color mapping from offline imports, zero/tied counts, keyboard/axe contrast, 320px through desktop geometry, import/export and Polar55 revoked access. Actual mobile/desktop screenshots inspected and retained outside Git. Strict TypeScript, scoped ESLint/Prettier and production build PASS.
+- **Release / remaining:** one consolidated local commit; explicit approval required before push/new Draft PR/CI under AGENTS §7. #509 is already merged, so this small post-release visual correction uses one new focused PR; prior #509 CI is not claimed for this HEAD. No production action, paid request or new gate execution. After exact-head Regression/Browser Quality/Database Replay and reviewed merge, only compatible Lovable publish is required; **no new PHP installation or SQL migration** for this palette change. Not CLOSED until publication/device verification.
+
+
 ## 2026-11-05 — KINO Lab four agreed UI improvements — IN_PROGRESS
 
 - **Verified baseline / owner:** live main `2329baf09cf3c63f4419040abf4662f0716a1ac1`, #508 merged; current AGENTS/ledger and open PRs checked, no overlapping KINO PR. Codex isolated local branch `codex/kino-lab-four-ui-improvements-20261105`. Previous cancelled collector/unrelated files remain untouched. One consolidated PR prepared locally; no push, PR creation or CI-triggering action without fresh approval under AGENTS §7.
