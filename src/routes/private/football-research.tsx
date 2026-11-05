@@ -10,6 +10,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { runPrivateFootballExpertReview } from "@/lib/football-ai-expert.functions";
 import { AiSearchPanel } from "@/components/football/AiSearchPanel";
 import { KinoWorkspace } from "@/components/football/KinoWorkspace";
+import { ProviderEvidencePanel } from "@/components/football/ProviderEvidencePanel";
+import {
+  FOOTBALL_EVIDENCE_LABELS,
+  type FootballEvidenceProvider,
+} from "@/lib/football-provider-evidence.shared";
 import { EspnDataPanel } from "@/components/football/EspnDataPanel";
 import {
   FOOTBALL_AI_DISCOVERY_LEAGUES,
@@ -23,7 +28,7 @@ import {
 import {
   getPrivateFootballResearchSetup,
   getPrivateFootballWeek,
-  getPrivateFootballEspnContext,
+  getPrivateFootballProviderEvidence,
 } from "@/lib/football-research.functions";
 
 export const Route = createFileRoute("/private/football-research")({
@@ -101,7 +106,7 @@ function PrivateFootballResearchPage() {
     enabled: Boolean(user),
     retry: false,
   });
-  const [provider, setProvider] = useState<FootballProviderId | "ai-search">("football-data");
+  const [provider, setProvider] = useState<FootballProviderId | "ai-search">("espn");
   const [league, setLeague] = useState<string>("EN-PL");
   const [model, setModel] = useState("");
   const [weekDate, setWeekDate] = useState(() =>
@@ -111,7 +116,7 @@ function PrivateFootballResearchPage() {
   const [working, setWorking] = useState(false);
   const [tavilySearchDepth, setTavilySearchDepth] = useState<"basic" | "advanced">("basic");
   const [expertBusy, setExpertBusy] = useState<string | null>(null);
-  const [espnPreview, setEspnPreview] = useState<string | null>(null);
+  const [providerPreview, setProviderPreview] = useState<string | null>(null);
   const [expertError, setExpertError] = useState("");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [batchError, setBatchError] = useState("");
@@ -142,17 +147,19 @@ function PrivateFootballResearchPage() {
     retry: false,
     staleTime: 300000,
   });
-  const espnDetails = useQuery({
-    queryKey: ["football-espn-details", user?.id, league, weekDate, espnPreview],
+  const providerDetails = useQuery({
+    queryKey: ["football-provider-details", user?.id, provider, league, weekDate, providerPreview],
     queryFn: () =>
-      getPrivateFootballEspnContext({
+      getPrivateFootballProviderEvidence({
         data: {
           leagueId: league as (typeof FOOTBALL_ESPN_LEAGUES)[number]["id"],
           weekDate,
-          fixtureId: espnPreview!,
+          fixtureId: providerPreview!,
+          fixtureProvider: provider === "ai-search" ? "espn" : provider,
         },
       }),
-    enabled: Boolean(user) && setup.isSuccess && provider === "espn" && Boolean(espnPreview),
+    enabled:
+      Boolean(user) && setup.isSuccess && provider !== "ai-search" && Boolean(providerPreview),
     retry: false,
     staleTime: 10 * 60 * 1000,
   });
@@ -249,7 +256,7 @@ function PrivateFootballResearchPage() {
     }
     if (
       !window.confirm(
-        `Θα γίνουν ${ids.length} ξεχωριστές έρευνες Tavily (${tavilySearchDepth === "advanced" ? "Advanced" : "Basic"}, 3 αναζητήσεις ανά αγώνα, περίπου ${ids.length * (tavilySearchDepth === "advanced" ? 6 : 3)} credits συνολικά) και κλήσεις OpenRouter, με ενδεχόμενη χρέωση ανά αγώνα. Επιβεβαιώνεις;`,
+        `Θα γίνουν ${ids.length} ξεχωριστές έρευνες Tavily (${tavilySearchDepth === "advanced" ? "Advanced" : "Basic"}, 3 αναζητήσεις ανά αγώνα, περίπου ${ids.length * (tavilySearchDepth === "advanced" ? 6 : 3)} credits συνολικά) και κλήσεις OpenRouter, με ενδεχόμενη χρέωση ανά αγώνα. Τα συμπληρωματικά στοιχεία παρόχων προσμετρώνται στα tokens εισόδου του μοντέλου. Επιβεβαιώνεις;`,
       )
     )
       return;
@@ -286,7 +293,7 @@ function PrivateFootballResearchPage() {
     } finally {
       setWorking(false);
       setSelected([]);
-      setEspnPreview(null);
+      setProviderPreview(null);
     }
   };
   const allIds = upcoming.map((f) => f.sourceFixtureId);
@@ -349,7 +356,7 @@ function PrivateFootballResearchPage() {
                   const v = e.target.value as FootballProviderId | "ai-search";
                   setProvider(v);
                   setSelected([]);
-                  setEspnPreview(null);
+                  setProviderPreview(null);
                   if (v === "football-data" && league === "GR-SL") setLeague("EN-PL");
                   if (v === "espn" && !FOOTBALL_ESPN_LEAGUES.some((x) => x.id === league))
                     setLeague("EN-PL");
@@ -364,7 +371,7 @@ function PrivateFootballResearchPage() {
                 {FOOTBALL_PROVIDERS.map((x) => (
                   <option key={x.id} value={x.id}>
                     {x.label}
-                    {x.id === "football-data" ? " · Προεπιλογή" : ""}
+                    {x.id === "espn" ? " · Προεπιλογή" : ""}
                   </option>
                 ))}
                 <option value="ai-search">AI Αναζήτηση BETA · Gemini 3.8 Flash</option>
@@ -378,7 +385,7 @@ function PrivateFootballResearchPage() {
                 onChange={(e) => {
                   setLeague(e.target.value);
                   setSelected([]);
-                  setEspnPreview(null);
+                  setProviderPreview(null);
                 }}
               >
                 {isAi &&
@@ -411,7 +418,7 @@ function PrivateFootballResearchPage() {
                 onChange={(e) => {
                   setWeekDate(e.target.value);
                   setSelected([]);
-                  setEspnPreview(null);
+                  setProviderPreview(null);
                 }}
               />
             </label>
@@ -437,6 +444,28 @@ function PrivateFootballResearchPage() {
           </p>
         </section>
 
+        <section
+          aria-label="Συνδέσεις πηγών ανάλυσης"
+          className="rounded-2xl border border-white/10 bg-[#152137] p-4"
+        >
+          <h2 className="text-sm font-semibold text-cyan-100">Πηγές ανάλυσης</h2>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            {setup.data.evidenceProviders?.map((source) => (
+              <span key={source.id} className="rounded-lg border border-white/15 px-3 py-2">
+                {FOOTBALL_EVIDENCE_LABELS[source.id as FootballEvidenceProvider]} ·{" "}
+                {source.id === "espn"
+                  ? "Χωρίς απαίτηση κλειδιού"
+                  : source.configured
+                    ? "Κλειδί ρυθμισμένο"
+                    : "Χωρίς κλειδί"}
+              </span>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-slate-300">
+            Η ανάλυση αξιοποιεί όλες τις διαθέσιμες συνδέσεις, ανεξάρτητα από τον πάροχο της λίστας
+            αγώνων. Η ρύθμιση κλειδιού δεν εγγυάται κάλυψη. Δεν ξεκινά αυτόματα πληρωμένη έρευνα.
+          </p>
+        </section>
         <fieldset
           disabled={working}
           className="rounded-2xl border border-cyan-300/20 bg-[#152137] p-4"
@@ -575,7 +604,7 @@ function PrivateFootballResearchPage() {
                   return (
                     <li
                       key={key}
-                      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3"
+                      className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3 sm:flex"
                     >
                       <input
                         aria-label={`Επιλογή αγώνα ${f.homeTeam} – ${f.awayTeam}`}
@@ -597,42 +626,44 @@ function PrivateFootballResearchPage() {
                           })}
                         </p>
                       </div>
-                      <span
-                        className={`rounded-full px-2 py-1 text-[11px] ${canAnalyze ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-600/30 text-slate-400"}`}
-                      >
-                        {canAnalyze
-                          ? "Πριν τη σέντρα"
-                          : f.state === "live"
-                            ? "Σε εξέλιξη"
-                            : "Μη διαθέσιμος"}
-                      </span>
-                      {provider === "espn" && canAnalyze && (
-                        <button
-                          type="button"
-                          onClick={() => setEspnPreview(f.sourceFixtureId)}
-                          className="rounded-lg border border-cyan-400/40 px-2 py-1.5 text-xs text-cyan-200"
-                          aria-label={`Στοιχεία ESPN ${f.homeTeam} – ${f.awayTeam}`}
+                      <div className="col-start-2 flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] ${canAnalyze ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-600/30 text-slate-400"}`}
                         >
-                          Στοιχεία ESPN
-                        </button>
-                      )}
+                          {canAnalyze
+                            ? "Πριν τη σέντρα"
+                            : f.state === "live"
+                              ? "Σε εξέλιξη"
+                              : "Μη διαθέσιμος"}
+                        </span>
+                        {canAnalyze && (
+                          <button
+                            type="button"
+                            onClick={() => setProviderPreview(f.sourceFixtureId)}
+                            className="min-h-11 rounded-lg border border-cyan-400/40 px-3 py-2 text-xs text-cyan-200"
+                            aria-label={`Στοιχεία παρόχων ${f.homeTeam} – ${f.awayTeam}`}
+                          >
+                            Στοιχεία παρόχων
+                          </button>
+                        )}
+                      </div>
                     </li>
                   );
                 })}
             </ul>
-            {provider === "espn" && espnPreview && (
+            {providerPreview && (
               <div className="mt-4 space-y-2">
-                {espnDetails.isPending && (
+                {providerDetails.isPending && (
                   <p role="status" className="text-sm text-slate-300">
-                    Ανάκτηση δεδομένων ESPN…
+                    Ανάκτηση στοιχείων από τους διαθέσιμους παρόχους…
                   </p>
                 )}
-                {espnDetails.isError && (
+                {providerDetails.isError && (
                   <p role="alert" className="text-sm text-amber-200">
-                    Τα πρόσθετα στοιχεία ESPN δεν είναι διαθέσιμα για τον αγώνα.
+                    Η συλλογή στοιχείων απέτυχε. Δεν ξεκίνησε AI ανάλυση.
                   </p>
                 )}
-                {espnDetails.data && <EspnDataPanel data={espnDetails.data} />}
+                {providerDetails.data && <ProviderEvidencePanel data={providerDetails.data} />}
               </div>
             )}
           </section>
@@ -727,6 +758,9 @@ function PrivateFootballResearchPage() {
                     <div className="space-y-4 border-t border-white/10 p-4">
                       {entry.analysis ? (
                         <>
+                          {entry.analysis.providerEvidence && (
+                            <ProviderEvidencePanel data={entry.analysis.providerEvidence} />
+                          )}
                           {entry.analysis.espnData && (
                             <details className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-3">
                               <summary className="cursor-pointer font-semibold text-cyan-200">

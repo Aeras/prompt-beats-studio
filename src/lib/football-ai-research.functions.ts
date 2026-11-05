@@ -161,17 +161,25 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
 
     try {
       return await withFeatureAiDispatchAdmission(context.userId, ["ai_generator"], async () => {
-        // Load current ESPN data before paid research, without bypassing the fixture admission.
-        const espnData = await (async () => {
-          if (data.fixtureProvider !== "espn") return null;
-          const { fetchEspnMatchContext } = await import("@/lib/football-espn-context.server");
-          return fetchEspnMatchContext(data.leagueId, fixture as FootballFixture).catch(() => null);
-        })();
+        const { collectFootballProviderEvidence } =
+          await import("@/lib/football-provider-evidence.server");
+        const { providerEvidenceUrls, withoutFootballSourceMetadata } =
+          await import("@/lib/football-provider-evidence.shared");
+        const providerEvidence = await collectFootballProviderEvidence({
+          leagueId: fixture.leagueId,
+          homeTeam: fixture.homeTeam,
+          awayTeam: fixture.awayTeam,
+          kickoffUtc: fixture.kickoffUtc,
+        });
+        // Legacy field remains readable; the complete authoritative snapshot is attached below.
         const { searchInspirationWeb } = await import("@/lib/music-inspiration-research.server");
         const kickoffDay = fixture.kickoffUtc.slice(0, 10);
         const common = `${fixture.homeTeam} vs ${fixture.awayTeam} ${kickoffDay}`;
         // ESPN provides structured baseline data. Tavily targets gaps, not redundant tables.
-        const gaps = espnData?.missing.join(" ") ?? "standings form xG injuries";
+        const gaps = providerEvidence.providers
+          .filter((p) => p.status !== "ok")
+          .map((p) => `${p.provider}: ${p.status}`)
+          .join(" ");
         const queries = [
           `${common} ${gaps} expected goals xG xGA recent form home away verified match statistics`,
           `${common} ${LANGUAGE[data.leagueId] ?? "English"} latest injuries expected starting eleven rotation team news`,
@@ -181,7 +189,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         for (const [queryIndex, query] of queries.entries()) {
           const result = await searchInspirationWeb(
             query,
-            AbortSignal.timeout(20_000),
+            AbortSignal.timeout(15_000),
             undefined,
             undefined,
             data.tavilySearchDepth,
@@ -234,7 +242,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               away: fixture.awayTeam,
               kickoffUtc: fixture.kickoffUtc,
             },
-            espnData,
+            providerEvidence,
             sources: evidenceSnapshot.map((doc) => ({
               title: doc.title,
               url: doc.url,
@@ -273,14 +281,14 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           });
           throw new Error("AI response did not match the football schema.");
         }
-        const parsedAssessment = validated.data;
+        const parsedAssessment = withoutFootballSourceMetadata(validated.data);
         const assessment = parsedAssessment.matchContext
           ? {
               ...parsedAssessment,
-              matchContext: filterResearchContextUrls(
-                parsedAssessment.matchContext,
-                evidenceSnapshot.map((item) => item.url),
-              ),
+              matchContext: filterResearchContextUrls(parsedAssessment.matchContext, [
+                ...evidenceSnapshot.map((item) => item.url),
+                ...providerEvidenceUrls(providerEvidence),
+              ]),
             }
           : parsedAssessment;
         const issues = validateFootballMarketProbabilities(assessment);
@@ -300,7 +308,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         const savedAnalysis = footballAiAssessmentSchema.parse({
           ...assessment,
           researchBrief,
-          ...(espnData ? { espnData } : {}),
+          providerEvidence,
           tavilySearchDepth: data.tavilySearchDepth,
         });
         failureCode = "persistence_failed";

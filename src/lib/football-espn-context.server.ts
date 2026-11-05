@@ -1,3 +1,4 @@
+import { footballSourceJson, FootballSourceError } from "./football-source-http.server";
 import { ESPN_LEAGUE_CODES } from "./football-espn.server";
 import {
   footballEspnContextSchema,
@@ -17,8 +18,11 @@ const str = (x: unknown, limit = 160): string =>
       ? String(x)
       : "";
 const id = (x: unknown) => str(x, 24);
-const numeric = (x: unknown): number | null => {
+const numeric = (raw: unknown): number | null => {
+  const x =
+    raw && typeof raw === "object" ? (record(raw)["value"] ?? record(raw)["displayValue"]) : raw;
   if (typeof x !== "string" && typeof x !== "number") return null;
+  if (typeof x === "string" && !/^\d{1,2}$/.test(x)) return null;
   const n = Number(x);
   return Number.isInteger(n) && n >= 0 && n <= 99 ? n : null;
 };
@@ -79,7 +83,7 @@ export function parseEspnRecentResults(body: unknown, teamId: string, cutoff: st
     const competitors = array(competition["competitors"]).map(record);
     const own = competitors.find((c) => id(record(c["team"])["id"]) === teamId);
     const other = competitors.find((c) => id(record(c["team"])["id"]) !== teamId);
-    if (!own || !other) continue;
+    if (!own || !other || !id(record(other["team"])["id"])) continue;
     const goalsFor = numeric(own["score"]);
     const goalsAgainst = numeric(other["score"]);
     const state = record(record(competition["status"])["type"]);
@@ -135,46 +139,81 @@ const people = (body: unknown, key: "roster" | "injuries") => {
   return result.slice(0, key === "roster" ? 45 : 25);
 };
 
+export function parseEspnLastFive(body: unknown, teamId: string, cutoff: string) {
+  const group = array(record(body)["lastFiveGames"])
+    .map(record)
+    .find((g) => id(record(g["team"])["id"]) === teamId);
+  return parseEspnRecentResults(
+    {
+      events: array(group?.["events"]).flatMap((raw) => {
+        const game = record(raw),
+          ownHome = id(game["homeTeamId"]) === teamId;
+        if (!ownHome && id(game["awayTeamId"]) !== teamId) return [];
+        return {
+          id: game["id"],
+          date: game["gameDate"],
+          competitions: [
+            {
+              status: { type: { completed: ["W", "L", "D"].includes(str(game["gameResult"])) } },
+              competitors: [
+                {
+                  team: { id: teamId },
+                  homeAway: ownHome ? "home" : "away",
+                  score: game[ownHome ? "homeTeamScore" : "awayTeamScore"],
+                },
+                {
+                  team: game["opponent"],
+                  homeAway: ownHome ? "away" : "home",
+                  score: game[ownHome ? "awayTeamScore" : "homeTeamScore"],
+                },
+              ],
+            },
+          ],
+        };
+      }),
+    },
+    teamId,
+    cutoff,
+  );
+}
 function summaryTeams(body: unknown) {
-  const root = record(body);
-  const header = record(root["header"]);
+  const root = record(body),
+    header = record(root["header"]);
   const competition = record(array(header["competitions"])[0]);
-  const boxscore = record(root["boxscore"]);
+  const boxTeams = array(record(root["boxscore"])["teams"]).map(record);
   const pairs = array(competition["competitors"]).length
     ? array(competition["competitors"])
-    : array(boxscore["teams"]);
+    : boxTeams;
+  const isPre = record(record(competition["status"])["type"])["state"] === "pre";
   return pairs.map((raw) => {
-    const item = record(raw);
-    const team = record(item["team"]);
+    const item = record(raw),
+      team = record(item["team"]);
+    const box = boxTeams.find((t) => id(record(t["team"])["id"]) === id(team["id"]));
+    const stats = metricList(item["statistics"], 35),
+      fallback = metricList(box?.["statistics"], 35);
     return {
       id: id(team["id"]),
       name: str(team["displayName"] ?? team["name"]),
       homeAway: str(item["homeAway"]),
-      stats: metricList(item["statistics"], 35),
+      stats: isPre ? [] : stats.length ? stats : fallback,
+      previewStats: isPre ? fallback : [],
     };
   });
 }
-async function boundedEspn(url: URL, fetcher: typeof fetch): Promise<unknown | null> {
-  if (url.protocol !== "https:" || url.hostname !== "site.api.espn.com") return null;
+async function boundedEspn(
+  url: URL,
+  fetcher: typeof fetch,
+  diagnostics: NonNullable<FootballEspnContext["diagnostics"]>,
+): Promise<unknown | null> {
   try {
-    const response = await fetcher(url, {
-      method: "GET",
-      redirect: "manual",
-      signal: AbortSignal.timeout(10000),
+    const data = await footballSourceJson(url, { fetcher });
+    diagnostics.push({ resource: url.pathname + url.search, status: "ok" });
+    return data;
+  } catch (error) {
+    diagnostics.push({
+      resource: url.pathname + url.search,
+      status: error instanceof FootballSourceError ? error.status : "unavailable",
     });
-    if (!response.ok) {
-      await response.body?.cancel();
-      return null;
-    }
-    const declared = Number(response.headers.get("content-length") ?? "0");
-    if (declared > 1200000) {
-      await response.body?.cancel();
-      return null;
-    }
-    const text = await response.text();
-    if (text.length > 1200000) return null;
-    return JSON.parse(text) as unknown;
-  } catch {
     return null;
   }
 }
@@ -205,28 +244,39 @@ export async function fetchEspnMatchContext(
     if (pending) return structuredClone(await pending);
   }
   const task = (async () => {
+    const diagnostics: NonNullable<FootballEspnContext["diagnostics"]> = [];
+    const get = (url: URL, f: typeof fetch) => boundedEspn(url, f, diagnostics);
     const origin = "https://site.api.espn.com";
     const site = origin + "/apis/site/v2/sports/soccer/" + slug;
     const [summary, standings, scoreboard] = await Promise.all([
-      boundedEspn(new URL(site + "/summary?event=" + fixture.sourceFixtureId), fetcher),
-      boundedEspn(new URL(origin + "/apis/v2/sports/soccer/" + slug + "/standings"), fetcher),
-      boundedEspn(
+      get(new URL(site + "/summary?event=" + fixture.sourceFixtureId), fetcher),
+      get(new URL(origin + "/apis/v2/sports/soccer/" + slug + "/standings"), fetcher),
+      get(
         new URL(site + "/scoreboard?dates=" + fixture.kickoffUtc.slice(0, 10).replaceAll("-", "")),
         fetcher,
       ),
     ]);
-    const fromSummary = summaryTeams(summary);
+    const headerId = id(record(record(summary)["header"])["id"]);
+    const boundSummary = !headerId || headerId === fixture.sourceFixtureId ? summary : null;
+    if (headerId && !boundSummary) {
+      for (const diagnostic of diagnostics)
+        if (diagnostic.resource.includes("/summary?event=")) diagnostic.status = "conflict";
+    }
+    const fromSummary = summaryTeams(boundSummary);
     const ev = array(record(scoreboard)["events"])
       .map(record)
       .find((item) => id(item["id"]) === fixture.sourceFixtureId);
     const comps = array(record(array(record(ev)["competitions"])[0])["competitors"]).map(record);
     const identify = (homeAway: "home" | "away", name: string) => {
-      const fromHeader = fromSummary.find((t) => t.homeAway === homeAway);
+      const fromHeader = fromSummary.find(
+        (t) => t.homeAway === homeAway && t.name.trim().toLowerCase() === name.trim().toLowerCase(),
+      );
       const fromScore = comps.find((c) => c["homeAway"] === homeAway);
       return {
         id: fromHeader?.id || id(record(fromScore?.["team"])["id"]) || null,
         name,
         matchStatistics: fromHeader?.stats ?? [],
+        previewStatistics: fromHeader?.previewStats ?? [],
       };
     };
     const standingRows = parseEspnStandings(standings);
@@ -246,15 +296,32 @@ export async function fetchEspnMatchContext(
       }
       const base = site + "/teams/" + side.id;
       const [schedule, roster, injuries, details] = await Promise.all([
-        boundedEspn(new URL(base + "/schedule"), fetcher),
-        boundedEspn(new URL(base + "/roster"), fetcher),
-        boundedEspn(new URL(base + "/injuries"), fetcher),
-        boundedEspn(new URL(base), fetcher),
+        get(new URL(base + "/schedule"), fetcher),
+        get(new URL(base + "/roster"), fetcher),
+        get(new URL(base + "/injuries"), fetcher),
+        get(new URL(base), fetcher),
       ]);
       return {
         ...side,
         standing: row ? { rank: row.rank, metrics: row.metrics } : null,
-        recentResults: parseEspnRecentResults(schedule, side.id, fixture.kickoffUtc),
+        recentResults: [
+          ...new Map(
+            [
+              ...parseEspnRecentResults(
+                schedule,
+                side.id,
+                new Date(Math.min(now(), Date.parse(fixture.kickoffUtc))).toISOString(),
+              ),
+              ...parseEspnLastFive(
+                boundSummary,
+                side.id,
+                new Date(Math.min(now(), Date.parse(fixture.kickoffUtc))).toISOString(),
+              ),
+            ].map((game) => [game.id, game]),
+          ).values(),
+        ]
+          .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
+          .slice(0, 10),
         roster: people(roster, "roster"),
         injuries: people(injuries, "injuries"),
         teamStatistics: metricList(
@@ -293,6 +360,7 @@ export async function fetchEspnMatchContext(
     if (!hasXg) missing.push("xG/xGA: μη διαθέσιμο από ESPN");
     return footballEspnContextSchema.parse({
       provider: "espn",
+      diagnostics,
       leagueId,
       fixtureId: fixture.sourceFixtureId,
       fetchedAtUtc: new Date(now()).toISOString(),

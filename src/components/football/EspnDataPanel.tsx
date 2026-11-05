@@ -20,7 +20,7 @@ function Metrics({ title, items }: { title: string; items: Metric[] }) {
           ))}
         </dl>
       ) : (
-        <p className="mt-2 text-xs text-amber-200">Μη διαθέσιμο από ESPN</p>
+        <p className="mt-2 text-xs text-amber-200">Δεν επιστράφηκαν στοιχεία</p>
       )}
     </details>
   );
@@ -48,7 +48,7 @@ function People({ title, items, empty }: { title: string; items: Person[]; empty
   );
 }
 
-function TeamData({ side }: { side: Team }) {
+export function FootballTeamData({ side }: { side: Team }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-[#111c2c] p-3">
       <h4 className="text-base font-bold text-white">{side.name}</h4>
@@ -68,20 +68,26 @@ function TeamData({ side }: { side: Team }) {
                 {game.kickoffUtc.slice(0, 10)} · {game.homeAway === "home" ? "Εντός" : "Εκτός"}
                 {" · "}
                 {game.opponent} · {game.goalsFor}–{game.goalsAgainst}
+                {game.xg !== undefined && game.xga !== undefined
+                  ? ` · xG ${game.xg} / xGA ${game.xga}`
+                  : ""}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-xs text-amber-200">Μη διαθέσιμο από ESPN</p>
+          <p className="mt-2 text-xs text-amber-200">Δεν επιστράφηκαν στοιχεία</p>
         )}
       </details>
-      <People title="Ρόστερ" items={side.roster} empty="Μη διαθέσιμο από ESPN" />
+      <People title="Ρόστερ / ενδεκάδα" items={side.roster} empty="Δεν επιστράφηκαν στοιχεία" />
       <People
         title="Αναφορές απουσιών"
         items={side.injuries}
         empty="Δεν επιστράφηκαν αναφορές. Αυτό δεν αποδεικνύει ότι δεν υπάρχουν απουσίες."
       />
       <Metrics title="Στοιχεία συγκεκριμένου αγώνα" items={side.matchStatistics} />
+      {!!side.previewStatistics?.length && (
+        <Metrics title="Στοιχεία προεπισκόπησης / σεζόν" items={side.previewStatistics} />
+      )}
     </div>
   );
 }
@@ -101,8 +107,8 @@ export function EspnDataPanel({ data }: { data: FootballEspnContext }) {
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        <TeamData side={data.home} />
-        <TeamData side={data.away} />
+        <FootballTeamData side={data.home} />
+        <FootballTeamData side={data.away} />
       </div>
       <div className="text-xs text-slate-300">
         <p className="font-semibold text-amber-200">Κενά δεδομένων</p>

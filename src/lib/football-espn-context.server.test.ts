@@ -95,26 +95,22 @@ describe("ESPN provider-first pre-match data", () => {
     const fetcher = (async (input: RequestInfo | URL) => {
       const url = new URL(input.toString());
       requested.push(url.pathname);
-      if (url.pathname.endsWith("/standings")) return new Response(JSON.stringify(standings));
-      if (url.pathname.endsWith("/summary")) return new Response(JSON.stringify(summary));
-      if (url.pathname.endsWith("/scoreboard")) return new Response(JSON.stringify({ events: [] }));
+      if (url.pathname.endsWith("/standings")) return Response.json(standings);
+      if (url.pathname.endsWith("/summary")) return Response.json(summary);
+      if (url.pathname.endsWith("/scoreboard")) return Response.json({ events: [] });
       if (url.pathname.endsWith("/teams/10/schedule"))
-        return new Response(JSON.stringify({ events: [resultEvent] }));
+        return Response.json({ events: [resultEvent] });
       if (url.pathname.endsWith("/teams/10"))
-        return new Response(
-          JSON.stringify({
-            team: { statistics: [{ name: "shots", displayValue: "50" }] },
-          }),
-        );
+        return Response.json({
+          team: { statistics: [{ name: "shots", displayValue: "50" }] },
+        });
       if (url.pathname.endsWith("/teams/10/roster"))
-        return new Response(
-          JSON.stringify({
-            athletes: [
-              { items: [{ displayName: "Player A", position: { displayName: "Forward" } }] },
-            ],
-          }),
-        );
-      return new Response("{}", { status: 200 });
+        return Response.json({
+          athletes: [
+            { items: [{ displayName: "Player A", position: { displayName: "Forward" } }] },
+          ],
+        });
+      return Response.json({});
     }) as typeof fetch;
     const data = await fetchEspnMatchContext("EN-PL", fixture, fetcher, () =>
       Date.parse("2026-11-03T08:00:00Z"),

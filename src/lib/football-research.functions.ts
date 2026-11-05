@@ -36,6 +36,12 @@ export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
           label: model.displayName,
           status: model.status,
         })),
+      evidenceProviders: [
+        { id: "espn", configured: true },
+        { id: "api-football", configured: Boolean(process.env["API_FOOTBALL_KEY"]?.trim()) },
+        { id: "football-data", configured: Boolean(process.env["FOOTBALL_DATA_API_KEY"]?.trim()) },
+        { id: "pitchapi", configured: Boolean(process.env["PITCHAPI_API_KEY"]?.trim()) },
+      ],
       tavilyConfigured: Boolean(process.env["TAVILY_API_KEY"]?.trim()),
       liveFixturesConfigured: true,
       fixtureProviders: FOOTBALL_PROVIDERS.map((provider) => ({
@@ -55,7 +61,7 @@ export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
   });
 
 const weekInput = z.object({
-  fixtureProvider: z.enum(["football-data", "api-football", "espn"]).default("football-data"),
+  fixtureProvider: z.enum(["football-data", "api-football", "espn"]).default("espn"),
   leagueId: z.enum(
     FOOTBALL_ESPN_LEAGUES.map((item) => item.id) as [
       (typeof FOOTBALL_ESPN_LEAGUES)[number]["id"],
@@ -141,4 +147,51 @@ export const getPrivateFootballEspnContext = createServerFn({ method: "GET" })
       throw new Error("Only available pre-match ESPN fixtures can be inspected.");
     }
     return fetchEspnMatchContext(data.leagueId, fixture);
+  });
+
+/** Read-only, no AI/Tavily cost. Fixture identity is reloaded from its provider, never supplied by the browser. */
+export const getPrivateFootballProviderEvidence = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    espnContextInput
+      .extend({
+        fixtureProvider: z.enum(["espn", "api-football", "football-data"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const authorize = async () => {
+      const result = await context.supabase.rpc("current_user_is_super_admin");
+      if (result.error || result.data !== true) throw new Error("Not allowed");
+    };
+    await authorize();
+    const fixtures =
+      data.fixtureProvider === "espn"
+        ? await (
+            await import("@/lib/football-espn.server")
+          ).fetchEspnFootballWeek(data.leagueId, data.weekDate)
+        : await getCachedFootballWeek(
+            data.leagueId as (typeof FOOTBALL_LEAGUES)[number]["id"],
+            data.weekDate,
+            data.fixtureProvider === "football-data"
+              ? (await import("@/lib/football-data.server")).fetchFootballDataWeek
+              : (await import("@/lib/football-fixtures.server")).fetchFootballWeek,
+            Date.now,
+            data.fixtureProvider,
+          );
+    const fixture = fixtures.find(
+      (f) => f.sourceFixtureId === data.fixtureId && f.leagueId === data.leagueId,
+    );
+    if (!fixture || fixture.state !== "scheduled" || Date.parse(fixture.kickoffUtc) <= Date.now())
+      throw new Error("Only available pre-match fixtures can be inspected.");
+    const result = await (
+      await import("@/lib/football-provider-evidence.server")
+    ).collectFootballProviderEvidence({
+      leagueId: fixture.leagueId,
+      homeTeam: fixture.homeTeam,
+      awayTeam: fixture.awayTeam,
+      kickoffUtc: fixture.kickoffUtc,
+    });
+    await authorize();
+    return result;
   });

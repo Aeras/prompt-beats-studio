@@ -14,6 +14,8 @@ const game = z
     homeAway: z.enum(["home", "away"]),
     goalsFor: z.number().int().min(0).max(99),
     goalsAgainst: z.number().int().min(0).max(99),
+    xg: z.number().finite().min(0).max(100).optional(),
+    xga: z.number().finite().min(0).max(100).optional(),
   })
   .strict();
 const person = z
@@ -37,6 +39,7 @@ const side = z
     roster: z.array(person).max(45),
     injuries: z.array(person).max(25),
     matchStatistics: z.array(metric).max(35),
+    previewStatistics: z.array(metric).max(35).optional(),
     teamStatistics: z.array(metric).max(60),
   })
   .strict();
@@ -45,6 +48,31 @@ const side = z
 export const footballEspnContextSchema = z
   .object({
     provider: z.literal("espn"),
+    diagnostics: z
+      .array(
+        z
+          .object({
+            resource: z.string().max(240),
+            status: z.enum([
+              "ok",
+              "partial",
+              "not_configured",
+              "unsupported",
+              "ambiguous",
+              "conflict",
+              "not_found",
+              "unavailable",
+              "access_denied",
+              "rate_limited",
+              "timeout",
+              "invalid_response",
+              "too_large",
+            ]),
+          })
+          .strict(),
+      )
+      .max(16)
+      .optional(),
     leagueId: z.string().max(20),
     fixtureId: z.string().regex(/^\d{1,12}$/),
     fetchedAtUtc: z.string().datetime(),
