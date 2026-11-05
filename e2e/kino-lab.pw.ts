@@ -501,6 +501,27 @@ test("real imported counts map to all four heatmap levels and refresh with the s
   );
   expect([...new Set(levels)].sort()).toEqual(["0", "1", "2", "3"]);
   expect(levels).toEqual(expected.map((c) => String(Math.min(3, c))));
+  const palettes = ["bg-red-700", "bg-orange-400", "bg-green-200", "bg-green-500"];
+  for (const [level, palette] of palettes.entries()) {
+    const classes = await cells.evaluateAll(
+      (elements, target) =>
+        elements
+          .filter((el) => el.getAttribute("data-intensity") === String(target))
+          .map((el) => el.className),
+      level,
+    );
+    expect(classes.length).toBeGreaterThan(0);
+    expect(classes.every((value) => value.split(" ").includes(palette))).toBe(true);
+  }
+  const audit = await new AxeBuilder({ page })
+    .include('[aria-label="KINO Analysis Lab"]')
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(audit.violations).toEqual([]);
+  await page.screenshot({
+    path: test.info().outputPath("kino-frequency-four-colors.png"),
+    fullPage: true,
+  });
   await page.getByRole("combobox", { name: "Κληρώσεις", exact: true }).click();
   await page.getByRole("option", { name: "5", exact: true }).click();
   await expect(page.getByRole("status")).not.toContainText("Μερικό δείγμα");

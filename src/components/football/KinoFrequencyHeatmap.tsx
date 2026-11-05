@@ -1,7 +1,12 @@
 import { Fragment, useMemo } from "react";
 import { formatKinoCount, kinoHeatmapLevels } from "@/lib/kino-lab.presentation";
 
-const intensity = ["bg-primary/5", "bg-primary/15", "bg-primary/30", "bg-primary/50"] as const;
+const intensity = [
+  { color: "bg-red-700 text-white", label: "Λιγότερες" },
+  { color: "bg-orange-400 text-slate-950", label: "Χαμηλές–μέτριες" },
+  { color: "bg-green-200 text-slate-950", label: "Μέτριες–υψηλές" },
+  { color: "bg-green-500 text-slate-950", label: "Περισσότερες" },
+] as const;
 
 export default function KinoFrequencyHeatmap({
   counts,
@@ -18,7 +23,7 @@ export default function KinoFrequencyHeatmap({
           <div
             key={i}
             data-intensity={levels[i]}
-            className={`flex min-w-0 flex-col items-center justify-center rounded border border-border px-0 py-1 text-foreground tabular-nums ${intensity[levels[i]!]}`}
+            className={`flex min-w-0 flex-col items-center justify-center rounded border border-border px-0 py-1 tabular-nums ${intensity[levels[i]!].color}`}
             aria-label={`Αριθμός ${i + 1}: ${formatKinoCount(count)} εμφανίσεις · Ένταση ${levels[i]! + 1}/4`}
           >
             <strong className="text-xs leading-5 sm:text-sm">{i + 1}</strong>
@@ -38,9 +43,9 @@ export default function KinoFrequencyHeatmap({
       </div>
       <div className="flex flex-wrap items-center gap-2 text-xs" aria-label="Κλίμακα έντασης">
         <span>Σχετική συχνότητα</span>
-        {intensity.map((color, i) => (
-          <span key={color} className={`rounded border border-border px-2 py-1 ${color}`}>
-            {i + 1}/4
+        {intensity.map(({ color, label }, i) => (
+          <span key={label} className={`rounded border border-border px-2 py-1 ${color}`}>
+            {i + 1}/4 · {label}
           </span>
         ))}
       </div>
