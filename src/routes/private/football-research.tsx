@@ -14,10 +14,6 @@ import { runPrivateFootballExpertReview } from "@/lib/football-ai-expert.functio
 import { AiSearchPanel } from "@/components/football/AiSearchPanel";
 import { KinoWorkspace } from "@/components/football/KinoWorkspace";
 import { ProviderEvidencePanel } from "@/components/football/ProviderEvidencePanel";
-import {
-  FOOTBALL_EVIDENCE_LABELS,
-  type FootballEvidenceProvider,
-} from "@/lib/football-provider-evidence.shared";
 import { EspnDataPanel } from "@/components/football/EspnDataPanel";
 import {
   FOOTBALL_AI_DISCOVERY_LEAGUES,
@@ -253,11 +249,6 @@ function PrivateFootballResearchPage() {
     setExpanded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const start = async (ids: string[]) => {
     if (working || !selectedModel || !setup.data.aiAnalysisEnabled || ids.length === 0) return;
-    // Existing per-user admission is 5 / hour. Never suggest this executes unlimited work.
-    if (ids.length > 5) {
-      setBatchError("Επιτρέπονται έως 5 αιτήματα ανά ώρα. Επίλεξε έως 5 αγώνες.");
-      return;
-    }
     if (
       !window.confirm(
         `Θα γίνουν ${ids.length} ξεχωριστές έρευνες Tavily (${tavilySearchDepth === "advanced" ? "Advanced" : "Basic"}, 3 αναζητήσεις ανά αγώνα, περίπου ${ids.length * (tavilySearchDepth === "advanced" ? 6 : 3)} credits συνολικά) και κλήσεις OpenRouter, με ενδεχόμενη χρέωση ανά αγώνα. Τα συμπληρωματικά στοιχεία παρόχων προσμετρώνται στα tokens εισόδου του μοντέλου. Επιβεβαιώνεις;`,
@@ -307,6 +298,38 @@ function PrivateFootballResearchPage() {
 
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100">
+      {activeTab === "predictions" && !isAi && (
+        <section
+          aria-label="Ανάλυση αγώνων"
+          className="sticky top-0 z-40 w-full border-y border-cyan-400/25 bg-[#101d32]/95 px-3 py-2 backdrop-blur sm:px-6"
+        >
+          <div className="mx-auto max-w-6xl">
+            <h2 className="mb-1 text-sm font-semibold text-cyan-100">Ανάλυση</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={
+                  working || !selectedModel || allIds.length === 0 || !setup.data.aiAnalysisEnabled
+                }
+                onClick={() => void start(allIds)}
+                className="min-h-11 rounded-md bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
+              >
+                Όλων ({allIds.length})
+              </button>
+              <button
+                type="button"
+                disabled={
+                  working || !selectedModel || picked.length === 0 || !setup.data.aiAnalysisEnabled
+                }
+                onClick={() => void start(picked)}
+                className="min-h-11 rounded-md border border-fuchsia-400/40 bg-fuchsia-500/15 px-3 py-2 text-sm font-bold text-fuchsia-100 disabled:opacity-40"
+              >
+                Επιλεγμένων ({picked.length})
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
       <header className="w-full border-b border-cyan-400/20 bg-gradient-to-br from-[#102a48] via-[#142139] to-[#241b3e] px-4 py-5 shadow-lg shadow-cyan-950/20 sm:px-8">
         <div className="mx-auto max-w-6xl">
           <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-4xl">
@@ -448,32 +471,6 @@ function PrivateFootballResearchPage() {
           </p>
         </section>
 
-        <section
-          aria-label="Συνδέσεις πηγών ανάλυσης"
-          className="rounded-2xl border border-white/10 bg-[#152137] p-4"
-        >
-          <h2 className="text-sm font-semibold text-cyan-100">Πηγές ανάλυσης</h2>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            {setup.data.evidenceProviders?.map((source) => (
-              <span key={source.id} className="rounded-lg border border-white/15 px-3 py-2">
-                {FOOTBALL_EVIDENCE_LABELS[source.id as FootballEvidenceProvider]} ·{" "}
-                {source.id === "espn"
-                  ? "Χωρίς απαίτηση κλειδιού"
-                  : source.configured
-                    ? "Κλειδί ρυθμισμένο"
-                    : "Χωρίς κλειδί"}
-              </span>
-            ))}
-            <span className="rounded-lg border border-white/15 px-3 py-2">
-              JoJ / Stoiximan Odds ·{" "}
-              {setup.data.bookmakerOddsConfigured ? "Κλειδί ρυθμισμένο" : "Χωρίς ενεργή ρύθμιση"}
-            </span>
-          </div>
-          <p className="mt-2 text-xs text-slate-300">
-            Η ανάλυση αξιοποιεί όλες τις διαθέσιμες συνδέσεις, ανεξάρτητα από τον πάροχο της λίστας
-            αγώνων. Η ρύθμιση κλειδιού δεν εγγυάται κάλυψη. Δεν ξεκινά αυτόματα πληρωμένη έρευνα.
-          </p>
-        </section>
         <fieldset
           disabled={working}
           className="rounded-2xl border border-cyan-300/20 bg-[#152137] p-4"
@@ -524,52 +521,10 @@ function PrivateFootballResearchPage() {
         {!isAi && (
           <section
             className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
-            aria-label="Αγώνες εβδομάδας"
+            aria-label="Λίστα αγώνων"
           >
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-bold">Αγώνες εβδομάδας</h2>
-                <p className="text-xs text-slate-400">Επιλογή αγώνων για νέα ανάλυση</p>
-              </div>
-              <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">
-                {upcoming.length} διαθέσιμοι πριν από τη σέντρα
-              </span>
-            </div>
-            <div className="mb-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={
-                  working ||
-                  !selectedModel ||
-                  allIds.length === 0 ||
-                  allIds.length > 5 ||
-                  !setup.data.aiAnalysisEnabled
-                }
-                onClick={() => void start(allIds)}
-                className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
-              >
-                Ανάλυση όλων ({allIds.length})
-              </button>
-              <button
-                type="button"
-                disabled={
-                  working ||
-                  !selectedModel ||
-                  picked.length === 0 ||
-                  picked.length > 5 ||
-                  !setup.data.aiAnalysisEnabled
-                }
-                onClick={() => void start(picked)}
-                className="rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/15 px-4 py-2.5 text-sm font-bold text-fuchsia-100 disabled:opacity-40"
-              >
-                Ανάλυση επιλεγμένων ({picked.length})
-              </button>
-            </div>
-            <p className="mb-3 text-xs leading-5 text-slate-400">
-              Έως 5 αναλύσεις ανά ώρα. Κάθε αγώνας χρεώνεται ξεχωριστά μετά από επιβεβαίωση. Η
-              μαζική εκτέλεση γίνεται διαδοχικά όσο παραμένει ανοιχτή η σελίδα. Αποθηκεύεται κάθε
-              ολοκληρωμένο αποτέλεσμα.
-            </p>
+            <h2 className="text-lg font-bold">Λίστα αγώνων</h2>
+            <p className="mb-4 text-xs text-slate-400">Επιλέξτε αγώνες για ανάλυση</p>
             {working && (
               <p role="status" className="mb-3 rounded-xl bg-cyan-400/10 p-3 text-sm text-cyan-200">
                 Ανάλυση {progress.done} / {progress.total} · Μην κλείσεις τη σελίδα μέχρι να
@@ -592,12 +547,6 @@ function PrivateFootballResearchPage() {
             {!configured && (
               <p className="text-sm text-amber-300">
                 Δεν υπάρχει API key για τον επιλεγμένο πάροχο.
-              </p>
-            )}
-            {allIds.length > 5 && (
-              <p className="mb-3 text-xs text-amber-300">
-                Η εβδομάδα έχει περισσότερους από 5 αγώνες. Χρησιμοποίησε την επιλογή έως 5 αγώνων,
-                σύμφωνα με το υπάρχον όριο ασφαλείας.
               </p>
             )}
             {fixtures.data?.status === "ok" && fixtures.data.fixtures.length === 0 && (

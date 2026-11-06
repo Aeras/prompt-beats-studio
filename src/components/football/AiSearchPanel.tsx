@@ -283,12 +283,7 @@ export function AiSearchPanel(props: {
         )}
         <button
           type="button"
-          disabled={
-            props.working ||
-            !props.canAnalyze ||
-            verifiedPicked.length === 0 ||
-            verifiedPicked.length > 5
-          }
+          disabled={props.working || !props.canAnalyze || verifiedPicked.length === 0}
           onClick={() => props.onAnalyze(verifiedPicked)}
           className="rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/15 px-4 py-2.5 text-sm font-bold text-fuchsia-100 disabled:opacity-40"
         >

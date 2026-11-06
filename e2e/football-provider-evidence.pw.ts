@@ -21,6 +21,8 @@ async function fixture(
   oddsStatus = "matched",
   language = "el",
   pair = { home: "Arsenal", away: "Liverpool" },
+  count = 1,
+  allowResearch = false,
 ) {
   const token =
     [
@@ -145,13 +147,16 @@ async function fixture(
       /runPrivateFootballResearch|runPrivateFootballExpertReview|refreshPrivateFootball/.test(name)
     ) {
       paid++;
+      if (allowResearch) return route.fulfill({ json: { result: {}, context: {} } });
       return route.abort();
     }
     if (name.includes("getPrivateFootballResearchSetup")) {
       if (!authorized) return route.fulfill({ status: 403, body: "Denied" });
       result = {
         provider: "openrouter",
-        models: [],
+        models: allowResearch
+          ? [{ id: "offline-model", label: "Offline model", status: "enabled" }]
+          : [],
         fixtureProviders: [
           { id: "espn", label: "ESPN", configured: true },
           { id: "api-football", label: "API-Football", configured: true },
@@ -161,25 +166,23 @@ async function fixture(
         bookmakerOddsConfigured: true,
         tavilyConfigured: true,
         liveFixturesConfigured: true,
-        aiAnalysisEnabled: false,
+        aiAnalysisEnabled: allowResearch,
       };
     } else if (name.includes("getPrivateFootballWeek")) {
       const request = decodeURIComponent(route.request().url());
       seenProviders.push(request);
       result = {
         status: "ok",
-        fixtures: [
-          {
-            source: "espn",
-            sourceFixtureId: "999",
-            leagueId: "EN-PL",
-            homeTeam: pair.home,
-            awayTeam: pair.away,
-            kickoffUtc,
-            state: "scheduled",
-            fetchedAtUtc: new Date().toISOString(),
-          },
-        ],
+        fixtures: Array.from({ length: count }, (_, i) => ({
+          source: "espn",
+          sourceFixtureId: String(999 + i),
+          leagueId: "EN-PL",
+          homeTeam: pair.home,
+          awayTeam: pair.away,
+          kickoffUtc,
+          state: "scheduled",
+          fetchedAtUtc: new Date().toISOString(),
+        })),
       };
     } else if (name.includes("getPrivateFootballProviderEvidence")) {
       reads++;
@@ -228,9 +231,7 @@ test("ESPN is automatic default; all source statuses, touch/keyboard preview and
 }) => {
   const f = await fixture(page);
   await expect(page.getByLabel("Πάροχος αγώνων")).toHaveValue("espn");
-  await expect(page.getByRole("region", { name: "Συνδέσεις πηγών ανάλυσης" })).toContainText(
-    "PitchAPI",
-  );
+  await expect(page.getByRole("region", { name: "Συνδέσεις πηγών ανάλυσης" })).toHaveCount(0);
   const button = page.getByRole("button", { name: "Στοιχεία παρόχων Άρσεναλ – Λίβερπουλ" });
   await expect(button).toBeVisible();
   await button.click();
@@ -272,7 +273,7 @@ test("ESPN is automatic default; all source statuses, touch/keyboard preview and
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
-      const row = page.getByRole("region", { name: "Αγώνες εβδομάδας" }).locator("li").first();
+      const row = page.getByRole("region", { name: "Λίστα αγώνων" }).locator("li").first();
       const title = await row.locator("p").first().boundingBox();
       expect(title!.width).toBeGreaterThan(130);
       expect(title!.height).toBeLessThan(80);
@@ -375,3 +376,55 @@ for (const [home, away, homeEl, awayEl] of [
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
   });
+
+test("compact analysis toolbar stays at viewport top while the single page scrolls", async ({
+  page,
+}) => {
+  await fixture(page);
+  const bar = page.getByRole("region", { name: "Ανάλυση αγώνων" });
+  await expect(bar.getByRole("heading", { name: "Ανάλυση", exact: true })).toBeVisible();
+  await expect(bar.getByRole("button", { name: /^Όλων/ })).toBeVisible();
+  await expect(bar.getByRole("button", { name: /^Επιλεγμένων/ })).toBeVisible();
+  await expect(page.getByText("Έως 5 αναλύσεις ανά ώρα.", { exact: false })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Λίστα αγώνων" })).toBeVisible();
+  const buttons = await bar.locator("button").evaluateAll((nodes) =>
+    nodes.map((n) => {
+      const r = n.getBoundingClientRect();
+      return { top: r.top, height: r.height };
+    }),
+  );
+  expect(buttons[0]!.top).toBe(buttons[1]!.top);
+  expect(buttons.every((b) => b.height >= 44)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect.poll(async () => Math.round((await bar.boundingBox())!.y)).toBe(0);
+  expect(await bar.evaluate((n) => getComputedStyle(n).position)).toBe("sticky");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("all ten games can be analyzed serially with one confirmation and no five-game UI cap", async ({
+  page,
+}, testInfo) => {
+  const f = await fixture(
+    page,
+    true,
+    false,
+    "matched",
+    "el",
+    { home: "Arsenal", away: "Liverpool" },
+    10,
+    true,
+  );
+  await page.getByRole("combobox", { name: "Μοντέλο AI" }).selectOption("offline-model");
+  const all = page.getByRole("button", { name: "Όλων (10)", exact: true });
+  await expect(all).toBeEnabled();
+  let confirmations = 0;
+  page.on("dialog", async (d) => {
+    confirmations++;
+    await d.accept();
+  });
+  await all.click();
+  await expect.poll(() => f.paid()).toBe(10);
+  await expect(all).toBeEnabled();
+  expect(confirmations).toBe(1);
+  await page.screenshot({ path: testInfo.outputPath("football-compact.png") });
+});

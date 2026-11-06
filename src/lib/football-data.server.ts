@@ -1,3 +1,4 @@
+import { footballDataExclusiveEnd } from "./football-data-dates.shared";
 import { z } from "zod";
 import type { FootballFixture, FootballLeagueId } from "./football-research.shared";
 import { footballWeekBounds } from "./football-fixtures.server";
@@ -50,7 +51,7 @@ export async function fetchFootballDataWeek(
   const { from, to } = footballWeekBounds(date);
   const url = new URL(`https://api.football-data.org/v4/competitions/${code}/matches`);
   url.searchParams.set("dateFrom", from);
-  url.searchParams.set("dateTo", to);
+  url.searchParams.set("dateTo", footballDataExclusiveEnd(to));
   const response = await fetcher(url, {
     method: "GET",
     headers: { "X-Auth-Token": apiKey.trim() },

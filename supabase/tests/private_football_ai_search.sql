@@ -123,4 +123,19 @@ BEGIN
     'existing Tavily+OpenRouter records unchanged');
 END $$;
 
+-- AI-discovered fixtures use the same uncapped analysis policy, without weakening verification.
+DO $$
+DECLARE v uuid := 'fea70000-0000-4000-8000-0000000000a1'; f bigint; r jsonb; i integer;
+BEGIN
+ SELECT fixture_id INTO f FROM public.private_football_ai_fixtures WHERE user_id=v AND verification_status='verified' AND kickoff_verified LIMIT 1;
+ PERFORM pg_temp.assert(f IS NOT NULL,'Verified fixture must exist in isolated fixture');
+ UPDATE public.private_football_research_runs SET status='failed',completed_at=now(),error_code='offline_test'
+  WHERE user_id=v AND status='processing';
+ FOR i IN 1..8 LOOP
+  r := public.claim_private_football_ai_research_run(v,gen_random_uuid(),f,'offline/test');
+  PERFORM pg_temp.assert(r->>'status'='claimed','AI fixture analysis must exceed five attempts/hour');
+  UPDATE public.private_football_research_runs SET status='failed',completed_at=now(),error_code='offline_test' WHERE id=(r->>'id')::uuid;
+ END LOOP;
+END $$;
+
 ROLLBACK;

@@ -145,7 +145,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         } as never,
       ));
     }
-    if (claimError) throw new Error("Research admission failed or hourly limit reached.");
+    if (claimError) throw new Error("Research admission failed.");
 
     const claim = claimed as { status?: string; id?: string } | null;
     if (!claim?.id || claim.status !== "claimed") {

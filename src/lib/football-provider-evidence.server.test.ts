@@ -551,3 +551,18 @@ test("model output cannot impersonate legacy ESPN or server-collected provider m
   expect(clean).toEqual({ summary: "Genuine model narrative" });
   expect(untrusted.espnData.provider).toBe("FAKE");
 });
+
+test("football-data malformed body is not mistaken for absent fixture", async () => {
+  const f = fixture((url, body) =>
+    url.hostname === "api.football-data.org" && url.pathname.includes("/competitions/") ? {} : body,
+  );
+  const result = await collectFootballProviderEvidence(target, {
+    env,
+    fetcher: f.fetcher,
+    now,
+    cache: false,
+  });
+  expect(result.providers.find((p) => p.provider === "football-data")?.status).toBe(
+    "invalid_response",
+  );
+});
