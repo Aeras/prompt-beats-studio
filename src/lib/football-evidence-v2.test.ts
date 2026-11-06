@@ -198,7 +198,7 @@ test("venue local calendar at midnight and DST uses IANA, not +- day", () => {
 for (const profile of ["P0", "P1-Lean", "P1-Preserve"] as const)
   test(`offline neutral plan ${profile}`, () => {
     const p = planFootballForecasts(f, profile);
-    expect(p.enabledForPaidDispatch).toBe(false);
+    expect(p.enabledForPaidDispatch).toBe(profile === "P1-Preserve");
     expect(p.queries.slice(0, 3).map((q) => q.language)).toEqual(["el", "en", "ru"]);
     expect(p.queries[0]!.query).toContain("8 Νοεμβρίου 2026");
     expect(p.queries.slice(0, 3).some((q) => /Over|GG|Χ2|HT\/FT|BTTS/.test(q.query))).toBe(false);

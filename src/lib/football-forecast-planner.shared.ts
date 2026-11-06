@@ -54,9 +54,14 @@ function label(name: string, language: "el" | "en" | "ru") {
     return r.team.aliases.find((a) => /\p{Script=Cyrillic}/u.test(a)) ?? r.team.name;
   return r.team.name;
 }
-/** Offline-only candidate plans. No caller may turn this into extra paid calls by request input. */
+/** Server-owned plans. The real handler fixes P1-Preserve; request input cannot select a profile. */
 export function planFootballForecasts(f: OddsTarget, profile: ForecastProfile = "P0") {
-  const local = fixtureLocalDate(f);
+  const home = footballTeamRegistry.resolve(f.homeTeam);
+  const local = fixtureLocalDate(f).date
+    ? fixtureLocalDate(f)
+    : home.status === "matched"
+      ? fixtureLocalDate({ ...f, leagueId: home.team.domesticLeague })
+      : fixtureLocalDate(f);
   if (!local.date) throw Error("verified_venue_timezone_required");
   const [year, month, day] = local.date.split("-").map(Number);
   const queries = (["el", "en", "ru"] as const).map((language) => ({
@@ -76,7 +81,7 @@ export function planFootballForecasts(f: OddsTarget, profile: ForecastProfile = 
           ];
   return {
     profile,
-    enabledForPaidDispatch: false as const,
+    enabledForPaidDispatch: profile === "P1-Preserve",
     venueTimezone: local.timezone,
     localDate: local.date,
     queries: [
@@ -84,7 +89,7 @@ export function planFootballForecasts(f: OddsTarget, profile: ForecastProfile = 
       ...facts.map((query) => ({ language: "en" as const, intent: "match_facts" as const, query })),
     ],
     searchCalls: queries.length + facts.length,
-    resultsPerSearch: 3,
+    resultsPerSearch: 5,
     extraCallsComparedWithProduction: facts.length,
     webFactsCoverage:
       profile === "P0"

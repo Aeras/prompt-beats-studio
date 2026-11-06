@@ -56,12 +56,13 @@ export function buildFootballClaimLedger(
   docs: readonly FootballEvidenceDocument[],
   cutoff: string,
   queries: FootballClaimLedger["queries"] = [],
+  profile: FootballClaimLedger["profile"] = "legacy-3",
 ): FootballClaimLedger {
   const sources: FootballClaimLedger["sources"] = [],
     claims: FootballClaimLedger["claims"] = [];
   const seen = new Set<string>(),
     copies: { text: string; original: string; origin: string | null }[] = [];
-  for (const doc of docs.slice(0, 18)) {
+  for (const doc of docs.slice(0, 25)) {
     let url: URL;
     try {
       url = new URL(doc.url);
@@ -138,7 +139,7 @@ export function buildFootballClaimLedger(
       const discovered = extractLiteralPicks(section.text, f);
       omittedClaims += Math.max(0, discovered.length - 12);
       for (const pick of discovered.slice(0, 12)) {
-        if (claims.length >= 216) break;
+        if (claims.length >= 300) break;
         const start = section.start + pick.start,
           end = section.start + pick.end;
         addWindow(Math.max(section.start, start - 400), Math.min(section.end, end + 400));
@@ -243,7 +244,7 @@ export function buildFootballClaimLedger(
   return claimLedgerSchema.parse({
     version: 2,
     fixture: f,
-    profile: "legacy-3",
+    profile,
     cutoff,
     queries,
     sources,

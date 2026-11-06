@@ -1,3 +1,5 @@
+import { attachIndependentAssessment } from "../src/lib/football-evidence-v2.shared";
+import { providerEvidenceUrls } from "../src/lib/football-provider-evidence.shared";
 import { buildFootballClaimLedger } from "../src/lib/football-evidence-v2.server";
 import { buildFootballPredictionConsensus } from "../src/lib/football-prediction-consensus.shared";
 import { expect, test, type Page } from "@playwright/test";
@@ -27,6 +29,7 @@ async function fixture(
   allowResearch = false,
   online = false,
   evidenceV2 = false,
+  judgmentMode: "combo" | "abstain" | "unsupported" = "combo",
 ) {
   const token =
     [
@@ -217,26 +220,66 @@ async function fixture(
                 bookmakerOddsSnapshot,
                 ...(evidenceV2
                   ? {
-                      onlineEvidenceV2: buildFootballClaimLedger(
-                        { leagueId: "EN-PL", homeTeam: pair.home, awayTeam: pair.away, kickoffUtc },
-                        [
+                      onlineEvidenceV2: (() => {
+                        const ledger = buildFootballClaimLedger(
                           {
-                            title: "Synthetic V2 preview",
-                            url: "https://sportsmole.co.uk/offline-v2",
-                            accessedAt: new Date().toISOString(),
-                            text: `${pair.home} vs ${pair.away} Premier League ${kickoffUtc.slice(0, 10)}\nOur pick is Over 2.5`,
-                            queryLanguage: "en",
+                            leagueId: "EN-PL",
+                            homeTeam: pair.home,
+                            awayTeam: pair.away,
+                            kickoffUtc,
                           },
-                          {
-                            title: "Synthetic provisional source",
-                            url: "https://unreviewed.example.org/v2",
-                            accessedAt: new Date().toISOString(),
-                            text: `${pair.home} vs ${pair.away} Premier League ${kickoffUtc.slice(0, 10)}\nOur pick is Χ/2`,
-                            queryLanguage: "mixed",
-                          },
-                        ],
-                        new Date().toISOString(),
-                      ),
+                          [
+                            {
+                              title: "Synthetic V2 preview",
+                              url: "https://sportsmole.co.uk/offline-v2",
+                              accessedAt: new Date().toISOString(),
+                              text: `${pair.home} vs ${pair.away} Premier League ${kickoffUtc.slice(0, 10)}\nOur pick is GG & Over 2.5`,
+                              queryLanguage: "en",
+                            },
+                            {
+                              title: "Synthetic provisional source",
+                              url: "https://unreviewed.example.org/v2",
+                              accessedAt: new Date().toISOString(),
+                              text: `${pair.home} vs ${pair.away} Premier League ${kickoffUtc.slice(0, 10)}\nOur pick is Χ/2`,
+                              queryLanguage: "mixed",
+                            },
+                          ],
+                          new Date().toISOString(),
+                        );
+                        const opinion =
+                          judgmentMode === "abstain"
+                            ? {
+                                decision: "abstain",
+                                rationale:
+                                  "The synthetic evidence is insufficient for a defensible independent choice.",
+                                supportingClaimIds: [],
+                                evidenceUrls: [],
+                              }
+                            : {
+                                decision: "lean",
+                                selection: {
+                                  kind: "and",
+                                  legs: [
+                                    { kind: "btts", period: "FT", selection: "yes" },
+                                    { kind: "total", period: "FT", selection: "over", line: 2.5 },
+                                  ],
+                                },
+                                rationale:
+                                  "Independent assessment of the supplied form supports the conjunction, with uncertainty.",
+                                supportingClaimIds: judgmentMode === "unsupported" ? [] : [0],
+                                evidenceUrls: [
+                                  ledger.sources[0]!.url,
+                                  snapshot.providers[0]!.resources[0]!.url,
+                                ],
+                                jointRationale:
+                                  "The exact authored conjunction is compared with real supplied match data rather than combining two popular votes.",
+                              };
+                        return attachIndependentAssessment(
+                          ledger,
+                          opinion,
+                          providerEvidenceUrls(snapshot),
+                        );
+                      })(),
                     }
                   : {}),
                 ...(online
@@ -520,9 +563,11 @@ for (const language of ["el", "en"]) {
       })
       .click();
     const panel = page.getByRole("region", {
-      name: language === "en" ? "Independent Online Predictions" : "Ανεξάρτητες Online Προβλέψεις",
+      name: language === "en" ? "Independent AI assessment" : "Ανεξάρτητη εκτίμηση AI",
     });
-    await expect(panel).toContainText(language === "en" ? "Source agreement" : "Συμφωνία πηγών");
+    await expect(panel).toContainText(
+      language === "en" ? "Analyst agreement" : "Συμφωνία αναλυτών",
+    );
     await expect(panel).toContainText("2/2");
     await expect(panel).not.toContainText("100%");
     const disclosure = panel.locator("summary").first();
@@ -544,7 +589,7 @@ for (const language of ["el", "en"]) {
     const a11y = await new AxeBuilder({ page })
       .include(
         'section[aria-label="' +
-          (language === "en" ? "Independent Online Predictions" : "Ανεξάρτητες Online Προβλέψεις") +
+          (language === "en" ? "Independent AI assessment" : "Ανεξάρτητη εκτίμηση AI") +
           '"]',
       )
       .analyze();
@@ -561,8 +606,8 @@ for (const language of ["el", "en"]) {
 test("legacy online panel never researches retrospectively", async ({ page }) => {
   const f = await fixture(page, true, true);
   await page.getByRole("button", { name: /^Άρσεναλ – Λίβερπουλ/ }).click();
-  await expect(page.getByRole("region", { name: "Ανεξάρτητες Online Προβλέψεις" })).toContainText(
-    "Η παλαιότερη ανάλυση",
+  await expect(page.getByRole("region", { name: "Ανεξάρτητη εκτίμηση AI" })).toContainText(
+    "Τα διαθέσιμα στοιχεία δεν επαρκούν",
   );
   expect(f.paid()).toBe(0);
   expect(f.reads()).toBe(0);
@@ -590,20 +635,18 @@ for (const language of ["el", "en"])
       })
       .click();
     const panel = page.getByRole("region", {
-      name: language === "en" ? "Independent Online Predictions" : "Ανεξάρτητες Online Προβλέψεις",
+      name: language === "en" ? "Independent AI assessment" : "Ανεξάρτητη εκτίμηση AI",
     });
     await expect(panel).toContainText(
-      language === "en" ? "Published-pick evidence · V2" : "Τεκμήρια δημοσιευμένων επιλογών · V2",
+      language === "en" ? "Independent AI assessment" : "Ανεξάρτητη εκτίμηση AI",
     );
     const summary = panel.locator("summary").first();
     await summary.focus();
     await page.keyboard.press("Enter");
     await expect(panel.getByRole("link", { name: "Synthetic V2 preview" })).toBeVisible();
-    await expect(panel).toContainText("Our pick is Over 2.5");
-    await expect(panel).toContainText("X/2");
-    await expect(panel).toContainText(
-      language === "en" ? "Provisional · not counted" : "Προσωρινό · δεν προσμετράται",
-    );
+    await expect(panel).toContainText("Over 2.5");
+    await expect(panel).toContainText(language === "en" ? "and" : "και");
+    await expect(panel).not.toContainText(/hash|offset|debug|credits|API calls|fixture_mismatch/i);
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 844 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
@@ -613,12 +656,35 @@ for (const language of ["el", "en"])
     const axe = await new AxeBuilder({ page })
       .include(
         'section[aria-label="' +
-          (language === "en" ? "Independent Online Predictions" : "Ανεξάρτητες Online Προβλέψεις") +
+          (language === "en" ? "Independent AI assessment" : "Ανεξάρτητη εκτίμηση AI") +
           '"]',
       )
       .analyze();
     expect(axe.violations).toEqual([]);
     await page.screenshot({ path: test.info().outputPath(`v2-${language}.png`), fullPage: true });
+    expect(state.paid()).toBe(0);
+    expect(state.reads()).toBe(0);
+  });
+
+for (const mode of ["abstain", "unsupported"] as const)
+  test(`independent AI card ${mode} never manufactures a joint selection`, async ({ page }) => {
+    const state = await fixture(
+      page,
+      true,
+      true,
+      "matched",
+      "el",
+      { home: "Arsenal", away: "Liverpool" },
+      1,
+      false,
+      true,
+      true,
+      mode,
+    );
+    await page.getByRole("button", { name: /^Άρσεναλ – Λίβερπουλ/ }).click();
+    const panel = page.getByRole("region", { name: "Ανεξάρτητη εκτίμηση AI" });
+    await expect(panel).toContainText("Τα διαθέσιμα στοιχεία δεν επαρκούν");
+    await expect(panel).not.toContainText(/offset|hash|credits|API calls|fixture_mismatch/i);
     expect(state.paid()).toBe(0);
     expect(state.reads()).toBe(0);
   });

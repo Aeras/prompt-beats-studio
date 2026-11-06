@@ -103,3 +103,43 @@ Hard call envelope: **3 σειριακές Tavily calls × max 3 documents κα�
 | Ανεξάρτητο PR review / production acceptance            | Όχι         | Παραμένουν release dependencies                                                             |
 
 Στο συνθετικό corpus, κάθε γλωσσικό fixture group (EL/EN/RU, όχι πραγματικό discovery benchmark) έχει 20 περιπτώσεις: 10 positives και 10 negatives, TP10/FP0/FN0. Η ομαδοποίηση αυτή δεν πιστοποιεί τη γλώσσα ολόκληρου άρθρου και οι αρνητικές υποκατηγορίες δεν αποτελούν ισομερή real-world distribution. Για πραγματικές σελίδες EL/EN/RU precision/recall παραμένουν μη εκτιμήσιμα: απαιτείται ανεξάρτητα annotated corpus, όχι αναγωγή από τα συνθετικά ποσοστά.
+
+## 2026-11-06 — Owner-approved completion scope, before edits
+
+Continue same branch/HEAD c3f10edcdaa674498af0266e8332be055bf69fb2. Main remains cc4ac57c (#515), 21 open PRs/no Football overlap. New request supersedes offline-only P1 behavior: real handler must execute EL/EN/RU neutral forecasts plus preserved facts/news, five results each. No paid verification/push/PR/CI/production writes authorized.
+
+Impact/acceptance: expand V2 to 25 sources while preserve V1's 18-source persisted contract (facts/news prioritized there); all 25 feed the actual synthesis. Atomic V2 sidecar retains legacy/Expert rollback compatibility. Add validated independent AST judgment, including two-leg AND only with an exact joint authored claim plus actual provider evidence and explicit joint reasoning; no vote-derived probability or fabricated odds. Replace diagnostic results panel with compact opinion/source disclosure. Revise consent to the exact five-query profile, journal per-search unknown/observed receipts before/after dispatch, preserve failure usage/idempotency. Calculate conservative input/output/search envelope and stored-tariff estimate before calls; unknown tariff remains unknown, never zero or age-blocked. Enforce a documented output allowance and shared server deadline to fit the 170s hosting boundary, not hidden paid retries. Music default untouched. Test real handler + transport, five languages/intent queries/result limits, 25-source reach, combos/abstention/cutoff/auth/failure receipts, legacy/Expert compatibility, full suite/build/mobile/axe/SQL races. Real coverage/precision still unmeasured without authorized live retrieval.
+
+## Ολοκλήρωση πραγματικής runtime ροής — 6 Νοεμβρίου 2026
+
+Η παρούσα ενότητα υπερισχύει της παλαιότερης offline-only περιγραφής. Το πραγματικό server handler καλεί τον planner P1-Preserve: ελληνικά, αγγλικά, ρωσικά προγνωστικά, στατιστικά και ειδήσεις/απουσίες. Κάθε αναζήτηση ζητά έως πέντε αποτελέσματα. Χρησιμοποιούνται reviewed aliases και ημερομηνία στην κατάλληλη ζώνη· όπου λείπει reviewed native alias χρησιμοποιείται Latin fallback. Άγνωστη/αμφίβολη έδρα ή ημερομηνία δεν μετατρέπεται σε επιβεβαιωμένη πηγή.
+
+Όλα τα έως 25 documents υποβάλλονται στη V2 επαλήθευση και στη μία σύνθεση. Τα δέκα facts/news προηγούνται στην 18-source συμβατή προβολή V1. Η αυστηρή ιστορική analysis JSON παραμένει V1· το versioned sources sidecar μεταφέρει V2 με fixture/cutoff binding. Δεν απαιτείται migration. Δεν αλλάζουν κύρια ποσοστά, odds validation, JoJ, Music defaults ή opt-in Expert.
+
+Η «Ανεξάρτητη εκτίμηση AI» δείχνει μόνο επιλογή ή αποχή, αιτιολόγηση, συνοπτική συμφωνία/διαφωνία και πραγματικούς συνδέσμους. Τα votes είναι γνώμες πηγών, όχι πιθανότητες. Ο server ελέγχει literal quotes, claim IDs και επιτρεπόμενα evidence URLs πριν αποθηκεύσει judgment. Συνδυασμός απαιτεί τεκμηρίωση ολόκληρου authored AND, αντίστοιχο countable claim, πραγματικό provider evidence και ειδική κοινή αιτιολόγηση. Αντιφατικοί συνδυασμοί ή δύο δημοφιλή ανεξάρτητα σκέλη δεν αρκούν. Άκυρο judgment οδηγεί σε αποχή χωρίς απώλεια της έγκυρης κύριας ανάλυσης.
+
+### Κόστος και αστοχίες
+
+Η συναίνεση φέρει νέο version και δηλώνει πέντε searches/έως25 αποτελέσματα/μία AI σύνθεση. Πριν από dispatch υπολογίζεται φάκελος πόρων και αποθηκευμένων τιμών: basic5 ή advanced10 ενδεικτικά credits, output16.384 tokens, prompt262.144 UTF-8 bytes, conservative input allowance bytes+4.096 framing. Δεν είναι ακριβής tokenizer μέτρηση ούτε εγγυημένο τιμολόγιο. Άγνωστη τιμή παραμένει null, δεν μπλοκάρει βάσει ηλικίας και δεν εμφανίζεται ως μηδενικό κόστος. Δεν γίνεται αυτόματη χρηματική προχρέωση.
+
+Shared request/150s abort, επιμέρους15s search και90s model, bounded DB CAS/journals, εγγραφή unconfirmed πριν την κλήση και observed usage μετά. Cancellation ή αβέβαιη απόκριση δεν προκαλεί αυτόματη επανάληψη. Καμία πρόσθετη extract/LLM κλήση. Πραγματική συμπεριφορά hosting/model/quota επαληθεύεται μόνο μετά από χωριστά εγκεκριμένο release.
+
+### Αποτελέσματα ελέγχων
+
+| Έλεγχος                                       | Πραγματικό αποτέλεσμα                                                                       |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Focused tests                                 | 133 PASS                                                                                    |
+| Πλήρης Bun, LF-equivalent source              | 1.899 PASS, 0 FAIL, 1 προϋπάρχον PHP parity skip, 28.994 assertions/232 files               |
+| TypeScript / scoped ESLint / Prettier / build | PASS                                                                                        |
+| Browser                                       | 66/66 PASS, EL/EN, 320/390px, keyboard/axe, ιστορικό, combo/abstain· οπτικός έλεγχος mobile |
+| Native workerd transport                      | 19 PASS, συμπεριλαμβανομένων5 sequential ×5                                                 |
+| Local SQL/ACL/RLS/concurrency                 | PASS, 12 ανεξάρτητες sessions, reservation/recovery/last-slot races                         |
+| Remote τρία gates                             | Δεν εκτελέστηκαν: απαιτείται έγκριση push/PR                                                |
+
+Μία προηγούμενη concurrent full εκτέλεση παρουσίασε5s timeout σε άσχετο Atlas isolation test. Η πλήρης επανάληψη στα κανονικά όρια πέρασε χωρίς αλλαγή του test. Το scoped lint είναι καθαρό· δεν δηλώνεται επίλυση των197 παλαιών global lint errors σε25 αμετάβλητα αρχεία. Η SQL δοκιμή αφορά απομονωμένη συνθετική βάση χωρίς δίκτυο/mounts, όχι παραγωγή ή πλήρες managed Supabase.
+
+Οι integration δοκιμές εκτελούν τον πραγματικό handler με offline mocks: δέκα διαδοχικές έρευνες, σωστά5 queries/max_results, διατήρηση stats/news/κύριων πιθανοτήτων, supported combo/abstain/invalid judgment, παλιά συναίνεση, auth/admission denial, journal failure, cancellation, timeout, receipts και duplicate request. Δεν κατασκευάζονται πραγματικές επιδόσεις αναζήτησης: το corpus60 είναι synthetic, τα9 incident extracts πραγματικά αλλά ήδη truncated. Real discovery recall/precision και κάλυψη πηγών παραμένουν NOT_MEASURED.
+
+### Release και ανάκαμψη
+
+Τοπικό code-complete, ledger IN_PROGRESS. Απαιτούνται χωριστή έγκριση για ένα consolidated push/Draft PR, τρία πράσινα gates στο ακριβές HEAD και ανεξάρτητο diff review. Κατόπιν ξεχωριστή έγκριση publish και οριοθετημένου live ελέγχου με ρητή συναίνεση κόστους. Δεν χρειάζεται νέα SQL migration. Σε rollback διατηρούνται ιστορικά JSON/receipts· δεν διαγράφονται V2 sidecars ούτε επανεκτελούνται άγνωστες πληρωμένες κλήσεις. Η παλιά έκδοση διαβάζει το strict V1 analysis, ενώ παλιά client requests προς νέο server απαιτούν refresh λόγω consent version.
