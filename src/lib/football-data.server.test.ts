@@ -7,7 +7,7 @@ describe("football-data.org weekly adapter", () => {
       const url = new URL(String(input));
       expect(url.pathname).toBe("/v4/competitions/PL/matches");
       expect(url.searchParams.get("dateFrom")).toBe("2026-10-26");
-      expect(url.searchParams.get("dateTo")).toBe("2026-11-01");
+      expect(url.searchParams.get("dateTo")).toBe("2026-11-02");
       expect((init?.headers as Record<string, string>)["X-Auth-Token"]).toBe("fake-token");
       return new Response(
         JSON.stringify({

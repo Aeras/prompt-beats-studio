@@ -1,3 +1,4 @@
+import { footballDataExclusiveEnd } from "./football-data-dates.shared";
 import { parseEspnScoreboard, ESPN_LEAGUE_CODES } from "./football-espn.server";
 import { fetchEspnMatchContext } from "./football-espn-context.server";
 import { footballSourceJson, FootballSourceError } from "./football-source-http.server";
@@ -475,8 +476,10 @@ export async function collectFootballProviderEvidence(
             if (!code) throw new FootballSourceError("unsupported");
             const origin = "https://api.football-data.org/v4",
               headers = { "X-Auth-Token": apiKey! };
-            const parse = (body: unknown): Match[] =>
-              arr(obj(body)["matches"]).flatMap((raw) => {
+            const parse = (body: unknown): Match[] => {
+              if (!Array.isArray(obj(body)["matches"]))
+                throw new FootballSourceError("invalid_response");
+              return arr(obj(body)["matches"]).flatMap((raw) => {
                 const x = obj(raw),
                   h = obj(x["homeTeam"]),
                   a = obj(x["awayTeam"]),
@@ -500,12 +503,13 @@ export async function collectFootballProviderEvidence(
                     ]
                   : [];
               });
+            };
             const day = target.kickoffUtc.slice(0, 10),
               match = uniqueMatch(
                 target,
                 parse(
                   await get(
-                    `${origin}/competitions/${code}/matches?dateFrom=${day}&dateTo=${day}`,
+                    `${origin}/competitions/${code}/matches?dateFrom=${day}&dateTo=${footballDataExclusiveEnd(day)}`,
                     headers,
                   ),
                 ),

@@ -125,4 +125,30 @@ BEGIN
 END;
 $$;
 
+-- Explicitly exceed the removed hourly cap on both legacy/provider-specific paths.
+DO $$
+DECLARE v uuid := 'fea70000-0000-4000-8000-000000000003'; r jsonb; i integer; kind integer; blocked boolean;
+BEGIN
+ INSERT INTO auth.users(id,email) VALUES(v,'football-unlimited@example.invalid');
+ INSERT INTO public.user_roles(user_id,role,moderation_status) VALUES(v,'super_admin','active') ON CONFLICT (user_id) DO UPDATE SET role=excluded.role,moderation_status=excluded.moderation_status;
+ FOR kind IN 1..2 LOOP
+  FOR i IN 1..8 LOOP
+   IF kind=1 THEN
+    r := public.claim_private_football_research_run(v,gen_random_uuid(),700+i,'IT-SA','Home','Away',now()+interval '2 days','offline/test');
+   ELSE
+    r := public.claim_private_football_research_run_v2(v,gen_random_uuid(),800+i,'IT-SA','Home','Away',now()+interval '2 days','offline/test','espn');
+   END IF;
+   PERFORM pg_temp.assert(r->>'status'='claimed','More than five completed/failed attempts per hour must be permitted');
+   blocked := false;
+   BEGIN
+    PERFORM public.claim_private_football_research_run_v2(v,gen_random_uuid(),900+i,'IT-SA','Home','Away',now()+interval '2 days','offline/test','espn');
+   EXCEPTION WHEN OTHERS THEN blocked := SQLERRM='football research already processing'; END;
+   PERFORM pg_temp.assert(blocked,'In-flight concurrency exclusion must remain');
+   UPDATE public.private_football_research_runs SET status='failed',completed_at=now(),error_code='offline_test'
+    WHERE id=(r->>'id')::uuid;
+  END LOOP;
+ END LOOP;
+ PERFORM pg_temp.assert((SELECT count(*)=16 FROM public.private_football_research_runs WHERE user_id=v),'All 16 serial attempts must be recorded');
+END $$;
+
 ROLLBACK;
