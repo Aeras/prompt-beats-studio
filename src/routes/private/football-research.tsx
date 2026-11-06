@@ -1,3 +1,6 @@
+import { BookmakerOddsPanel } from "@/components/football/BookmakerOddsPanel";
+import { useI18n } from "@/i18n";
+import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -99,6 +102,7 @@ const field =
   "w-full rounded-xl border border-white/15 bg-[#101d32] px-3 py-3 text-sm text-slate-50 outline-none focus:border-cyan-400";
 
 function PrivateFootballResearchPage() {
+  const { language } = useI18n();
   const { user, loading } = useAuth();
   const setup = useQuery({
     queryKey: ["private-football-research-setup", user?.id],
@@ -460,6 +464,10 @@ function PrivateFootballResearchPage() {
                     : "Χωρίς κλειδί"}
               </span>
             ))}
+            <span className="rounded-lg border border-white/15 px-3 py-2">
+              JoJ / Stoiximan Odds ·{" "}
+              {setup.data.bookmakerOddsConfigured ? "Κλειδί ρυθμισμένο" : "Χωρίς ενεργή ρύθμιση"}
+            </span>
           </div>
           <p className="mt-2 text-xs text-slate-300">
             Η ανάλυση αξιοποιεί όλες τις διαθέσιμες συνδέσεις, ανεξάρτητα από τον πάροχο της λίστας
@@ -607,7 +615,7 @@ function PrivateFootballResearchPage() {
                       className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3 sm:flex"
                     >
                       <input
-                        aria-label={`Επιλογή αγώνα ${f.homeTeam} – ${f.awayTeam}`}
+                        aria-label={`Επιλογή αγώνα ${footballTeamDisplayName(f.homeTeam, language)} – ${footballTeamDisplayName(f.awayTeam, language)}`}
                         type="checkbox"
                         disabled={!canAnalyze || working}
                         checked={selected.includes(key)}
@@ -616,7 +624,8 @@ function PrivateFootballResearchPage() {
                       />
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-white">
-                          {f.homeTeam} – {f.awayTeam}
+                          {footballTeamDisplayName(f.homeTeam, language)} –{" "}
+                          {footballTeamDisplayName(f.awayTeam, language)}
                         </p>
                         <p className="text-xs text-slate-400">
                           {new Date(f.kickoffUtc).toLocaleString("el-GR", {
@@ -641,7 +650,7 @@ function PrivateFootballResearchPage() {
                             type="button"
                             onClick={() => setProviderPreview(f.sourceFixtureId)}
                             className="min-h-11 rounded-lg border border-cyan-400/40 px-3 py-2 text-xs text-cyan-200"
-                            aria-label={`Στοιχεία παρόχων ${f.homeTeam} – ${f.awayTeam}`}
+                            aria-label={`Στοιχεία παρόχων ${footballTeamDisplayName(f.homeTeam, language)} – ${footballTeamDisplayName(f.awayTeam, language)}`}
                           >
                             Στοιχεία παρόχων
                           </button>
@@ -664,6 +673,9 @@ function PrivateFootballResearchPage() {
                   </p>
                 )}
                 {providerDetails.data && <ProviderEvidencePanel data={providerDetails.data} />}
+                {providerDetails.data?.bookmakerOddsSnapshot && (
+                  <BookmakerOddsPanel snapshot={providerDetails.data.bookmakerOddsSnapshot} />
+                )}
               </div>
             )}
           </section>
@@ -709,7 +721,7 @@ function PrivateFootballResearchPage() {
                     {clearMode === "selected" && entry.status !== "processing" && (
                       <input
                         type="checkbox"
-                        aria-label={`Επιλογή ανάλυσης ${entry.home_team} – ${entry.away_team}`}
+                        aria-label={`Επιλογή ανάλυσης ${footballTeamDisplayName(entry.home_team, language)} – ${footballTeamDisplayName(entry.away_team, language)}`}
                         checked={clearSelected.includes(entry.id)}
                         onChange={() =>
                           setClearSelected((prev) =>
@@ -729,7 +741,8 @@ function PrivateFootballResearchPage() {
                     >
                       <span className="min-w-0">
                         <span className="block font-bold text-white">
-                          {entry.home_team} – {entry.away_team}
+                          {footballTeamDisplayName(entry.home_team, language)} –{" "}
+                          {footballTeamDisplayName(entry.away_team, language)}
                         </span>
                         <span className="mt-1 block text-xs text-slate-400">
                           {new Date(entry.created_at).toLocaleDateString("el-GR")} ·{" "}
@@ -758,6 +771,13 @@ function PrivateFootballResearchPage() {
                     <div className="space-y-4 border-t border-white/10 p-4">
                       {entry.analysis ? (
                         <>
+                          {entry.analysis.bookmakerOddsSnapshot && (
+                            <BookmakerOddsPanel
+                              snapshot={entry.analysis.bookmakerOddsSnapshot}
+                              estimates={entry.analysis.estimates ?? []}
+                              outcomes={entry.quoteOutcomes}
+                            />
+                          )}
                           {entry.analysis.providerEvidence && (
                             <ProviderEvidencePanel data={entry.analysis.providerEvidence} />
                           )}
@@ -863,7 +883,7 @@ function PrivateFootballResearchPage() {
                                 {entry.expertReview.decision.primary && (
                                   <>
                                     <p>
-                                      {`Εμπιστοσύνη: ${entry.expertReview.decision.primary.confidence} · εκτίμηση: ${entry.expertReview.decision.primary.percent ?? "—"}%`}
+                                      {`Υποκειμενική εμπιστοσύνη αναλυτή: ${entry.expertReview.decision.primary.confidence} · εκτίμηση: ${entry.expertReview.decision.primary.percent ?? "—"}%`}
                                     </p>
                                     <p>
                                       Κύριος κίνδυνος:{" "}

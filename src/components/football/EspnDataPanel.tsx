@@ -1,3 +1,5 @@
+import { useI18n } from "@/i18n";
+import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
 import type { FootballEspnContext } from "@/lib/football-espn-context.shared";
 
 type Team = FootballEspnContext["home"];
@@ -49,9 +51,12 @@ function People({ title, items, empty }: { title: string; items: Person[]; empty
 }
 
 export function FootballTeamData({ side }: { side: Team }) {
+  const { language } = useI18n();
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-[#111c2c] p-3">
-      <h4 className="text-base font-bold text-white">{side.name}</h4>
+      <h4 className="text-base font-bold text-white">
+        {footballTeamDisplayName(side.name, language)}
+      </h4>
       <p className="mt-1 text-xs text-slate-300">
         Βαθμολογική θέση: {side.standing?.rank ?? "Μη διαθέσιμη"}
       </p>
@@ -67,7 +72,8 @@ export function FootballTeamData({ side }: { side: Team }) {
               <li key={game.id + game.kickoffUtc}>
                 {game.kickoffUtc.slice(0, 10)} · {game.homeAway === "home" ? "Εντός" : "Εκτός"}
                 {" · "}
-                {game.opponent} · {game.goalsFor}–{game.goalsAgainst}
+                {footballTeamDisplayName(game.opponent, language)} · {game.goalsFor}–
+                {game.goalsAgainst}
                 {game.xg !== undefined && game.xga !== undefined
                   ? ` · xG ${game.xg} / xGA ${game.xga}`
                   : ""}

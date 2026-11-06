@@ -14,7 +14,13 @@ const user = {
   user_metadata: {},
   created_at: "2026-01-01T00:00:00Z",
 };
-async function fixture(page: Page, authorized = true, history = false) {
+async function fixture(
+  page: Page,
+  authorized = true,
+  history = false,
+  oddsStatus = "matched",
+  language = "el",
+) {
   const token =
     [
       { alg: "HS256", typ: "JWT" },
@@ -22,6 +28,10 @@ async function fixture(page: Page, authorized = true, history = false) {
     ]
       .map((x) => Buffer.from(JSON.stringify(x)).toString("base64url"))
       .join(".") + ".offline";
+  await page.addInitScript(
+    (language) => localStorage.setItem("pb:interface-language", language),
+    language,
+  );
   await page.addInitScript(
     ({ user, token }) =>
       localStorage.setItem(
@@ -57,13 +67,13 @@ async function fixture(page: Page, authorized = true, history = false) {
   const kickoffUtc = new Date(Date.now() + 86400000).toISOString();
   const side = {
     id: "10",
-    name: "Home United",
+    name: "Arsenal",
     standing: null,
     recentResults: [
       {
         id: "1",
         kickoffUtc: "2026-10-01T12:00:00Z",
-        opponent: "Away City",
+        opponent: "Liverpool",
         homeAway: "home" as const,
         goalsFor: 2,
         goalsAgainst: 1,
@@ -76,17 +86,41 @@ async function fixture(page: Page, authorized = true, history = false) {
     matchStatistics: [],
     teamStatistics: [],
   };
+  const bookmakerOddsSnapshot = {
+    version: 1,
+    provider: "arbplay-stoiximan",
+    status: oddsStatus,
+    retrievedAtUtc: new Date().toISOString(),
+    observedAtUtc: new Date().toISOString(),
+    fixture: { leagueId: "EN-PL", homeTeam: "Arsenal", awayTeam: "Liverpool", kickoffUtc },
+    providerFixtureId: "odds999",
+    sourceFiles: ["site_pregame_stoiximan_soccer_leagues.json"],
+    notes: ["Αποδόσεις αρχείου, όχι εγγύηση."],
+    quotes:
+      oddsStatus !== "matched"
+        ? []
+        : ["home_win", "draw", "away_win"].map((market, i) => ({
+            market,
+            selectionId: "s" + i,
+            providerMarketId: "m1",
+            decimal: [2, 3.5, 4][i],
+            line: null,
+            observedAtUtc: new Date().toISOString(),
+            retrievedAtUtc: new Date().toISOString(),
+            sourceFile: "site_pregame_stoiximan_soccer_leagues.json",
+          })),
+  };
   const snapshot: FootballProviderEvidence = {
     version: 1,
     collectedAtUtc: new Date().toISOString(),
-    fixture: { leagueId: "EN-PL", homeTeam: "Home United", awayTeam: "Away City", kickoffUtc },
+    fixture: { leagueId: "EN-PL", homeTeam: "Arsenal", awayTeam: "Liverpool", kickoffUtc },
     conflicts: ["Διαφωνία δύο πηγών: τα σκορ διατηρούνται χωριστά."],
     providers: FOOTBALL_EVIDENCE_PROVIDERS.map((provider) => ({
       provider,
       status: provider === "football-data" ? "rate_limited" : "ok",
       fixtureId: "999",
       home: side,
-      away: { ...side, id: "20", name: "Away City" },
+      away: { ...side, id: "20", name: "Liverpool" },
       resources: [
         {
           url:
@@ -123,6 +157,7 @@ async function fixture(page: Page, authorized = true, history = false) {
           { id: "football-data", label: "football-data.org", configured: true },
         ],
         evidenceProviders: FOOTBALL_EVIDENCE_PROVIDERS.map((id) => ({ id, configured: true })),
+        bookmakerOddsConfigured: true,
         tavilyConfigured: true,
         liveFixturesConfigured: true,
         aiAnalysisEnabled: false,
@@ -137,8 +172,8 @@ async function fixture(page: Page, authorized = true, history = false) {
             source: "espn",
             sourceFixtureId: "999",
             leagueId: "EN-PL",
-            homeTeam: "Home United",
-            awayTeam: "Away City",
+            homeTeam: "Arsenal",
+            awayTeam: "Liverpool",
             kickoffUtc,
             state: "scheduled",
             fetchedAtUtc: new Date().toISOString(),
@@ -147,7 +182,7 @@ async function fixture(page: Page, authorized = true, history = false) {
       };
     } else if (name.includes("getPrivateFootballProviderEvidence")) {
       reads++;
-      result = snapshot;
+      result = { ...snapshot, bookmakerOddsSnapshot };
     } else if (name.includes("getPrivateFootballResearchHistory"))
       result = history
         ? [
@@ -156,8 +191,8 @@ async function fixture(page: Page, authorized = true, history = false) {
               source: "espn",
               fixture_id: 999,
               league_id: "EN-PL",
-              home_team: "Home United",
-              away_team: "Away City",
+              home_team: "Arsenal",
+              away_team: "Liverpool",
               model_id: "offline-model",
               kickoff_utc: kickoffUtc,
               created_at: new Date().toISOString(),
@@ -171,10 +206,12 @@ async function fixture(page: Page, authorized = true, history = false) {
                 estimates: [],
                 limitations: [],
                 providerEvidence: snapshot,
+                bookmakerOddsSnapshot,
               },
               sources: [],
               usage: null,
               outcomes: [],
+              quoteOutcomes: [],
             },
           ]
         : [];
@@ -193,7 +230,7 @@ test("ESPN is automatic default; all source statuses, touch/keyboard preview and
   await expect(page.getByRole("region", { name: "Συνδέσεις πηγών ανάλυσης" })).toContainText(
     "PitchAPI",
   );
-  const button = page.getByRole("button", { name: "Στοιχεία παρόχων Home United – Away City" });
+  const button = page.getByRole("button", { name: "Στοιχεία παρόχων Άρσεναλ – Λίβερπουλ" });
   await expect(button).toBeVisible();
   await button.click();
   const panel = page.getByRole("region", { name: "Στοιχεία όλων των παρόχων" });
@@ -208,11 +245,18 @@ test("ESPN is automatic default; all source statuses, touch/keyboard preview and
   await page.keyboard.press("Enter");
   await expect(pitch).toHaveAttribute("open", "");
   await expect(pitch).toContainText("xG 1.9 / xGA 0.8");
+  await expect(page.getByRole("region", { name: "Αποδόσεις Stoiximan" })).toContainText(
+    "Άρσεναλ – Λίβερπουλ",
+  );
+  await expect(page.getByRole("region", { name: "Αποδόσεις Stoiximan" })).toContainText(
+    "Αγορά χωρίς γκανιότα",
+  );
   expect(f.reads()).toBe(1);
   expect(f.paid()).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const audit = await new AxeBuilder({ page })
     .include('[aria-label="Στοιχεία όλων των παρόχων"]')
+    .include('[aria-label="Αποδόσεις Stoiximan"]')
     .withTags(["wcag2a", "wcag2aa"])
     .analyze();
   expect(audit.violations).toEqual([]);
@@ -245,7 +289,7 @@ test("switching fixture picker keeps all sources in preview, without triggering 
 }) => {
   const f = await fixture(page);
   await page.getByLabel("Πάροχος αγώνων").selectOption("api-football");
-  await page.getByRole("button", { name: "Στοιχεία παρόχων Home United – Away City" }).click();
+  await page.getByRole("button", { name: "Στοιχεία παρόχων Άρσεναλ – Λίβερπουλ" }).click();
   await expect(page.getByRole("region", { name: "Στοιχεία όλων των παρόχων" })).toContainText(
     "PitchAPI",
   );
@@ -264,13 +308,44 @@ test("saved multi-provider evidence expands repeatedly without fresh provider re
   page,
 }) => {
   const f = await fixture(page, true, true);
-  const card = page.getByRole("button", { name: /^Home United – Away City/ });
+  const card = page.getByRole("button", { name: /^Άρσεναλ – Λίβερπουλ/ });
   await card.click();
   await expect(page.getByRole("region", { name: "Στοιχεία όλων των παρόχων" })).toContainText(
     "PitchAPI",
   );
+  await expect(page.getByRole("region", { name: "Αποδόσεις Stoiximan" })).toContainText(
+    "Αγορά χωρίς γκανιότα",
+  );
   await card.click();
   await card.click();
   expect(f.reads()).toBe(0);
+  expect(f.paid()).toBe(0);
+});
+
+for (const [status, label] of [
+  ["stale", "Μη πρόσφατες αποδόσεις"],
+  ["quota_exhausted", "Εξαντλήθηκε η ποσόστωση παρόχου"],
+])
+  test(`odds unavailable state ${status} is explicit with no quotes or paid call`, async ({
+    page,
+  }) => {
+    const f = await fixture(page, true, false, status);
+    await page.getByRole("button", { name: "Στοιχεία παρόχων Άρσεναλ – Λίβερπουλ" }).click();
+    const panel = page.getByRole("region", { name: "Αποδόσεις Stoiximan" });
+    await expect(panel).toContainText(label!);
+    await expect(panel).not.toContainText("Αγορά χωρίς γκανιότα");
+    expect(f.paid()).toBe(0);
+  });
+test("English account keeps original team names in fixtures and odds; source identity unchanged", async ({
+  page,
+}) => {
+  const f = await fixture(page, true, false, "matched", "en");
+  await expect(
+    page.getByRole("checkbox", { name: "Επιλογή αγώνα Arsenal – Liverpool" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Στοιχεία παρόχων Arsenal – Liverpool" }).click();
+  await expect(page.getByRole("region", { name: "Αποδόσεις Stoiximan" })).toContainText(
+    "Arsenal – Liverpool",
+  );
   expect(f.paid()).toBe(0);
 });

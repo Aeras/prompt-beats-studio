@@ -168,7 +168,20 @@ export function providerEvidenceUrls(bundle: FootballProviderEvidence): string[]
 /** Optional history fields are server-owned, even if the model echoes a valid-shaped copy. */
 export function withoutFootballSourceMetadata<T extends object>(assessment: T) {
   const result = { ...assessment } as Record<string, unknown>;
-  for (const key of ["espnData", "providerEvidence", "researchBrief", "tavilySearchDepth"])
+  for (const key of [
+    "espnData",
+    "providerEvidence",
+    "researchBrief",
+    "tavilySearchDepth",
+    "bookmakerOddsSnapshot",
+  ])
     delete result[key];
-  return result as Omit<T, "espnData" | "providerEvidence" | "researchBrief" | "tavilySearchDepth">;
+  return result as Omit<
+    T,
+    | "espnData"
+    | "providerEvidence"
+    | "researchBrief"
+    | "tavilySearchDepth"
+    | "bookmakerOddsSnapshot"
+  >;
 }

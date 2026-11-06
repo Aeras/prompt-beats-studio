@@ -99,6 +99,8 @@ jobs:
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/ai_usage_recovery.sql
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/private_football_research.sql
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/private_football_ai_search.sql
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/football_odds.sql
+          python3 scripts/tests/football-odds-races.py "supabase_db_$PROJECT_ID"
           bash scripts/tests/ai-usage-db-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/upload_integrity.sql
           bash scripts/tests/upload-receipt-races.sh "$PROJECT_ID"

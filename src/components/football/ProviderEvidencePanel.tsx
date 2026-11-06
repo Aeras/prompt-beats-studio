@@ -1,3 +1,5 @@
+import { useI18n } from "@/i18n";
+import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
 import { FOOTBALL_AI_DISCOVERY_LEAGUES } from "@/lib/football-research.shared";
 import {
   FOOTBALL_EVIDENCE_LABELS,
@@ -8,6 +10,7 @@ import { FootballTeamData } from "./EspnDataPanel";
 
 /** Exact persisted server snapshot; never triggers a new provider or AI request. */
 export function ProviderEvidencePanel({ data }: { data: FootballProviderEvidence }) {
+  const { language } = useI18n();
   return (
     <section
       aria-label="Στοιχεία όλων των παρόχων"
@@ -15,7 +18,8 @@ export function ProviderEvidencePanel({ data }: { data: FootballProviderEvidence
     >
       <h3 className="font-bold text-cyan-200">Στοιχεία όλων των παρόχων</h3>
       <p className="text-xs text-slate-300">
-        {data.fixture.homeTeam} – {data.fixture.awayTeam} ·{" "}
+        {footballTeamDisplayName(data.fixture.homeTeam, language)} –{" "}
+        {footballTeamDisplayName(data.fixture.awayTeam, language)} ·{" "}
         {FOOTBALL_AI_DISCOVERY_LEAGUES.find((l) => l.id === data.fixture.leagueId)?.label ??
           data.fixture.leagueId}
       </p>
