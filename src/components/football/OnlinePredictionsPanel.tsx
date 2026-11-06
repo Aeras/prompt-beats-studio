@@ -2,6 +2,7 @@ import { useI18n } from "@/i18n";
 import { independentMessages, legacyMarketAst } from "@/i18n/football-independent-assessment";
 import { footballEvidenceMarketLabel } from "@/i18n/football-evidence-v2";
 import {
+  footballPublicRationale,
   descriptiveMarketKey,
   descriptiveMarketFamily,
   type FootballClaimLedger,
@@ -30,7 +31,7 @@ export function OnlinePredictionsPanel({
       : legacy?.decision === "lean" && legacy.primary
         ? legacyMarketAst(legacy.primary)
         : undefined;
-  const rationale = judgment?.rationale ?? legacy?.rationale;
+  const rationale = footballPublicRationale(judgment?.rationale ?? legacy?.rationale);
   const oldGroup =
     !evidenceV2 && legacy?.primary
       ? data?.groups.find((g) => g.family === predictionMarketFamily(legacy.primary!))
@@ -72,6 +73,9 @@ export function OnlinePredictionsPanel({
         </p>
       ) : (
         <p className="text-sm">{t.abstain}</p>
+      )}
+      {selection && !group?.eligibleOrigins && (
+        <p className="text-xs text-muted-foreground">{t.providerOnly}</p>
       )}
       {rationale && <p className="break-words text-sm">{rationale}</p>}
       {group && group.eligibleOrigins > 0 ? (

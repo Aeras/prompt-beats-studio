@@ -29,7 +29,7 @@ async function fixture(
   allowResearch = false,
   online = false,
   evidenceV2 = false,
-  judgmentMode: "combo" | "abstain" | "unsupported" = "combo",
+  judgmentMode: "combo" | "abstain" | "unsupported" | "provider-only" = "combo",
 ) {
   const token =
     [
@@ -251,22 +251,35 @@ async function fixture(
                             ? {
                                 decision: "abstain",
                                 rationale:
-                                  "The synthetic evidence is insufficient for a defensible independent choice.",
+                                  "The synthetic evidence is insufficient for a defensible independent choice. No onlineEvidenceV2 claimId is available.",
                                 supportingClaimIds: [],
                                 evidenceUrls: [],
                               }
                             : {
                                 decision: "lean",
-                                selection: {
-                                  kind: "and",
-                                  legs: [
-                                    { kind: "btts", period: "FT", selection: "yes" },
-                                    { kind: "total", period: "FT", selection: "over", line: 2.5 },
-                                  ],
-                                },
+                                selection:
+                                  judgmentMode === "provider-only"
+                                    ? { kind: "dc", period: "FT", selection: "X2" }
+                                    : {
+                                        kind: "and",
+                                        legs: [
+                                          { kind: "btts", period: "FT", selection: "yes" },
+                                          {
+                                            kind: "total",
+                                            period: "FT",
+                                            selection: "over",
+                                            line: 2.5,
+                                          },
+                                        ],
+                                      },
                                 rationale:
-                                  "Independent assessment of the supplied form supports the conjunction, with uncertainty.",
-                                supportingClaimIds: judgmentMode === "unsupported" ? [] : [0],
+                                  judgmentMode === "provider-only"
+                                    ? "Independent match-data assessment without comparable published forecasts."
+                                    : "Independent assessment of the supplied form supports the conjunction, with uncertainty.",
+                                supportingClaimIds:
+                                  judgmentMode === "unsupported" || judgmentMode === "provider-only"
+                                    ? []
+                                    : [0],
                                 evidenceUrls: [
                                   ledger.sources[0]!.url,
                                   snapshot.providers[0]!.resources[0]!.url,
@@ -275,7 +288,9 @@ async function fixture(
                                   "The exact authored conjunction is compared with real supplied match data rather than combining two popular votes.",
                               };
                         return attachIndependentAssessment(
-                          ledger,
+                          judgmentMode === "provider-only"
+                            ? { ...ledger, claims: [], groups: [], sourceCount: 0 }
+                            : ledger,
                           opinion,
                           providerEvidenceUrls(snapshot),
                         );
@@ -666,7 +681,7 @@ for (const language of ["el", "en"])
     expect(state.reads()).toBe(0);
   });
 
-for (const mode of ["abstain", "unsupported"] as const)
+for (const mode of ["abstain", "unsupported", "provider-only"] as const)
   test(`independent AI card ${mode} never manufactures a joint selection`, async ({ page }) => {
     const state = await fixture(
       page,
@@ -683,8 +698,45 @@ for (const mode of ["abstain", "unsupported"] as const)
     );
     await page.getByRole("button", { name: /^Άρσεναλ – Λίβερπουλ/ }).click();
     const panel = page.getByRole("region", { name: "Ανεξάρτητη εκτίμηση AI" });
-    await expect(panel).toContainText("Τα διαθέσιμα στοιχεία δεν επαρκούν");
-    await expect(panel).not.toContainText(/offset|hash|credits|API calls|fixture_mismatch/i);
+    if (mode === "provider-only") {
+      await expect(panel).toContainText("Εκτίμηση από τα αγωνιστικά στοιχεία");
+      await expect(panel).toContainText("X2");
+      await expect(panel).not.toContainText(/Συμφωνία αναλυτών: \d/);
+    } else await expect(panel).toContainText("Τα διαθέσιμα στοιχεία δεν επαρκούν");
+    await expect(panel).not.toContainText(
+      /onlineEvidenceV2|claimId|offset|hash|credits|API calls|fixture_mismatch/i,
+    );
     expect(state.paid()).toBe(0);
     expect(state.reads()).toBe(0);
   });
+
+test("Tavily heading stays fully inside its card above Basic/Advanced at 320 and 390", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  const card = page.locator('fieldset[aria-labelledby="football-tavily-title"]');
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await card.scrollIntoViewIfNeeded();
+    const frame = (await card.boundingBox())!,
+      heading = (await page.locator("#football-tavily-title").boundingBox())!;
+    expect(heading.y).toBeGreaterThan(frame.y + 1);
+    expect(heading.x).toBeGreaterThan(frame.x);
+    expect(heading.x + heading.width).toBeLessThanOrEqual(frame.x + frame.width);
+    expect(
+      (await card.getByText("Basic", { exact: true }).boundingBox())!.y,
+    ).toBeGreaterThanOrEqual(heading.y + heading.height);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  }
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('fieldset[aria-labelledby="football-tavily-title"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath("tavily-inside.png"), fullPage: true });
+  expect(state.paid()).toBe(0);
+});

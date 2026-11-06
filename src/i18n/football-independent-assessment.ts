@@ -6,6 +6,8 @@ export const independentMessages = {
     sources: "Πηγές",
     agreement: "Συμφωνία αναλυτών",
     disagreement: "Διαφορετικές εκτιμήσεις",
+    providerOnly:
+      "Εκτίμηση από τα αγωνιστικά στοιχεία, χωρίς επιβεβαιωμένη συμφωνία δημοσιευμένων προγνωστικών.",
     noConsensus: "Δεν υπάρχει επαρκής σύγκριση ανεξάρτητων προγνωστικών.",
     opinions: "γνώμες πηγών, όχι πιθανότητα επιτυχίας",
     none: "Δεν υπάρχουν διαθέσιμες επαληθεύσιμες πηγές για αυτή την εκτίμηση.",
@@ -19,6 +21,8 @@ export const independentMessages = {
     sources: "Sources",
     agreement: "Analyst agreement",
     disagreement: "Different assessments",
+    providerOnly:
+      "Assessment based on match data, without confirmed agreement among published forecasts.",
     noConsensus: "Insufficient comparable independent forecasts.",
     opinions: "source opinions, not a probability of success",
     none: "No checkable sources are available for this assessment.",

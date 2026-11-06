@@ -62,6 +62,7 @@ for (const [iteration, mode] of (
     "journal-failure",
     "old-consent",
     "cancelled",
+    "incident-score",
   ] as const
 ).entries())
   test(`actual research handler ${iteration}: ${mode}, five searches, one paid attempt, authoritative provenance and retained usage`, async () => {
@@ -166,6 +167,8 @@ for (const [iteration, mode] of (
       excerpt: `Inter vs Como Serie A ${kickoff.slice(0, 10)} ${kickoff.slice(11, 16)} UTC.\n${i < 5 ? "Επιλογή" : i < 10 ? "Our pick" : "Прогноз"}: ${i === 0 && mode === "combo" ? "GG & Over 2.5" : i >= 10 && i < 15 ? "ТБ 2,5" : "Over 2.5"}; ${i < 5 ? "Συνθετικό ελληνικό κείμενο για τα αγωνιστικά στοιχεία και τις εκτιμήσεις του συγκεκριμένου αγώνα" : i >= 10 && i < 15 ? "Синтетический русский текст о матче, только для проверки языка и подтверждения формы прогноза" : "Distinct synthetic English report"} ${i}.`,
       researchIntent: "external_forecasts" as const,
     }));
+    if (mode === "incident-score")
+      sources[0]!.excerpt = `Inter vs Como Serie A ${kickoff.slice(0, 10)}\nOur prediction for this match: Inter 2 - 1 Como`;
     const raw = {
       summary: "Existing football result must remain available and source-bound.",
       estimates: [
@@ -281,6 +284,12 @@ for (const [iteration, mode] of (
             expect(prompt.providerEvidence.providers[0].home.injuries).toHaveLength(1);
             expect(prompt.onlineEvidenceV2.profile).toBe("P1-Preserve");
             expect(prompt.onlineEvidenceV2.version).toBe(2);
+            if (mode === "incident-score")
+              expect(
+                prompt.onlineEvidenceV2.claims.some(
+                  (c: { market: { kind: string } }) => c.market.kind === "score",
+                ),
+              ).toBe(true);
             expect(
               prompt.onlineEvidenceV2.claims.every((c: { url: string }) =>
                 sources.some((s) => s.url === c.url),
@@ -443,11 +452,35 @@ for (const [iteration, mode] of (
       expect(calls).toBe(0);
       return;
     }
-    if (["success", "bad-judgment", "combo", "combo-without-joint", "abstain"].includes(mode)) {
+    if (
+      [
+        "success",
+        "bad-judgment",
+        "combo",
+        "combo-without-joint",
+        "abstain",
+        "incident-score",
+      ].includes(mode)
+    ) {
       const result = await handler(input);
       expect(result.analysis.externalPredictionConsensus.sourceCount).toBeGreaterThan(0);
       expect(result.analysis.onlineEvidenceV2.sources).toHaveLength(25);
+      if (mode === "incident-score")
+        expect(
+          result.analysis.onlineEvidenceV2.claims.some(
+            (c: { countable: boolean; market: { kind: string } }) =>
+              c.countable && c.market.kind === "score",
+          ),
+        ).toBe(true);
       expect(result.analysis.estimates).toHaveLength(3);
+      const usageAudit = updates.find((u) => u["status"] === "completed")!["usage"] as {
+        research: { searches: { returnedSources: { url: string; title: string }[] }[] };
+      };
+      expect(usageAudit.research.searches).toHaveLength(5);
+      expect(usageAudit.research.searches.every((q) => q.returnedSources.length === 5)).toBe(true);
+      expect(
+        usageAudit.research.searches.flatMap((q) => q.returnedSources).map((s) => s.url),
+      ).toEqual(sources.map((s) => s.url));
       expect(result.analysis.researchBrief.matchFacts).toHaveLength(10);
       if (mode === "combo")
         expect(result.analysis.onlineEvidenceV2.judgment.selection.kind).toBe("and");

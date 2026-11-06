@@ -60,6 +60,10 @@ export const footballSearchReceiptSchema = z
     state: z.enum(["unconfirmed", "observed"]),
     credits: z.number().int().nonnegative().nullable(),
     requestId: z.string().max(200).nullable(),
+    returnedSources: z
+      .array(z.object({ url: z.string().url().max(2000), title: z.string().max(180) }).strict())
+      .max(5)
+      .optional(),
   })
   .strict();
 export type FootballSearchReceipt = z.infer<typeof footballSearchReceiptSchema>;

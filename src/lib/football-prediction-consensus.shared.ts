@@ -112,6 +112,8 @@ const publishers: readonly { hosts: readonly string[]; family: string }[] = [
     ],
     family: "north-star-network",
   },
+  // Reviewed retained incident footer identifies AdBrothers B.V.; aliases/copies remain deduped.
+  { hosts: ["footballpredictions.com"], family: "adbrothers" },
   { hosts: ["predictz.com", "windrawwin.com"], family: "web-analysis-solutions" },
   { hosts: ["dimers.com", "statsinsider.com.au"], family: "cipher-sports" },
   { hosts: ["sportskeeda.com"], family: "nazara" },

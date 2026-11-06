@@ -1,0 +1,159 @@
+# Football V2 — διάγνωση μετά το #516
+
+Baseline main: `22ca6c6a3ed3dba112e4f828b60c8f9edd63279b`. Read-only SELECT των τριών νεότερων ολοκληρωμένων αναλύσεων, χωρίς user IDs, credentials ή production writes. Κανένα επικαλυπτόμενο Football PR.
+
+## Επιβεβαιωμένη διάγνωση πριν τα edits
+
+Και οι15 searches ολοκληρώθηκαν, Advanced2 credits ανά search. Query language ≠ γλώσσα εγγράφου. Το persisted ledger αποθηκεύει πρώτη γλώσσα ανά URL μετά από dedupe, όχι πλήρη per-search returned result list. Συνεπώς δεν ανακατασκευάζουμε ψευδώς τα25 αρχικά results ή τις διαδοχικές εμφανίσεις. Τα πλήρη raw άρθρα δεν διατηρήθηκαν· τα παράθυρα και παλιά excerpts είναι μερικά. Απουσία pick στα retained bytes δεν αποδεικνύει απουσία στο αρχικό άρθρο.
+
+Επιβεβαιωμένα blockers: publication/history/navigation contamination στο whole-body fixture trace, unsupported ordinal dates, narrow authored-value grammar, μενού που εξαντλεί6 overlapping windows/12 claims, unknown publisher independence. Η αλλαγή δεν θα μετατρέψει άγνωστο publisher ή πραγματική ημερομηνιακή αντίφαση σε strict vote.
+
+Χ2 Fiorentina: provider-only opinion με0 online sources και0 supporting claims. Επιτρέπεται από τον ισχύοντα server contract. Χρειάζεται εμφανής διάκριση βάσης εκτίμησης, όχι κατασκευή online συναίνεσης. Τα technical identifiers υπήρχαν αυτούσια στα abstention rationales.
+
+## Impact / acceptance πριν υλοποίηση
+
+Περιορισμός σε deterministic parser/scoping/windows, προσεκτική ανάγνωση φυσικών εκφράσεων, ασφαλές user-facing rationale και compact UI/Tavily heading. Καμία αλλαγή auth, RLS, SQL, provider adapters, JoJ quotas, Music, αριθμού searches, budgets, consent, model dispatch ή Expert. Χωριστή αξιολόγηση scope έναντι authored claim· header inheritance μόνο σε επιβεβαιωμένο single-fixture section, ποτέ μέσω άλλου match heading. Αρνητικά wrong fixture/year/venue/time/qualifiers, odds-only/negation, copies και prompt injection πρέπει να μείνουν0 votes. Offline tests στον πραγματικό handler, browser320/390/axe, full Bun/TS/lint/format/build και related localSQL. Rollback με κανονικό revert μετά έγκριση· ιστορικά και receipts δεν ξαναγράφονται.
+
+## Internazionale — Como
+
+Created UTC: 2026-11-06 21:27:17.411368+00; kickoff 2026-11-08 17:00:00+00; unique retained sources 15; strict origins 0; claims 70.
+
+### Πραγματικά queries
+
+- el / external_forecasts: `Ίντερ Κόμο 8 Νοεμβρίου 2026 προγνωστικά αγώνα` — observed, credits 2.
+- en / external_forecasts: `Internazionale vs Como 8 November 2026 match prediction preview` — observed, credits 2.
+- ru / external_forecasts: `Internazionale Como 8 ноября 2026 прогноз на матч` — observed, credits 2.
+- en / match_facts: `Internazionale vs Como 2026-11-08 expected goals xG xGA recent form home away verified match statistics` — observed, credits 2.
+- en / match_facts: `Internazionale vs Como 2026-11-08 latest injuries expected starting eleven rotation team news` — observed, credits 2.
+
+### Αιτία ανά αποθηκευμένη πηγή
+
+| Πηγή                                                                                                                                                                                                               | Query / article | Ένδειξη pick  | Origin               | Binding / blockers                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | ------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| [Inter Milan vs Como - Serie A - November 8, 2026 - Match Guide, Data Analysis, Standings - Football - Sports Mole](https://www.sportsmole.co.uk/football/serie-a/inter-milan-vs-como_game_261946.html)            | el / en         | none (0)      | reviewed             | rejected: date_conflict, qualified_team                                                                                          |
+| [Inter Milan vs Como Prediction, 11/8/2026 Soccer Pick, Tips and Odds](https://www.docsports.com/free-picks/soccer/2026/inter-milan-vs-como-prediction-11-8-2026-soccer-pick-tips-and-odds.html)                   | el / en         | unsafe (12)   | independence_unknown | rejected: competition_missing, independence_unknown, multi_fixture, unmapped_market, unsafe_stance, window_limit                 |
+| [Inter Milan vs. Como (Nov 8, 2026) Odds and Spread - ESPN](https://www.espn.com/soccer/odds/_/gameId/401874808)                                                                                                   | el / en         | none (0)      | reviewed             | probable: competition_missing, date_missing                                                                                      |
+| [Inter Milan vs. Como (Nov 8, 2026) Live Score - ESPN](https://www.espn.com/soccer/match/_/gameId/401874808/como-internazionale)                                                                                   | el / en         | none (0)      | reviewed             | rejected: competition_conflict, date_missing                                                                                     |
+| [Inter vs Como Prediction & Betting Tips 08/11/2026 FootballPredictions.com](https://footballpredictions.com/footballpredictions/serieapredictions/inter-vs-como-prediction-08-11-2026)                            | en / en         | unsafe (12)   | independence_unknown | rejected: competition_conflict, date_conflict, independence_unknown, multi_fixture, unmapped_market, unsafe_stance, window_limit |
+| [Inter vs Como predictions, betting tips, stats 2026-11-08](https://www.protipster.com/betting-tips/inter-milano-como-1907/750088544)                                                                              | en / en         | unsafe (12)   | independence_unknown | rejected: date_missing, independence_unknown, multi_fixture, unmapped_market, unsafe_stance, venue_unknown, window_limit         |
+| [Inter Milan-Como prediction, preview & betting tips – 08/11/2026](https://footballwhispers.com/blog/inter-milan-como-prediction-08-11-2026)                                                                       | ru / en         | authored (10) | reviewed             | rejected: competition_conflict, date_missing, multi_fixture, unmapped_market, window_limit                                       |
+| [Интер - Комо 8 ноября: прогноз на матч Серии А, аналитика и коэффициенты](https://www.vedomosti.ru/sport/rb/predictions/article/inter-komo-2026-prognoz)                                                          | ru / ru         | unsafe (4)    | independence_unknown | rejected: away_missing, competition_missing, home_missing, independence_unknown, unmapped_market, unsafe_stance, venue_unknown   |
+| [Inter Milan vs Como Stats, H2H, xG FootyStats](https://footystats.org/italy/fc-internazionale-milano-vs-calcio-como-h2h-stats)                                                                                    | en / en         | unmapped (7)  | independence_unknown | rejected: date_missing, independence_unknown, multi_fixture, unmapped_market, window_limit                                       |
+| [Como xG Stats 2026/2027](https://statz.ai/team/como/expected-goals)                                                                                                                                               | en / en         | none (0)      | independence_unknown | rejected: competition_conflict, date_conflict, multi_fixture, venue_unknown                                                      |
+| [Inter v Como LIVE 08/11/2026 Soccer - Flashscore](https://www.flashscoreusa.com/game/soccer/como-ttyLthOA/inter-Iw7eKK25)                                                                                         | en / en         | none (0)      | independence_unknown | rejected: competition_conflict, date_missing, multi_fixture                                                                      |
+| [Inter vs Como - live score, predicted lineups and H2H stats](https://www.fotmob.com/matches/inter-vs-como/2xaxi8)                                                                                                 | en / en         | none (0)      | independence_unknown | verified:                                                                                                                        |
+| [Inter vs Como predicted lineup · 8 Nov 2026 Starting 11](https://starting11.com/fixtures/inter-vs-como)                                                                                                           | en / en         | unmapped (9)  | independence_unknown | rejected: date_conflict, independence_unknown, multi_fixture, unmapped_market, window_limit                                      |
+| [Preview: Inter Milan vs Como - prediction, team news, lineups - Sports Mole](https://www.sportsmole.co.uk/football/inter-milan/coppa-italia/preview/inter-milan-vs-como-prediction-team-news-lineups_595995.html) | en / en         | unmapped (2)  | reviewed             | rejected: competition_conflict, date_conflict, multi_fixture, unmapped_market                                                    |
+| [Inter Milan vs Como Preview: Team News, Lineups & Prediction 🔥](https://www.youtube.com/watch?v=0WBOPdAYrYQ)                                                                                                     | en / en         | unmapped (2)  | independence_unknown | rejected: competition_conflict, date_conflict, independence_unknown, multi_fixture, unmapped_market                              |
+
+Ερμηνεία: `none` σημαίνει μη ανίχνευση στα αποθηκευμένα bytes, `unmapped` μη υποστηριζόμενη διατύπωση, `unsafe` περιλαμβάνει και ψευδο-candidates μενού. `independence_unknown` παραμένει μη καταμετρήσιμο, ανεξάρτητα από parser improvement. Πηγές stats/odds δεν θεωρούνται authored προβλέψεις.
+
+## Monza — Atalanta
+
+Created UTC: 2026-11-06 21:26:11.323984+00; kickoff 2026-11-08 14:00:00+00; unique retained sources 13; strict origins 0; claims 39.
+
+### Πραγματικά queries
+
+- el / external_forecasts: `Μόντσα Αταλάντα 8 Νοεμβρίου 2026 προγνωστικά αγώνα` — observed, credits 2.
+- en / external_forecasts: `Monza vs Atalanta 8 November 2026 match prediction preview` — observed, credits 2.
+- ru / external_forecasts: `Monza Atalanta 8 ноября 2026 прогноз на матч` — observed, credits 2.
+- en / match_facts: `Monza vs Atalanta 2026-11-08 expected goals xG xGA recent form home away verified match statistics` — observed, credits 2.
+- en / match_facts: `Monza vs Atalanta 2026-11-08 latest injuries expected starting eleven rotation team news` — observed, credits 2.
+
+### Αιτία ανά αποθηκευμένη πηγή
+
+| Πηγή                                                                                                                                                                                            | Query / article | Ένδειξη pick | Origin               | Binding / blockers                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| [Monza vs Atalanta AI Sports Picks & Predictions](https://statsniper.com/leagues/serie-a/game/2026-11-08/ata-vs-mon)                                                                            | el / en         | unsafe (4)   | independence_unknown | rejected: independence_unknown, multi_fixture, reversed_venue, unmapped_market, unsafe_context                                   |
+| [Monza vs Atalanta: prediction and match stats · November 8, 2026 GidStats](https://gidstats.com/football/serie-a/2026-11-08-1550192-monza-vs-atalanta)                                         | el / en         | none (0)     | independence_unknown | probable: competition_missing                                                                                                    |
+| [Monza vs Atalanta Prediction, 11/8/2026 Soccer Pick, Tips and Odds](https://www.docsports.com/free-picks/soccer/2026/monza-vs-atalanta-prediction-11-8-2026-soccer-pick-tips-and-odds.html)    | el / en         | unsafe (12)  | independence_unknown | rejected: competition_missing, independence_unknown, multi_fixture, qualified_team, unmapped_market, unsafe_stance, window_limit |
+| [Monza vs. Atalanta (Nov 8, 2026) Odds and Spread - ESPN](https://www.espn.com/soccer/odds/_/gameId/401874800)                                                                                  | el / en         | none (0)     | reviewed             | probable: competition_missing, date_missing                                                                                      |
+| [Monza vs Atalanta Prediction & Betting Tips 08/11/2026 FootballPredictions.com](https://footballpredictions.com/footballpredictions/serieapredictions/monza-vs-atalanta-prediction-08-11-2026) | en / en         | unsafe (12)  | independence_unknown | rejected: competition_conflict, date_conflict, independence_unknown, multi_fixture, unmapped_market, unsafe_stance, window_limit |
+| [Monza vs Atalanta Prediction, Tip and Match Preview - Sunday 8th November 2026 - Italy Serie A](https://www.soccervital.com/monza-vs-atalanta-soccer-prediction-jgga2a6j8.html)                | en / en         | unmapped (8) | independence_unknown | probable: date_missing, independence_unknown, unmapped_market, window_limit                                                      |
+| [Monza vs Atalanta Nov 8, 2026 Match Preview and Stats](https://www.footballcritic.com/serie-a-ac-monza-atalanta-bc/preview/4315842)                                                            | en / en         | none (0)     | independence_unknown | probable: date_missing                                                                                                           |
+| [Monza vs Atalanta live score, H2H and lineups](https://www.sofascore.com/football/match/monza-atalanta/LdbsEeb)                                                                                | en / en         | unmapped (2) | independence_unknown | rejected: competition_conflict, independence_unknown, multi_fixture, unmapped_market                                             |
+| [Monza xG Stats 2026/2027](https://statz.ai/team/monza/expected-goals)                                                                                                                          | en / en         | none (0)     | independence_unknown | rejected: date_conflict                                                                                                          |
+| [Monza vs Atalanta predicted lineup · 8 Nov 2026](https://starting11.com/fixtures/monza-vs-atalanta)                                                                                            | en / en         | unmapped (1) | independence_unknown | rejected: date_conflict, independence_unknown, multi_fixture, unmapped_market                                                    |
+| [Monza vs Atalanta - live score, predicted lineups and H2H stats](https://www.fotmob.com/matches/monza-vs-atalanta/1v8mb2)                                                                      | en / en         | none (0)     | independence_unknown | verified:                                                                                                                        |
+| [Monza vs Atalanta lineups, Nov 8](https://mylineups.app/matches/serie-a/monza-vs-atalanta-2026-11-08)                                                                                          | en / en         | none (0)     | independence_unknown | rejected: multi_fixture                                                                                                          |
+| [Monza vs. Atalanta (Nov 8, 2026) Live Score - ESPN](https://www.espn.com/soccer/match/_/gameId/401874800/atalanta-monza)                                                                       | en / en         | none (0)     | reviewed             | probable: date_missing                                                                                                           |
+
+Ερμηνεία: `none` σημαίνει μη ανίχνευση στα αποθηκευμένα bytes, `unmapped` μη υποστηριζόμενη διατύπωση, `unsafe` περιλαμβάνει και ψευδο-candidates μενού. `independence_unknown` παραμένει μη καταμετρήσιμο, ανεξάρτητα από parser improvement. Πηγές stats/odds δεν θεωρούνται authored προβλέψεις.
+
+## Fiorentina — Juventus
+
+Created UTC: 2026-11-06 21:21:55.022034+00; kickoff 2026-11-08 19:45:00+00; unique retained sources 12; strict origins 0; claims 63.
+
+### Πραγματικά queries
+
+- el / external_forecasts: `Φιορεντίνα Γιουβέντους 8 Νοεμβρίου 2026 προγνωστικά αγώνα` — observed, credits 2.
+- en / external_forecasts: `Fiorentina vs Juventus 8 November 2026 match prediction preview` — observed, credits 2.
+- ru / external_forecasts: `Fiorentina Juventus 8 ноября 2026 прогноз на матч` — observed, credits 2.
+- en / match_facts: `Fiorentina vs Juventus 2026-11-08 expected goals xG xGA recent form home away verified match statistics` — observed, credits 2.
+- en / match_facts: `Fiorentina vs Juventus 2026-11-08 latest injuries expected starting eleven rotation team news` — observed, credits 2.
+
+### Αιτία ανά αποθηκευμένη πηγή
+
+| Πηγή                                                                                                                                                                                                          | Query / article | Ένδειξη pick | Origin               | Binding / blockers                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| [Fiorentina vs Juventus prediction – Odds & stats – 8 November 2026](https://www.wincomparator.com/predictions/fiorentina-juventus-8522194)                                                                   | el / en         | unmapped (4) | independence_unknown | rejected: competition_conflict, date_missing, independence_unknown, multi_fixture, unmapped_market                                    |
+| [Fiorentina vs Juventus Prediction, 11/8/2026 Soccer Pick, Tips and Odds](https://www.docsports.com/free-picks/soccer/2026/fiorentina-vs-juventus-prediction-11-8-2026-soccer-pick-tips-and-odds.html)        | el / en         | unsafe (12)  | independence_unknown | rejected: competition_missing, independence_unknown, multi_fixture, unmapped_market, unsafe_stance, window_limit                      |
+| [Fiorentina vs. Juventus (Nov 8, 2026) Odds and Spread - ESPN](https://www.espn.com/soccer/odds/_/gameId/401875003)                                                                                           | el / en         | none (0)     | reviewed             | probable: competition_missing, date_missing                                                                                           |
+| [Fiorentina vs Juventus November 8, 2026 Serie A Matchup theScore](https://www.thescore.com/epl/event/97686)                                                                                                  | el / en         | none (0)     | independence_unknown | ambiguous: competition_missing, date_missing, venue_unknown                                                                           |
+| [Fiorentina vs Juventus Prediction, Tip and Match Preview - Sunday 8th November 2026 - Italy Serie A](https://www.soccervital.com/fiorentina-vs-juventus-soccer-prediction-jgga2a6j5.html)                    | en / en         | unmapped (7) | independence_unknown | probable: date_missing, independence_unknown, unmapped_market, window_limit                                                           |
+| [Fiorentina vs Juventus Prediction & Betting Tips 08/11/2026 FootballPredictions.com](https://footballpredictions.com/footballpredictions/serieapredictions/fiorentina-vs-juventus-prediction-08-11-2026)     | en / en         | unsafe (12)  | independence_unknown | rejected: competition_conflict, date_conflict, independence_unknown, multi_fixture, unmapped_market, unsafe_stance, window_limit      |
+| [Fiorentina vs Juventus Nov 8, 2026 Match Preview and Stats](https://www.footballcritic.com/serie-a-acf-fiorentina-juventus-fc/preview/4315839)                                                               | en / en         | none (0)     | independence_unknown | probable: date_missing                                                                                                                |
+| [Fiorentina - Juventus (8. November 2026) Football predictions](https://www.rowdie.co.uk/match/fiorentina-juventus-2026-11-08)                                                                                | ru / en         | unsafe (12)  | independence_unknown | rejected: competition_conflict, date_conflict, independence_unknown, timestamp_conflict, unmapped_market, unsafe_stance, window_limit |
+| [Fiorentina vs Juventus - Serie A - November 8, 2026 - Match Guide, Data Analysis, Standings - Football - Sports Mole](https://www.sportsmole.co.uk/football/serie-a/fiorentina-vs-juventus_game_261967.html) | ru / en         | none (0)     | reviewed             | rejected: date_conflict, qualified_team                                                                                               |
+| [Fiorentina vs Juventus Stats, H2H, xG FootyStats](https://footystats.org/italy/juventus-fc-vs-acf-fiorentina-h2h-stats)                                                                                      | en / en         | unmapped (7) | independence_unknown | probable: date_missing, independence_unknown, unmapped_market, window_limit                                                           |
+| [Fiorentina vs Juventus - live score, predicted lineups and H2H stats](https://www.fotmob.com/matches/fiorentina-vs-juventus/2t0k4f)                                                                          | en / en         | none (0)     | independence_unknown | verified:                                                                                                                             |
+| [Fiorentina vs Juventus predicted lineup · 8 Nov 2026](https://starting11.com/fixtures/fiorentina-vs-juventus)                                                                                                | en / en         | unmapped (9) | independence_unknown | rejected: date_conflict, independence_unknown, multi_fixture, unmapped_market, window_limit                                           |
+
+Ερμηνεία: `none` σημαίνει μη ανίχνευση στα αποθηκευμένα bytes, `unmapped` μη υποστηριζόμενη διατύπωση, `unsafe` περιλαμβάνει και ψευδο-candidates μενού. `independence_unknown` παραμένει μη καταμετρήσιμο, ανεξάρτητα από parser improvement. Πηγές stats/odds δεν θεωρούνται authored προβλέψεις.
+
+## Provenance
+
+SHA-256 sanitized local incident JSON: `51239b7d65613d667dc3ba8ae8086468a53c3aa2400dacf7104ca654c19fcdd2`. Το raw αρχείο παραμένει εκτός Git· στο repo μόνο η διάγνωση/URLs και ελάχιστα regression excerpts. Δεν εκτελέστηκε νέα paid retrieval ούτε claim πραγματικού discovery recall.
+
+## Ερμηνεία των συγκεκριμένων πηγών
+
+- **FootballPredictions, και οι3 αγώνες:** retained bytes περιέχουν ρητό score pick. Η παλιά γραμματική διάβαζε το «for this match» ως αγορά και δεν αναγνώριζε ονομασμένο σκορ. Παράλληλα whole-body trace επηρεαζόταν από μενού/ιστορικές αναφορές. Η footer ταυτότητα AdBrothers B.V. επιτρέπει συγκεκριμένη reviewed origin registration, όχι γενική αποδοχή άγνωστων sites. Δεν μετατρέπουμε προβλεπόμενο σκορ σε ξεχωριστές ψήφους 1Χ2/Over/BTTS. **Fiorentina** έχει επιπλέον πραγματική αντίφαση «Monday's football game» έναντι Κυριακής8/11· παραμένει μη καταμετρήσιμη. Οι κείμενες ποδοσφαιρικές πληροφορίες δεν θεωρούνται επιβεβαιωμένα γεγονότα επειδή εντοπίστηκε authored pick.
+- **DocSports, και οι3:** καταγράφηκε τελικό author Pick/Take, αλλά ήταν unmapped και εκτός retained window λόγω έξι overlapping windows που καταναλώθηκαν από navigation. Διορθώθηκαν named Take και window allocation. Δεν επινοείται competition που λείπει ούτε ανεξαρτησία publisher που δεν έχει τεκμηριωθεί· μπορεί να παραμένει provisional.
+- **FootballWhispers Inter–Como:** το «Hot tip Draw» αναγνωριζόταν ήδη, αλλά απορριπτόταν η ταυτότητα λόγω whole-body references και μη αναγνωρισμένης ημερομηνίας. Το retained numeric 08/11/2026 δεν αποκτά αυθαίρετα DD/MM ή MM/DD σημασία. Εφόσον δεν υπάρχει πλήρες επαρκές date context, παραμένει μη καταμετρήσιμο. Το BTTS σε χωριστό authored block υποστηρίζεται πλέον με συγκεκριμένα θετικά/αρνητικά tests.
+- **Vedomosti Inter–Como:** υπάρχει ρωσική φυσική σύσταση υπέρ της Ίντερ. Το Latin-only alias set και η στενή γραμματική απέτυχαν. Προστέθηκαν μόνο χειροκίνητα reviewed incident spellings Интер/Интера/Комо και αναγνώριση της συγκεκριμένης authored διατύπωσης. Η πηγή παραμένει independence_unknown· δεν κατασκευάζεται strict ψήφος από χορηγούμενη/partner σελίδα χωρίς επαρκή origin review.
+- **SoccerVital Fiorentina/Monza:** explicit Predictions rows υπάρχουν στο διαθέσιμο κείμενο. Το 8th November δεν διαβαζόταν, οι χωριστές σειρές Over/score tip δεν είχαν inline author marker. Υποστηρίζονται ordinal dates και bounded authored block rows. Δεν αντιμετωπίζονται score/result/odds tables ως προβλέψεις και ο unknown publisher παραμένει provisional. Το «4 on Juventus» δεν ερμηνεύεται αυθαίρετα ως πιθανότητα ή συγκεκριμένη αγορά.
+- **WinComparator, Protipster, FootyStats, Rowdie:** παραμένουν οι συγκεκριμένοι blockers του πίνακα: άγνωστη προέλευση, μη αναγνωρισμένη/ασαφής authored αγορά, μη επαρκής ημερομηνία ή σαφές timestamp conflict. Δεν αποδεικνύεται απουσία πλήρους πρόβλεψης από μερικά αποθηκευμένα bytes. Η ασυμφωνία Rowdie δεν παρακάμπτεται.
+- **Statsniper:** reversed venue παραμένει απόρριψη. **SportsMole Coppa Italia / game pages:** άλλο competition/date/qualified context παραμένει απόρριψη ή μη authored data. **ESPN odds/match, FootballCritic, FotMob, Statz, starting11, mylineups, Sofascore, Flashscore, theScore, YouTube:** δεν προάγονται σε author votes λόγω απλού τίτλου, odds ή match page· οι ανά URL ελλείψεις/αντιφάσεις στον προηγούμενο πίνακα διατηρούνται. Η FotMob verified fixture δεν σημαίνει verified authored prediction.
+
+## Συγκεντρωτική τοπική διόρθωση
+
+1. Κανονικός τίτλος μέσα στο fieldset Tavily, με aria-labelledby και Basic/Advanced από κάτω, όχι legend στη γραμμή του border.
+2. Strict preview metadata scope μόνο όταν ίδιο το κείμενο αποδεικνύει directed teams, date και competition. History/related footer δεν δίνει votes. Επιτρέπεται inheritance μόνο σε ρητή forecast subsection του ίδιου verified article· άλλος match heading, wrong date/year/venue/qualifier, explicit kickoff ή weekday contradiction εμποδίζουν τη μεταφορά.
+3. Ρητά named score/Take/team-win/DC και φυσικές EL/RU φράσεις, δύο σειρές author marker/value, bounded prediction tables. Ακριβές quote και offsets, καμία συναγωγή αγοράς από παλιό σκορ. Authored candidates πρώτα, συγχώνευση overlapping windows ώστε τα menus να μην εκτοπίζουν late pick. Διατήρηση hard bounds6 windows/2k,24 candidates/12 per section,25 sources,300 claims.
+4. Η ανεξάρτητη AI γνώμη παραμένει ανεξάρτητη: provider-only lean επιτρέπεται και φέρει σαφή ένδειξη βάσης αγωνιστικών στοιχείων/απουσίας συγκρίσιμων δημοσιευμένων forecasts. Ξεχωριστή source agreement, χωρίς ratio→probability. Αποχή και whole-combo guards αμετάβλητα.
+5. Prompt επιβάλλει απλή user-facing γλώσσα. Public projection αφαιρεί προτάσεις που περιέχουν schema identifiers και από ήδη αποθηκευμένες αιτιολογήσεις, χωρίς rewrite ιστορικών, χωρίς μεταβολή source/usage receipts και χωρίς paid rerun.
+
+## Επαλήθευση / μετρήσεις
+
+- Focused: **153 PASS**,1.273 assertions/4 files, συμπεριλαμβανομένου πραγματικού handler με incident-shaped named-score source,5 searches και ίδια stats/κύρια ανάλυση/receipts/auth/idempotency/Expert boundaries.
+- Full Bun σε LF-equivalent mirror με byte-exact immutable assets: **1.931 PASS /0 FAIL /1 υπάρχον άσχετο PHP parity skip**,29.147 assertions/233 files.
+- Browser: **72/72 PASS** desktop/tablet/mobile,320/390, keyboard/axe/no overflow, παλιά history χωρίς paid dispatch, provider-only disclosure, καμία technical identifier διαρροή και title bounding μέσα στο Tavily πλαίσιο. Screenshot mobile ελέγχθηκε οπτικά. Το αρχικό νέο fixture περίμενε ελληνικό Χ αντί του υπάρχοντος canonical X2· διορθώθηκε ο locator στο πραγματικό contract και όλη η suite επαναλήφθηκε.
+- Strict TypeScript και scoped ESLint PASS. Δεν δηλώνεται επίλυση άσχετου global lint baseline.
+- Native workerd transport **19 PASS**, zero external requests. Isolated network-none/mount-free PostgreSQL SQL/ACL/RLS και12-session reservation/recovery/last quota races PASS· container ξανά stopped. Δεν είναι production replay.
+- Production build PASS. Prettier και diff verification PASS. Remote Regression/Browser Quality/Database Replay **δεν ενεργοποιήθηκαν**, αναμένουν χωριστή έγκριση.
+
+Δεν υπάρχει benchmark νέας live discovery κάλυψης ή πραγματικής precision/recall. Το replay των retained windows είναι **partial-evidence replay**, όχι ίδιο πλήρες raw article· οι χαμένες περιοχές δεν γεμίζουν με επινοημένο κείμενο. Τα synthetic contexts χαρακτηρίζονται έτσι και τα ελάχιστα πραγματικά quotations κρατούν μόνο ό,τι χρειάζεται η αναπαραγωγή. Δεν υπόσχεται5–7 ανεξάρτητες πηγές όταν το υπάρχον budget δεν τις επιστρέφει.
+
+## Release / ανάκαμψη
+
+Τοπική ενιαία εργασία `codex/football-v2-incident-diagnosis-20261106`, προτεινόμενο ένα νέο Draft PR μετά από έγκριση. **Καμία νέα migration** ή αλλαγή auth/RLS/provider/quota/consent/model/search budget/Music/JoJ/Expert. Καμία paid κλήση, production SQL write, push/PR/CI, merge ή publish. Απαιτούνται χωριστή έγκριση consolidated push/PR, τρία exact-HEAD gates και review, μετά χωριστό publish και οριοθετημένη εγκεκριμένη live acceptance. Rollback μέσω κανονικού revert διατηρεί ιστορικά/receipts, χωρίς αυτόματη επανάληψη πληρωμένων jobs.
+
+## Γλώσσες των πραγματικά διατηρημένων εγγράφων
+
+| Αγώνας              | Unique sources | Ελληνική γραφή | Αγγλική γραφή | Κυριλλική γραφή | Άγνωστη |
+| ------------------- | -------------: | -------------: | ------------: | --------------: | ------: |
+| Internazionale–Como |             15 |              0 |            14 |               1 |       0 |
+| Monza–Atalanta      |             13 |              0 |            13 |               0 |       0 |
+| Fiorentina–Juventus |             12 |              0 |            12 |               0 |       0 |
+
+Η γραφή είναι ανίχνευση του διαθέσιμου κειμένου, όχι πιστοποίηση πλήρους γλώσσας. Ελληνικό query δεν απέδωσε retained ελληνικό άρθρο στις τρεις περιπτώσεις. Δεν εξάγουμε αριθμό raw hits ανά search από unique μετά-dedupe αποθήκευση. Το νέο optional returnedSources usage receipt κρατά έως5 URL/title ανά πραγματικό search πριν το cross-query dedupe, χωρίς άρθρα ή νέα requests, και είναι backward-compatible με παλιές usage εγγραφές.

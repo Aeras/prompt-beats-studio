@@ -41,14 +41,89 @@ function nearDuplicate(a: string, b: string) {
   );
 }
 const digest = (s: string) => createHash("sha256").update(s).digest("hex");
-function sections(text: string) {
+/** Only an explicit single-match preview envelope may scope later editorial paragraphs.
+ * Unstructured/multi-fixture material retains the original strict whole-section trace. */
+function sections(text: string, f: OddsTarget, cutoff: string) {
   const headers = [...text.matchAll(/^#{1,4}\s+.+$/gm)].map((m) => m.index!);
   const starts = [...new Set([0, ...headers])].sort((a, b) => a - b);
-  return starts.map((start, i) => ({
-    start,
-    end: starts[i + 1] ?? text.length,
-    text: text.slice(start, starts[i + 1] ?? text.length),
-  }));
+  let establishedMetadata: string | undefined;
+  return starts.map((start, i) => {
+    const end = starts[i + 1] ?? text.length;
+    const body = text.slice(start, end);
+    const lines = body.split("\n");
+    let boundary = 0;
+    for (const line of lines) {
+      if (boundary > 200 && line.length > 180 && !/prediction.*(?:20\d{2}|preview)/iu.test(line))
+        break;
+      boundary += line.length + 1;
+      if (boundary >= 1800) break;
+    }
+    const metadata = body.slice(0, Math.min(boundary, 2000));
+    const eligible =
+      /(?:prediction and betting tips|prediction, preview|match preview and expert tips|προγνωστικά αγώνα|прогноз на матч|прогноз и ставка на)/iu.test(
+        metadata,
+      ) && traceFootballFixture(metadata, f, cutoff).status === "verified";
+    // H2H, related fixtures and navigation cannot lend their dates/picks to this article.
+    const footer = eligible
+      ? body.search(
+          /^(?:#{1,4}\s*)?(?:\|\s*»)?(?:head.to.head|now trending|most recent soccer picks|related (?:matches|predictions)|get all of today's)/imu,
+        )
+      : -1;
+    const scoped = body.slice(0, footer < 0 ? undefined : footer);
+    // Preserve explicit wrong-fixture headings even inside an otherwise relevant article.
+    const foreignHeading = scoped
+      .split("\n")
+      .some(
+        (line) =>
+          line.length < 180 &&
+          /\s(?:vs\.?|v\.?)\s/iu.test(line) &&
+          traceFootballFixture(line, f, cutoff).failures.some((v) =>
+            [
+              "home_missing",
+              "away_missing",
+              "reversed_venue",
+              "qualified_team",
+              "competition_conflict",
+              "date_conflict",
+              "weekday_conflict",
+              "timestamp_conflict",
+            ].includes(v),
+          ),
+      );
+    const standalone = traceFootballFixture(scoped, f, cutoff);
+    const forecastSubsection =
+      /^#{1,4}\s+(?:our\s+)?(?:predictions?|picks?|betting tips|προγνωστικά|πρόβλεψη|прогноз|наш выбор)(?:\s|:|$)/iu.test(
+        scoped,
+      );
+    const contradictions = standalone.failures.some(
+      (v) =>
+        ![
+          "home_missing",
+          "away_missing",
+          "venue_unknown",
+          "date_missing",
+          "competition_missing",
+        ].includes(v),
+    );
+    const ownBinding =
+      eligible &&
+      !foreignHeading &&
+      !standalone.failures.some((v) => v === "timestamp_conflict" || v === "weekday_conflict");
+    const binding = ownBinding
+      ? metadata
+      : establishedMetadata && forecastSubsection && !contradictions && !foreignHeading
+        ? establishedMetadata + "\n" + scoped
+        : scoped;
+    if (ownBinding) establishedMetadata = metadata;
+    else if (!forecastSubsection || contradictions || foreignHeading)
+      establishedMetadata = undefined;
+    return {
+      start,
+      end: start + scoped.length,
+      text: scoped,
+      binding,
+    };
+  });
 }
 /** No full article persistence: exact windows, canonical digest and UTF-16 offsets only. */
 export function buildFootballClaimLedger(
@@ -125,16 +200,24 @@ export function buildFootballClaimLedger(
     copies.push({ text: fingerprint, original: text, origin });
     const windows: FootballClaimLedger["sources"][number]["windows"] = [];
     const addWindow = (start: number, end: number) => {
-      if (windows.length >= 6) return;
       start = Math.max(0, start);
       end = Math.min(text.length, end, start + 2000);
-      if (!windows.some((w) => w.start === start && w.end === end))
-        windows.push({ start, end, text: text.slice(start, end) });
+      const overlapping = windows.find(
+        (w) =>
+          start <= w.end &&
+          end >= w.start &&
+          Math.max(end, w.end) - Math.min(start, w.start) <= 2000,
+      );
+      if (overlapping) {
+        overlapping.start = Math.min(start, overlapping.start);
+        overlapping.end = Math.max(end, overlapping.end);
+        overlapping.text = text.slice(overlapping.start, overlapping.end);
+      } else if (windows.length < 6) windows.push({ start, end, text: text.slice(start, end) });
     };
     addWindow(0, Math.min(text.length, 1200));
     let omittedClaims = 0;
-    for (const section of sections(text)) {
-      const sectionTrace = traceFootballFixture(section.text, f, cutoff);
+    for (const section of sections(text, f, cutoff)) {
+      const sectionTrace = traceFootballFixture(section.binding, f, cutoff);
       // Do not join a heading from one fixture to a pick from another.
       const discovered = extractLiteralPicks(section.text, f);
       omittedClaims += Math.max(0, discovered.length - 12);
