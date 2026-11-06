@@ -817,6 +817,7 @@ function PrivateFootballResearchPage() {
                           )}
                           <OnlinePredictionsPanel
                             data={entry.analysis.externalPredictionConsensus}
+                            evidenceV2={entry.analysis.onlineEvidenceV2}
                             estimates={entry.analysis.estimates}
                           />
                           <section className="rounded-xl border border-amber-400/20 bg-[#1b2131] p-4">

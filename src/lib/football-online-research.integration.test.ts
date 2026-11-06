@@ -1,3 +1,9 @@
+import {
+  footballV2SynthesisBrief,
+  footballV2EvidenceUrls,
+  packFootballEvidenceV2,
+} from "./football-evidence-v2.shared";
+import { buildFootballClaimLedger } from "./football-evidence-v2.server";
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import {
@@ -19,8 +25,27 @@ import {
 import { FOOTBALL_LEAGUES, FOOTBALL_ESPN_LEAGUES } from "./football-research.shared";
 import { usableOdds } from "./football-odds.shared";
 
-for (const mode of ["success", "truncated", "invalid-assessment", "bad-judgment"] as const)
-  test(`actual research handler: ${mode}, three searches, one paid attempt, authoritative provenance and retained usage`, async () => {
+for (const [iteration, mode] of (
+  [
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "success",
+    "truncated",
+    "invalid-assessment",
+    "bad-judgment",
+    "timeout",
+    "denied",
+    "admission-denied",
+  ] as const
+).entries())
+  test(`actual research handler ${iteration}: ${mode}, three searches, one paid attempt, authoritative provenance and retained usage`, async () => {
     const source = readFileSync(
       new URL("./football-ai-research.functions.ts", import.meta.url),
       "utf8",
@@ -86,6 +111,7 @@ for (const mode of ["success", "truncated", "invalid-assessment", "bad-judgment"
       // An injected/malformed model extraction cannot replace server-owned votes.
       onlinePredictions: [{ sourceIndex: 999, market: "invented_market" }],
       externalPredictionConsensus: { sourceCount: 999 },
+      onlineEvidenceV2: { version: 2, sourceCount: 999 },
       onlineSourceAgreement: { sourceCount: 999 },
       ...(mode === "bad-judgment"
         ? {
@@ -133,9 +159,16 @@ for (const mode of ["success", "truncated", "invalid-assessment", "bad-judgment"
           modelCaller: () => async (input: { prompt: string }) => {
             calls++;
             expect(marked).toBe(true);
+            if (mode === "timeout") throw new Error("offline provider timeout");
             const prompt = JSON.parse(input.prompt);
             expect(prompt.sources).toHaveLength(7);
             expect(prompt.onlineSourceAgreement.sourceCount).toBe(7);
+            expect(prompt.onlineEvidenceV2.version).toBe(2);
+            expect(
+              prompt.onlineEvidenceV2.claims.every((c: { url: string }) =>
+                sources.some((s) => s.url === c.url),
+              ),
+            ).toBe(true);
             expect(prompt.sources[6].sourceIndex).toBe(6);
             return {
               text: JSON.stringify(raw),
@@ -155,6 +188,7 @@ for (const mode of ["success", "truncated", "invalid-assessment", "bad-judgment"
         return { collectFootballProviderEvidence: async () => providerEvidence };
       if (path.includes("football-provider-evidence.shared"))
         return { providerEvidenceUrls, withoutFootballSourceMetadata };
+      if (path.includes("football-evidence-v2.server")) return { buildFootballClaimLedger };
       if (path.includes("football-odds.server"))
         return { collectFootballBookmakerOdds: async () => odds };
       if (path.includes("music-inspiration-research.server"))
@@ -176,6 +210,9 @@ for (const mode of ["success", "truncated", "invalid-assessment", "bad-judgment"
       FOOTBALL_ESPN_LEAGUES,
       LANGUAGE: {},
       buildFootballSourceSnapshot,
+      footballV2SynthesisBrief,
+      footballV2EvidenceUrls,
+      packFootballEvidenceV2,
       buildFootballPredictionConsensus,
       extractFootballPredictionReferences,
       footballAiAssessmentSchema,
@@ -191,7 +228,7 @@ for (const mode of ["success", "truncated", "invalid-assessment", "bad-judgment"
         _u: string,
         _f: string[],
         fn: () => Promise<unknown>,
-      ) => fn(),
+      ) => (mode === "admission-denied" ? Promise.reject(Error("offline admission denial")) : fn()),
       process: { env: { OPENROUTER_API_KEY: "offline", TAVILY_API_KEY: "offline" } },
     };
     const handler = new Function(...Object.keys(scope), `return (${handlerText})`)(
@@ -208,12 +245,40 @@ for (const mode of ["success", "truncated", "invalid-assessment", "bad-judgment"
         tavilySearchDepth: "advanced",
         approvePaidRequest: true,
       },
-      context: { userId: "owner", supabase: { rpc: async () => ({ data: true, error: null }) } },
+      context: {
+        userId: "owner",
+        supabase: { rpc: async () => ({ data: mode !== "denied", error: null }) },
+      },
     };
+    if (mode === "denied") {
+      await expect(handler(input)).rejects.toThrow("Not allowed");
+      expect(searches).toBe(0);
+      expect(calls).toBe(0);
+      expect(admissions).toBe(0);
+      return;
+    }
+    if (mode === "admission-denied") {
+      await expect(handler(input)).rejects.toThrow("cannot be automatically retried");
+      expect(searches).toBe(0);
+      expect(calls).toBe(0);
+      return;
+    }
     if (mode === "success" || mode === "bad-judgment") {
       const result = await handler(input);
       expect(result.analysis.externalPredictionConsensus.sourceCount).toBe(7);
       expect(result.analysis.bookmakerOddsSnapshot).toEqual(odds);
+      expect(result.analysis.onlineEvidenceV2.version).toBe(2);
+      const persisted = updates.find((u) => u["status"] === "completed")!;
+      expect(persisted["analysis"]).not.toHaveProperty("onlineEvidenceV2");
+      expect(
+        footballAiAssessmentSchema.omit({ onlineEvidenceV2: true }).safeParse(persisted["analysis"])
+          .success,
+      ).toBe(true);
+      expect(
+        (persisted["sources"] as { kind?: string }[]).some(
+          (s) => s.kind === "football-online-evidence",
+        ),
+      ).toBe(true);
       if (mode === "bad-judgment") {
         expect(result.analysis.externalPredictionConsensus.judgment).toBeUndefined();
         expect(result.analysis.externalPredictionConsensus.judgmentStatus).toBe("invalid_evidence");
@@ -221,7 +286,13 @@ for (const mode of ["success", "truncated", "invalid-assessment", "bad-judgment"
       expect(updates.some((u) => u["status"] === "completed" && u["usage"] === usage)).toBe(true);
     } else {
       await expect(handler(input)).rejects.toThrow("cannot be automatically retried");
-      expect(updates.some((u) => u["status"] === "failed" && u["usage"] === usage)).toBe(true);
+      expect(
+        updates.some(
+          (u) =>
+            u["status"] === "failed" &&
+            (mode === "timeout" ? !("usage" in u) : u["usage"] === usage),
+        ),
+      ).toBe(true);
     }
     await expect(handler(input)).rejects.toThrow("already recorded");
     expect(searches).toBe(3);

@@ -49,8 +49,36 @@ export default {
         "Unsafe parser failure",
       );
     }
+    const football = await searchInspirationWeb(
+      "football-opt-in",
+      new AbortController().signal,
+      fetch,
+      "offline-fixture-key",
+      "basic",
+      { football: { textChars: 24000, maxResults: 3, format: "text" } },
+    );
+    check(
+      football.documents[0]?.footballRetrieval?.version === 2 && football.credits === 1,
+      "Football opt-in lost metadata/usage",
+    );
+    const abort = new AbortController();
+    abort.abort();
+    let stopped = false;
+    try {
+      await searchInspirationWeb(
+        "never-dispatched",
+        abort.signal,
+        fetch,
+        "offline-fixture-key",
+        "basic",
+        { football: {} },
+      );
+    } catch {
+      stopped = true;
+    }
+    check(stopped, "Pre-aborted Football search dispatched");
     console.log(
-      "PASS: 12 real-adapter workerd cases; native fetch; all outbound requests bound to local fixture; zero external requests",
+      "PASS: 14 real-adapter workerd cases; native fetch; all outbound requests bound to local fixture; zero external requests",
     );
   },
 };

@@ -1,4 +1,10 @@
 import {
+  footballV2SynthesisBrief,
+  footballV2EvidenceUrls,
+  packFootballEvidenceV2,
+  readFootballEvidenceV2,
+} from "./football-evidence-v2.shared";
+import {
   buildFootballPredictionConsensus,
   extractFootballPredictionReferences,
 } from "./football-prediction-consensus.shared";
@@ -195,6 +201,8 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           `${common} ${LANGUAGE[data.leagueId] ?? "English"} latest injuries expected starting eleven rotation team news`,
           `${common} футбол прогноз ставки коэффициенты анализ tactical match preview betting odds`,
         ];
+        const { buildFootballClaimLedger } = await import("@/lib/football-evidence-v2.server");
+        const fullEvidence: import("./football-evidence-v2.server").FootballEvidenceDocument[] = [];
         const sources: FootballSourceSnapshot[] = [];
         for (const [queryIndex, query] of queries.entries()) {
           const result = await searchInspirationWeb(
@@ -203,10 +211,22 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             undefined,
             undefined,
             data.tavilySearchDepth,
-            { includePublicationMetadata: true },
+            {
+              includePublicationMetadata: true,
+              football: { textChars: 24000, maxResults: 3, format: "text" },
+            },
           );
           for (const doc of result.documents) {
             if (sources.some((existing) => existing.url === doc.source.url)) continue;
+            fullEvidence.push({
+              title: doc.source.title,
+              url: doc.source.url,
+              accessedAt: doc.source.accessedAt,
+              text: doc.text,
+              ...(doc.publishedAtUtc ? { publishedAtUtc: doc.publishedAtUtc } : {}),
+              truncated: doc.footballRetrieval?.truncated ?? false,
+              queryLanguage: queryIndex === 2 ? "mixed" : "unknown",
+            });
             sources.push({
               title: doc.source.title,
               url: doc.source.url,
@@ -224,6 +244,16 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           throw new Error("Match kickoff passed before research completed.");
         }
         const evidenceCutoff = new Date().toISOString();
+        const onlineEvidenceV2 = buildFootballClaimLedger(
+          identity,
+          fullEvidence,
+          evidenceCutoff,
+          queries.map((query, i) => ({
+            query,
+            language: i === 2 ? "mixed" : "unknown",
+            intent: i < 2 ? "match_facts" : "external_forecasts",
+          })),
+        );
         const predictionReferences = extractFootballPredictionReferences(
           identity,
           evidenceSnapshot,
@@ -268,6 +298,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             providerEvidence,
             bookmakerOddsSnapshot,
             usableBookmakerOddsSnapshot: usableOdds(bookmakerOddsSnapshot, evidenceCutoff),
+            onlineEvidenceV2: footballV2SynthesisBrief(onlineEvidenceV2),
             onlineSourceAgreement: {
               status: sourceAgreement.status,
               sourceCount: sourceAgreement.sourceCount,
@@ -316,7 +347,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               : { onlineJudgment: interpretation["onlineJudgment"] }),
           },
           evidenceCutoff,
-          providerEvidenceUrls(providerEvidence),
+          [...providerEvidenceUrls(providerEvidence), ...footballV2EvidenceUrls(onlineEvidenceV2)],
         );
         const wireAssessment = { ...interpretation };
         delete wireAssessment["onlinePredictions"];
@@ -365,18 +396,20 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           ...assessment,
           researchBrief,
           externalPredictionConsensus,
+          onlineEvidenceV2,
           providerEvidence,
           bookmakerOddsSnapshot,
           tavilySearchDepth: data.tavilySearchDepth,
         });
+        const persisted = packFootballEvidenceV2(savedAnalysis, savedSources);
         failureCode = "persistence_failed";
         const completedAt = new Date().toISOString();
         const { error: saveError } = await supabaseAdmin
           .from("private_football_research_runs" as never)
           .update({
             status: "completed",
-            analysis: savedAnalysis,
-            sources: savedSources,
+            analysis: persisted.analysis,
+            sources: persisted.sources,
             usage: receipt.usage,
             completed_at: completedAt,
           } as never)
@@ -514,6 +547,16 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
       const matches = scored.get(row.source + ":" + row.league_id + ":" + day);
       const match = matches?.find((f) => f.sourceFixtureId === String(row.fixture_id));
       const checked = footballAiAssessmentSchema.safeParse(row.analysis);
+      const historyEvidenceV2 = readFootballEvidenceV2(
+        row.sources,
+        {
+          leagueId: row.league_id,
+          homeTeam: row.home_team,
+          awayTeam: row.away_team,
+          kickoffUtc: row.kickoff_utc,
+        },
+        row.evidence_cutoff_at,
+      );
       const eligible =
         Number.isFinite(Date.parse(row.created_at)) &&
         Date.parse(row.created_at) < Date.parse(row.kickoff_utc) &&
@@ -550,7 +593,12 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
             decision: checkedExpert.success ? checkedExpert.data : null,
           };
         })(),
-        analysis: checked.success ? checked.data : null,
+        analysis: checked.success
+          ? {
+              ...checked.data,
+              ...(historyEvidenceV2 ? { onlineEvidenceV2: historyEvidenceV2 } : {}),
+            }
+          : null,
         sources: Array.isArray(row.sources)
           ? row.sources
               .filter(

@@ -1,3 +1,5 @@
+import { FootballEvidenceV2Panel } from "./FootballEvidenceV2Panel";
+import type { FootballClaimLedger } from "@/lib/football-evidence-v2.shared";
 import { useI18n } from "@/i18n";
 import {
   footballOnlineMessages,
@@ -12,8 +14,10 @@ import {
 export function OnlinePredictionsPanel({
   data,
   estimates = [],
+  evidenceV2,
 }: {
   data?: FootballPredictionConsensus | undefined;
+  evidenceV2?: FootballClaimLedger | undefined;
   estimates?: { market: string; percent: number }[] | undefined;
 }) {
   const { language } = useI18n();
@@ -44,88 +48,91 @@ export function OnlinePredictionsPanel({
         <p className="text-sm text-muted-foreground">{t.legacy}</p>
       ) : (
         <>
-          <div className="space-y-2" aria-label={t.consensus}>
-            <h4 className="font-medium">{t.consensus}</h4>
-            <p className="break-words text-xs text-muted-foreground">
-              {t.collected}: {data.collectedAtUtc}
-            </p>
-            <p className="text-sm">
-              {t.sources}: {data.sourceCount}
-            </p>
-            {data.status === "insufficient" && <p className="text-sm">{t.empty}</p>}
-            {data.sourceCount < 5 && <p className="text-xs text-muted-foreground">{t.small}</p>}
-            {data.groups.map((g) => (
-              <div key={g.family} className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                {g.support.map((s) => (
-                  <span key={s.market}>
-                    {footballOnlineMarketLabels[s.market]}:{" "}
-                    <strong>
-                      {s.count}/{g.sources}
-                    </strong>{" "}
-                    {t.votes}
-                  </span>
-                ))}
-                {g.conflicts > 0 && (
-                  <span>
-                    {t.conflicts}: {g.conflicts}
-                  </span>
-                )}
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground">{t.warning}</p>
-            <details className="rounded-lg border border-border p-2">
-              <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">
-                {t.claims} ({sourceDocuments.length})
-              </summary>
-              <ul className="min-w-0 space-y-3 text-sm">
-                {sourceDocuments.map((p, i) => (
-                  <li key={`${p.url}-${p.market}-${i}`} className="min-w-0 space-y-1 break-words">
-                    <a
-                      href={p.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="break-all text-primary underline"
-                    >
-                      {p.title || p.publisher}
-                    </a>
-                    <p>
-                      {data.predictions
-                        .filter((other) => other.url === p.url)
-                        .map((other) => footballOnlineMarketLabels[other.market])
-                        .join(" · ")}{" "}
-                      · {p.publisher}
-                    </p>
-                    <blockquote
-                      lang="und"
-                      className="border-l-2 border-border pl-2 text-xs text-muted-foreground"
-                    >
-                      {p.passage}
-                    </blockquote>
-                    <p className="text-xs text-muted-foreground">
-                      {t.accessed}: {p.accessedAt} ·{" "}
-                      {p.publishedAtUtc
-                        ? `${t.publicationReported}: ${p.publishedAtUtc}`
-                        : t.publication}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </details>
-            {data.excluded.length > 0 && (
+          {evidenceV2 && <FootballEvidenceV2Panel data={evidenceV2} />}
+          {!evidenceV2 && (
+            <div className="space-y-2" aria-label={t.consensus}>
+              <h4 className="font-medium">{t.consensus}</h4>
+              <p className="break-words text-xs text-muted-foreground">
+                {t.collected}: {data.collectedAtUtc}
+              </p>
+              <p className="text-sm">
+                {t.sources}: {data.sourceCount}
+              </p>
+              {data.status === "insufficient" && <p className="text-sm">{t.empty}</p>}
+              {data.sourceCount < 5 && <p className="text-xs text-muted-foreground">{t.small}</p>}
+              {data.groups.map((g) => (
+                <div key={g.family} className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  {g.support.map((s) => (
+                    <span key={s.market}>
+                      {footballOnlineMarketLabels[s.market]}:{" "}
+                      <strong>
+                        {s.count}/{g.sources}
+                      </strong>{" "}
+                      {t.votes}
+                    </span>
+                  ))}
+                  {g.conflicts > 0 && (
+                    <span>
+                      {t.conflicts}: {g.conflicts}
+                    </span>
+                  )}
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">{t.warning}</p>
               <details className="rounded-lg border border-border p-2">
-                <summary className="min-h-11 cursor-pointer py-2 text-sm">
-                  {t.excluded} ({data.excluded.length})
+                <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">
+                  {t.claims} ({sourceDocuments.length})
                 </summary>
-                <ul className="space-y-1 text-xs text-muted-foreground">
-                  {data.excluded.map((e, i) => (
-                    <li key={i}>
-                      #{e.sourceIndex + 1}: {t.reasons[e.reason]}
+                <ul className="min-w-0 space-y-3 text-sm">
+                  {sourceDocuments.map((p, i) => (
+                    <li key={`${p.url}-${p.market}-${i}`} className="min-w-0 space-y-1 break-words">
+                      <a
+                        href={p.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="break-all text-primary underline"
+                      >
+                        {p.title || p.publisher}
+                      </a>
+                      <p>
+                        {data.predictions
+                          .filter((other) => other.url === p.url)
+                          .map((other) => footballOnlineMarketLabels[other.market])
+                          .join(" · ")}{" "}
+                        · {p.publisher}
+                      </p>
+                      <blockquote
+                        lang="und"
+                        className="border-l-2 border-border pl-2 text-xs text-muted-foreground"
+                      >
+                        {p.passage}
+                      </blockquote>
+                      <p className="text-xs text-muted-foreground">
+                        {t.accessed}: {p.accessedAt} ·{" "}
+                        {p.publishedAtUtc
+                          ? `${t.publicationReported}: ${p.publishedAtUtc}`
+                          : t.publication}
+                      </p>
                     </li>
                   ))}
                 </ul>
               </details>
-            )}
-          </div>
+              {data.excluded.length > 0 && (
+                <details className="rounded-lg border border-border p-2">
+                  <summary className="min-h-11 cursor-pointer py-2 text-sm">
+                    {t.excluded} ({data.excluded.length})
+                  </summary>
+                  <ul className="space-y-1 text-xs text-muted-foreground">
+                    {data.excluded.map((e, i) => (
+                      <li key={i}>
+                        #{e.sourceIndex + 1}: {t.reasons[e.reason]}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
           <div className="space-y-2 border-t border-border pt-3" aria-label={t.ai}>
             <h4 className="font-medium">{t.ai}</h4>
             {likely && (
@@ -144,7 +151,7 @@ export function OnlinePredictionsPanel({
                     {t.alternative}: {footballOnlineMarketLabels[judgment.alternative]}
                   </p>
                 )}
-                {leading && (
+                {!evidenceV2 && leading && (
                   <p className="text-xs text-muted-foreground">
                     {agrees ? t.agreement : t.disagreement}
                   </p>

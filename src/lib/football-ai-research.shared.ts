@@ -1,3 +1,4 @@
+import { claimLedgerSchema } from "./football-evidence-v2.shared";
 import {
   footballPredictionConsensusSchema,
   FOOTBALL_ONLINE_PREDICTION_RULES,
@@ -72,6 +73,7 @@ export function filterResearchContextUrls(
 export const footballAiAssessmentSchema = z
   .object({
     externalPredictionConsensus: footballPredictionConsensusSchema.optional(),
+    onlineEvidenceV2: claimLedgerSchema.optional(),
     bookmakerOddsSnapshot: bookmakerOddsSnapshotSchema.optional(),
     summary: z.string().trim().min(20).max(3500),
     espnData: footballEspnContextSchema.optional(),

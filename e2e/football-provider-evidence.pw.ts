@@ -1,3 +1,4 @@
+import { buildFootballClaimLedger } from "../src/lib/football-evidence-v2.server";
 import { buildFootballPredictionConsensus } from "../src/lib/football-prediction-consensus.shared";
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -25,6 +26,7 @@ async function fixture(
   count = 1,
   allowResearch = false,
   online = false,
+  evidenceV2 = false,
 ) {
   const token =
     [
@@ -213,6 +215,30 @@ async function fixture(
                 limitations: [],
                 providerEvidence: snapshot,
                 bookmakerOddsSnapshot,
+                ...(evidenceV2
+                  ? {
+                      onlineEvidenceV2: buildFootballClaimLedger(
+                        { leagueId: "EN-PL", homeTeam: pair.home, awayTeam: pair.away, kickoffUtc },
+                        [
+                          {
+                            title: "Synthetic V2 preview",
+                            url: "https://sportsmole.co.uk/offline-v2",
+                            accessedAt: new Date().toISOString(),
+                            text: `${pair.home} vs ${pair.away} Premier League ${kickoffUtc.slice(0, 10)}\nOur pick is Over 2.5`,
+                            queryLanguage: "en",
+                          },
+                          {
+                            title: "Synthetic provisional source",
+                            url: "https://unreviewed.example.org/v2",
+                            accessedAt: new Date().toISOString(),
+                            text: `${pair.home} vs ${pair.away} Premier League ${kickoffUtc.slice(0, 10)}\nOur pick is Χ/2`,
+                            queryLanguage: "mixed",
+                          },
+                        ],
+                        new Date().toISOString(),
+                      ),
+                    }
+                  : {}),
                 ...(online
                   ? {
                       externalPredictionConsensus: (() => {
@@ -541,3 +567,58 @@ test("legacy online panel never researches retrospectively", async ({ page }) =>
   expect(f.paid()).toBe(0);
   expect(f.reads()).toBe(0);
 });
+
+for (const language of ["el", "en"])
+  test(`V2 literal claims ${language}, 320/390px, keyboard/axe and no history dispatch`, async ({
+    page,
+  }) => {
+    const state = await fixture(
+      page,
+      true,
+      true,
+      "matched",
+      language,
+      { home: "Arsenal", away: "Liverpool" },
+      1,
+      false,
+      true,
+      true,
+    );
+    await page
+      .getByRole("button", {
+        name: language === "en" ? /^Arsenal – Liverpool/ : /^Άρσεναλ – Λίβερπουλ/,
+      })
+      .click();
+    const panel = page.getByRole("region", {
+      name: language === "en" ? "Independent Online Predictions" : "Ανεξάρτητες Online Προβλέψεις",
+    });
+    await expect(panel).toContainText(
+      language === "en" ? "Published-pick evidence · V2" : "Τεκμήρια δημοσιευμένων επιλογών · V2",
+    );
+    const summary = panel.locator("summary").first();
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    await expect(panel.getByRole("link", { name: "Synthetic V2 preview" })).toBeVisible();
+    await expect(panel).toContainText("Our pick is Over 2.5");
+    await expect(panel).toContainText("X/2");
+    await expect(panel).toContainText(
+      language === "en" ? "Provisional · not counted" : "Προσωρινό · δεν προσμετράται",
+    );
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    }
+    const axe = await new AxeBuilder({ page })
+      .include(
+        'section[aria-label="' +
+          (language === "en" ? "Independent Online Predictions" : "Ανεξάρτητες Online Προβλέψεις") +
+          '"]',
+      )
+      .analyze();
+    expect(axe.violations).toEqual([]);
+    await page.screenshot({ path: test.info().outputPath(`v2-${language}.png`), fullPage: true });
+    expect(state.paid()).toBe(0);
+    expect(state.reads()).toBe(0);
+  });
