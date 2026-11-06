@@ -9,6 +9,7 @@ import {
   FOOTBALL_MODEL_TIMEOUT_MS,
 } from "./football-research-budget.shared";
 import {
+  fixtureLocalDate,
   footballV2SynthesisBrief,
   footballV2EvidenceUrls,
   packFootballEvidenceV2,
@@ -36,6 +37,49 @@ import {
 } from "./football-provider-evidence.shared";
 import { FOOTBALL_LEAGUES, FOOTBALL_ESPN_LEAGUES } from "./football-research.shared";
 import { usableOdds } from "./football-odds.shared";
+
+// Deterministic future fixture calendar, independent of CI wall-clock hour and host timezone.
+function offlineFixtureTimes(nowMs: number) {
+  const now = new Date(nowMs);
+  return {
+    time: now.toISOString(),
+    kickoff: new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 2, 12),
+    ).toISOString(),
+  };
+}
+for (const at of [
+  "2026-11-06T21:00:00Z",
+  "2026-11-06T23:14:00Z",
+  "2026-11-07T00:01:00Z",
+  "2026-03-28T23:30:00Z",
+])
+  test(`integration fixture stays date-correct across CI midnight/DST: ${at}`, () => {
+    const { time, kickoff } = offlineFixtureTimes(Date.parse(at));
+    const f = { leagueId: "IT-SA", homeTeam: "Inter", awayTeam: "Como", kickoffUtc: kickoff };
+    expect(Date.parse(kickoff)).toBeGreaterThan(Date.parse(time));
+    expect(fixtureLocalDate(f).date).toBe(kickoff.slice(0, 10));
+    for (const pick of [
+      "Our prediction for this match: Inter 2 - 1 Como",
+      "Our pick: GG & Over 2.5",
+    ]) {
+      const text = `Inter vs Como Serie A ${kickoff.slice(0, 10)} ${kickoff.slice(11, 16)} UTC.\n${pick}`;
+      expect(
+        buildFootballClaimLedger(
+          f,
+          [
+            {
+              text,
+              title: "Offline midnight regression",
+              url: "https://sportsmole.co.uk/offline-midnight",
+              accessedAt: time,
+            },
+          ],
+          time,
+        ).sourceCount,
+      ).toBe(1);
+    }
+  });
 
 for (const [iteration, mode] of (
   [
@@ -83,8 +127,7 @@ for (const [iteration, mode] of (
       .slice(0, part.lastIndexOf(");"))
       .trim()
       .replaceAll("import(", "dynamicImport(");
-    const time = new Date().toISOString(),
-      kickoff = new Date(Math.ceil(Date.now() / 60000) * 60000 + 86400000).toISOString();
+    const { time, kickoff } = offlineFixtureTimes(Date.now());
     const identity = {
       leagueId: "IT-SA",
       homeTeam: "Inter",

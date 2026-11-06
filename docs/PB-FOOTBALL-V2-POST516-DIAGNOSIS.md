@@ -157,3 +157,9 @@ SHA-256 sanitized local incident JSON: `51239b7d65613d667dc3ba8ae8086468a53c3aa2
 | Fiorentina–Juventus |             12 |              0 |            12 |               0 |       0 |
 
 Η γραφή είναι ανίχνευση του διαθέσιμου κειμένου, όχι πιστοποίηση πλήρους γλώσσας. Ελληνικό query δεν απέδωσε retained ελληνικό άρθρο στις τρεις περιπτώσεις. Δεν εξάγουμε αριθμό raw hits ανά search από unique μετά-dedupe αποθήκευση. Το νέο optional returnedSources usage receipt κρατά έως5 URL/title ανά πραγματικό search πριν το cross-query dedupe, χωρίς άρθρα ή νέα requests, και είναι backward-compatible με παλιές usage εγγραφές.
+
+## PR #517 — πραγματική αστοχία CI και τοπική διόρθωση 7/11
+
+Το εγκεκριμένο consolidated push δημιούργησε Draft PR #517 στο `2dccf2afdc1853a004bdec888a523c798388b39a`. Το Regression42310487553 απέτυχε στα combo/incident-score integration tests. Μετά23:00 UTC, το kickoff «τώρα+24ώρες» είχε διαφορετική ημερομηνία στη Ρώμη από την UTC ημερομηνία που έγραφε το synthetic άρθρο. Το strict date guard σωστά απέρριπτε αυτό το fixture. Αναπαραγωγή πριν αλλαγή:22 PASS/2 FAIL, ίδιες δύο περιπτώσεις. Η τοπική διόρθωση αφορά μόνο τον δοκιμαστικό χρόνο (δύο ημέρες αργότερα,12:00 UTC) και τέσσερα vectors πριν/μετά μεσάνυχτα και DST. Καμία χαλάρωση matcher, αφαίρεση test ή αλλαγή παραγωγικού κώδικα.
+
+Μετά τη διόρθωση: focused157 PASS,1.289 assertions· full Bun1.935 PASS/0 FAIL/1 υπάρχον PHP parity skip,29.163 assertions/233 files· strict TS/scoped lint/format PASS. Τα προηγούμενα build/browser/transport/SQL τεκμήρια αφορούν τον αμετάβλητο παραγωγικό κώδικα. Το corrective commit είναι τοπικό και απαιτεί νέα §7 έγκριση για branch update/CI. Δεν πραγματοποιήθηκε remote rerun, merge, publish, paid call ή SQL παραγωγής. Τα remote τρία gates δεν δηλώνονται πράσινα πριν επανεπαλήθευση στο τελικό corrective HEAD.
