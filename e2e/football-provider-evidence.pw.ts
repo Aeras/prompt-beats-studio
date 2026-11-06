@@ -20,6 +20,7 @@ async function fixture(
   history = false,
   oddsStatus = "matched",
   language = "el",
+  pair = { home: "Arsenal", away: "Liverpool" },
 ) {
   const token =
     [
@@ -67,7 +68,7 @@ async function fixture(
   const kickoffUtc = new Date(Date.now() + 86400000).toISOString();
   const side = {
     id: "10",
-    name: "Arsenal",
+    name: pair.home,
     standing: null,
     recentResults: [
       {
@@ -92,7 +93,7 @@ async function fixture(
     status: oddsStatus,
     retrievedAtUtc: new Date().toISOString(),
     observedAtUtc: new Date().toISOString(),
-    fixture: { leagueId: "EN-PL", homeTeam: "Arsenal", awayTeam: "Liverpool", kickoffUtc },
+    fixture: { leagueId: "EN-PL", homeTeam: pair.home, awayTeam: pair.away, kickoffUtc },
     providerFixtureId: "odds999",
     sourceFiles: ["site_pregame_stoiximan_soccer_leagues.json"],
     notes: ["Αποδόσεις αρχείου, όχι εγγύηση."],
@@ -113,14 +114,14 @@ async function fixture(
   const snapshot: FootballProviderEvidence = {
     version: 1,
     collectedAtUtc: new Date().toISOString(),
-    fixture: { leagueId: "EN-PL", homeTeam: "Arsenal", awayTeam: "Liverpool", kickoffUtc },
+    fixture: { leagueId: "EN-PL", homeTeam: pair.home, awayTeam: pair.away, kickoffUtc },
     conflicts: ["Διαφωνία δύο πηγών: τα σκορ διατηρούνται χωριστά."],
     providers: FOOTBALL_EVIDENCE_PROVIDERS.map((provider) => ({
       provider,
       status: provider === "football-data" ? "rate_limited" : "ok",
       fixtureId: "999",
       home: side,
-      away: { ...side, id: "20", name: "Liverpool" },
+      away: { ...side, id: "20", name: pair.away },
       resources: [
         {
           url:
@@ -172,8 +173,8 @@ async function fixture(
             source: "espn",
             sourceFixtureId: "999",
             leagueId: "EN-PL",
-            homeTeam: "Arsenal",
-            awayTeam: "Liverpool",
+            homeTeam: pair.home,
+            awayTeam: pair.away,
             kickoffUtc,
             state: "scheduled",
             fetchedAtUtc: new Date().toISOString(),
@@ -191,8 +192,8 @@ async function fixture(
               source: "espn",
               fixture_id: 999,
               league_id: "EN-PL",
-              home_team: "Arsenal",
-              away_team: "Liverpool",
+              home_team: pair.home,
+              away_team: pair.away,
               model_id: "offline-model",
               kickoff_utc: kickoffUtc,
               created_at: new Date().toISOString(),
@@ -349,3 +350,28 @@ test("English account keeps original team names in fixtures and odds; source ide
   );
   expect(f.paid()).toBe(0);
 });
+
+for (const [home, away, homeEl, awayEl] of [
+  ["AC Fiorentina", "Juventus FC", "Φιορεντίνα", "Γιουβέντους"],
+  ["Olympiacos Piraeus", "Panaitolikos", "Ολυμπιακός", "Παναιτωλικός"],
+  ["Brighton & Hove Albion", "Coventry City", "Μπράιτον", "Κόβεντρι"],
+  ["Olympique Lyonnais", "ES Troyes AC", "Λιόν", "Τρουά"],
+  ["Deportivo de A Coruña", "Athletic Bilbao", "Ντεπορτίβο Λα Κορούνια", "Αθλέτικ Μπιλμπάο"],
+  ["TSG 1899 Hoffenheim", "SV Elversberg", "Χόφενχαϊμ", "Έλβερσμπεργκ"],
+])
+  test(`six-league Greek aliases: ${home} — display only and zero paid dispatch`, async ({
+    page,
+  }) => {
+    const f = await fixture(page, true, false, "matched", "el", { home: home!, away: away! });
+    const button = page.getByRole("button", { name: `Στοιχεία παρόχων ${homeEl} – ${awayEl}` });
+    await expect(button).toBeVisible();
+    await button.click();
+    const odds = page.getByRole("region", { name: "Αποδόσεις Stoiximan" });
+    await expect(odds).toContainText(`${homeEl} – ${awayEl}`);
+    await expect(odds).toContainText("2.00");
+    expect(f.paid()).toBe(0);
+    expect(f.reads()).toBe(1);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  });

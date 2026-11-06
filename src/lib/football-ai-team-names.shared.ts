@@ -1,3 +1,4 @@
+import { footballTeamRegistry } from "./football-team-registry.shared";
 /** Presentation labels only; never used in evidence verification or persistence. */
 const V2: Record<string, string> = {
   "az alkmaar": "Άλκμααρ",
@@ -80,5 +81,8 @@ const GREEK: Record<string, string> = {
 };
 export function footballTeamDisplayName(name: string, language: string): string {
   if (language !== "el") return name;
-  return GREEK[name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en")] ?? name;
+  const registered = footballTeamRegistry.resolve(name);
+  if (registered.status === "matched") return registered.team.nameEl;
+  const key = name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
+  return Object.hasOwn(GREEK, key) ? GREEK[key]! : name;
 }

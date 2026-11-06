@@ -1,0 +1,1710 @@
+{
+  "version": 1,
+  "reviewedAt": "2026-11-06",
+  "sources": {
+    "gr-sl": {
+      "greekNamesUrl": "https://athlosnews.gr/matchcenter/competition/football/197/super-league/",
+      "retrievedAt": "2026-11-06",
+      "espnUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/gre.1/teams?limit=100",
+      "espnSHA256": "66c63d2d4a3e90317b8f3c43f98951fbc7800a5d8683679c0ca234c78bec8ba9",
+      "review": "reviewed-static-labels-and-cross-provider-name-pairs"
+    },
+    "en-pl": {
+      "greekNamesUrl": "https://athlosnews.gr/matchcenter/competition/football/39/premier-league/",
+      "retrievedAt": "2026-11-06",
+      "espnUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/teams?limit=100",
+      "espnSHA256": "0746d7ba071771de6796ea769b18d090366e5fbffda7418acb6613533aaa4cf6",
+      "review": "reviewed-static-labels-and-cross-provider-name-pairs"
+    },
+    "fr-l1": {
+      "greekNamesUrl": "https://athlosnews.gr/matchcenter/competition/football/61/ligue-1/",
+      "retrievedAt": "2026-11-06",
+      "espnUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.1/teams?limit=100",
+      "espnSHA256": "039df194ec9b7fe7e3a09ef15d81007bcc42c34461597ab1ca77e96883082d25",
+      "review": "reviewed-static-labels-and-cross-provider-name-pairs"
+    },
+    "es-ll": {
+      "greekNamesUrl": "https://athlosnews.gr/matchcenter/competition/football/140/la-liga/",
+      "retrievedAt": "2026-11-06",
+      "espnUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/teams?limit=100",
+      "espnSHA256": "fc3b6f335d4cd263aaf15779ff8624f8fa9dc5a5708c92fbdf3094fbed87aa9b",
+      "review": "reviewed-static-labels-and-cross-provider-name-pairs"
+    },
+    "de-bl": {
+      "greekNamesUrl": "https://athlosnews.gr/matchcenter/competition/football/78/bundesliga/",
+      "retrievedAt": "2026-11-06",
+      "espnUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/teams?limit=100",
+      "espnSHA256": "ddf0425e233fb607d317c9f94888fdf2d3f341bfe4c4f2067f16be6c6d43e600",
+      "review": "reviewed-static-labels-and-cross-provider-name-pairs"
+    },
+    "it-sa": {
+      "greekNamesUrl": "https://athlosnews.gr/matchcenter/competition/football/135/serie-a/",
+      "retrievedAt": "2026-11-06",
+      "espnUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/teams?limit=100",
+      "espnSHA256": "575f8fd96cb7e5b015902c61a344796bf312d99d470683e2c99a3b8f97331eab",
+      "review": "reviewed-static-labels-and-cross-provider-name-pairs"
+    }
+  },
+  "providerEvidence": {
+    "joj": "Already-collected production cache 2026-11-06T06:10:43Z/06:10:45Z, no new request; pairings manually reviewed within six domestic competitions. Raw feed excluded from Git.",
+    "scope": "Current six domestic senior-men rosters; league membership is snapshot metadata, never part of stable club ID. Other providers use exact reviewed aliases; their IDs are unverified and absent."
+  },
+  "teams": [
+    {
+      "id": "gr-aek-athens",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "AEK Athens",
+      "nameEl": "ΑΕΚ",
+      "aliases": ["AEK Athens", "AEK"],
+      "providers": {
+        "espn": "887",
+        "joj-stoiximan": "109066"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-aris",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Aris",
+      "nameEl": "Άρης Θεσσαλονίκης",
+      "aliases": ["Aris", "Aris Thessaloniki"],
+      "providers": {
+        "espn": "11553",
+        "joj-stoiximan": "109349"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-asteras-tripoli",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Asteras Tripoli",
+      "nameEl": "Αστέρας Τρίπολης",
+      "aliases": ["Asteras Tripoli", "Asteras Tripolis"],
+      "providers": {
+        "espn": "8354",
+        "joj-stoiximan": "108718"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-atromitos",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Atromitos",
+      "nameEl": "Ατρόμητος",
+      "aliases": ["Atromitos", "Atromitos Athinon"],
+      "providers": {
+        "espn": "6790",
+        "joj-stoiximan": "108722"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-iraklis",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Iraklis",
+      "nameEl": "Ηρακλής",
+      "aliases": ["Iraklis"],
+      "providers": {
+        "espn": "2575",
+        "joj-stoiximan": "1929617"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-kalamata",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Kalamata",
+      "nameEl": "Καλαμάτα",
+      "aliases": ["Kalamata"],
+      "providers": {
+        "espn": "132429",
+        "joj-stoiximan": "108494"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-kifisia",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Kifisia",
+      "nameEl": "Κηφισιά",
+      "aliases": ["Kifisia"],
+      "providers": {
+        "espn": "21969",
+        "joj-stoiximan": "1882660"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-levadiakos",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Levadiakos",
+      "nameEl": "Λεβαδειακός",
+      "aliases": ["Levadiakos"],
+      "providers": {
+        "espn": "5276",
+        "joj-stoiximan": "108465"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-ofi-crete",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "OFI Crete",
+      "nameEl": "ΟΦΗ",
+      "aliases": ["OFI Crete"],
+      "providers": {
+        "espn": "1010",
+        "joj-stoiximan": "107861"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-olympiacos",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Olympiacos",
+      "nameEl": "Ολυμπιακός",
+      "aliases": ["Olympiacos", "Olympiacos Piraeus", "Olympiacos FC"],
+      "providers": {
+        "espn": "435",
+        "joj-stoiximan": "108723"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-paok",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "PAOK",
+      "nameEl": "ΠΑΟΚ",
+      "aliases": ["PAOK"],
+      "providers": {
+        "espn": "605",
+        "joj-stoiximan": "109159"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-panathinaikos",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Panathinaikos",
+      "nameEl": "Παναθηναϊκός",
+      "aliases": ["Panathinaikos"],
+      "providers": {
+        "espn": "443",
+        "joj-stoiximan": "108432"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-panetolikos",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Panetolikos",
+      "nameEl": "Παναιτωλικός",
+      "aliases": ["Panetolikos", "Panaitolikos"],
+      "providers": {
+        "espn": "11431",
+        "joj-stoiximan": "108471"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "gr-volos-nfc",
+      "country": "gr",
+      "squad": "men-first",
+      "domesticLeague": "GR-SL",
+      "season": "2026-27",
+      "name": "Volos NFC",
+      "nameEl": "Βόλος ΝΠΣ",
+      "aliases": ["Volos NFC"],
+      "providers": {
+        "espn": "20043",
+        "joj-stoiximan": "1916043"
+      },
+      "source": "gr-sl"
+    },
+    {
+      "id": "en-afc-bournemouth",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "AFC Bournemouth",
+      "nameEl": "Μπόρνμουθ",
+      "aliases": ["AFC Bournemouth", "Bournemouth"],
+      "providers": {
+        "espn": "349",
+        "joj-stoiximan": "106709"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-arsenal",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Arsenal",
+      "nameEl": "Άρσεναλ",
+      "aliases": ["Arsenal", "Arsenal FC"],
+      "providers": {
+        "espn": "359",
+        "joj-stoiximan": "106359"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-aston-villa",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Aston Villa",
+      "nameEl": "Άστον Βίλα",
+      "aliases": ["Aston Villa"],
+      "providers": {
+        "espn": "362",
+        "joj-stoiximan": "107586"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-brentford",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Brentford",
+      "nameEl": "Μπρέντφορντ",
+      "aliases": ["Brentford", "Brentford FC"],
+      "providers": {
+        "espn": "337",
+        "joj-stoiximan": "106864"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-brighton-hove-albion",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Brighton & Hove Albion",
+      "nameEl": "Μπράιτον",
+      "aliases": ["Brighton & Hove Albion", "Brighton and Hove Albion"],
+      "providers": {
+        "espn": "331",
+        "joj-stoiximan": "106747"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-chelsea",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Chelsea",
+      "nameEl": "Τσέλσι",
+      "aliases": ["Chelsea", "Chelsea FC"],
+      "providers": {
+        "espn": "363",
+        "joj-stoiximan": "106835"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-coventry-city",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Coventry City",
+      "nameEl": "Κόβεντρι",
+      "aliases": ["Coventry City"],
+      "providers": {
+        "espn": "388",
+        "joj-stoiximan": "109638"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-crystal-palace",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Crystal Palace",
+      "nameEl": "Κρίσταλ Πάλας",
+      "aliases": ["Crystal Palace", "Crystal Palace FC"],
+      "providers": {
+        "espn": "384",
+        "joj-stoiximan": "107915"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-everton",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Everton",
+      "nameEl": "Έβερτον",
+      "aliases": ["Everton", "Everton FC"],
+      "providers": {
+        "espn": "368",
+        "joj-stoiximan": "106753"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-fulham",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Fulham",
+      "nameEl": "Φούλαμ",
+      "aliases": ["Fulham"],
+      "providers": {
+        "espn": "370",
+        "joj-stoiximan": "106357"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-hull-city",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Hull City",
+      "nameEl": "Χαλ Σίτι",
+      "aliases": ["Hull City"],
+      "providers": {
+        "espn": "306",
+        "joj-stoiximan": "106373"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-ipswich-town",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Ipswich Town",
+      "nameEl": "Ίπσουιτς",
+      "aliases": ["Ipswich Town"],
+      "providers": {
+        "espn": "373",
+        "joj-stoiximan": "106315"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-leeds-united",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Leeds United",
+      "nameEl": "Λιντς",
+      "aliases": ["Leeds United"],
+      "providers": {
+        "espn": "357",
+        "joj-stoiximan": "106731"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-liverpool",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Liverpool",
+      "nameEl": "Λίβερπουλ",
+      "aliases": ["Liverpool", "Liverpool FC"],
+      "providers": {
+        "espn": "364",
+        "joj-stoiximan": "108840"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-manchester-city",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Manchester City",
+      "nameEl": "Μάντσεστερ Σίτι",
+      "aliases": ["Manchester City", "Manchester City FC"],
+      "providers": {
+        "espn": "382",
+        "joj-stoiximan": "106785"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-manchester-united",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Manchester United",
+      "nameEl": "Μάντσεστερ Γιουνάιτεντ",
+      "aliases": ["Manchester United", "Manchester United FC", "Manchester Utd"],
+      "providers": {
+        "espn": "360",
+        "joj-stoiximan": "108757"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-newcastle-united",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Newcastle United",
+      "nameEl": "Νιούκασλ",
+      "aliases": ["Newcastle United", "Newcastle Utd"],
+      "providers": {
+        "espn": "361",
+        "joj-stoiximan": "107610"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-nottingham-forest",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Nottingham Forest",
+      "nameEl": "Νότιγχαμ Φόρεστ",
+      "aliases": ["Nottingham Forest"],
+      "providers": {
+        "espn": "393",
+        "joj-stoiximan": "109058"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-sunderland",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Sunderland",
+      "nameEl": "Σάντερλαντ",
+      "aliases": ["Sunderland"],
+      "providers": {
+        "espn": "366",
+        "joj-stoiximan": "107366"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "en-tottenham-hotspur",
+      "country": "en",
+      "squad": "men-first",
+      "domesticLeague": "EN-PL",
+      "season": "2026-27",
+      "name": "Tottenham Hotspur",
+      "nameEl": "Τότεναμ",
+      "aliases": ["Tottenham Hotspur", "Tottenham"],
+      "providers": {
+        "espn": "367",
+        "joj-stoiximan": "106364"
+      },
+      "source": "en-pl"
+    },
+    {
+      "id": "fr-aj-auxerre",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "AJ Auxerre",
+      "nameEl": "Οσέρ",
+      "aliases": ["AJ Auxerre"],
+      "providers": {
+        "espn": "172",
+        "joj-stoiximan": "106482"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-as-monaco",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "AS Monaco",
+      "nameEl": "Μονακό",
+      "aliases": ["AS Monaco"],
+      "providers": {
+        "espn": "174",
+        "joj-stoiximan": "106311"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-angers",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Angers",
+      "nameEl": "Ανζέ",
+      "aliases": ["Angers", "Angers SCO"],
+      "providers": {
+        "espn": "7868",
+        "joj-stoiximan": "108439"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-brest",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Brest",
+      "nameEl": "Μπρεστ",
+      "aliases": ["Brest", "Stade Brestois 29"],
+      "providers": {
+        "espn": "6997",
+        "joj-stoiximan": "106881"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-le-havre-ac",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Le Havre AC",
+      "nameEl": "Χάβρη",
+      "aliases": ["Le Havre AC"],
+      "providers": {
+        "espn": "3236",
+        "joj-stoiximan": "108415"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-le-mans",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Le Mans",
+      "nameEl": "Λε Μαν",
+      "aliases": ["Le Mans", "Le Mans UC 72"],
+      "providers": {
+        "espn": "2697",
+        "joj-stoiximan": "106493"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-lens",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Lens",
+      "nameEl": "Λανς",
+      "aliases": ["Lens", "RC Lens"],
+      "providers": {
+        "espn": "175",
+        "joj-stoiximan": "107542"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-lille",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Lille",
+      "nameEl": "Λιλ",
+      "aliases": ["Lille", "Lille OSC"],
+      "providers": {
+        "espn": "166",
+        "joj-stoiximan": "106887"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-lorient",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Lorient",
+      "nameEl": "Λοριάν",
+      "aliases": ["Lorient", "FC Lorient"],
+      "providers": {
+        "espn": "273",
+        "joj-stoiximan": "106889"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-lyon",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Lyon",
+      "nameEl": "Λιόν",
+      "aliases": ["Lyon", "Olympique Lyonnais"],
+      "providers": {
+        "espn": "167",
+        "joj-stoiximan": "107634"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-marseille",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Marseille",
+      "nameEl": "Μαρσέιγ",
+      "aliases": ["Marseille", "Olympique Marseille"],
+      "providers": {
+        "espn": "176",
+        "joj-stoiximan": "108621"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-nice",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Nice",
+      "nameEl": "Νις",
+      "aliases": ["Nice", "OGC Nice"],
+      "providers": {
+        "espn": "2502",
+        "joj-stoiximan": "106645"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-paris-fc",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Paris FC",
+      "nameEl": "Παρί FC",
+      "aliases": ["Paris FC"],
+      "providers": {
+        "espn": "6851",
+        "joj-stoiximan": "116951"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-paris-saint-germain",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Paris Saint-Germain",
+      "nameEl": "Παρί Σεν Ζερμέν",
+      "aliases": ["Paris Saint-Germain", "Paris Saint-Germain FC", "Paris Saint Germain"],
+      "providers": {
+        "espn": "160",
+        "joj-stoiximan": "107635"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-stade-rennais",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Stade Rennais",
+      "nameEl": "Ρεν",
+      "aliases": ["Stade Rennais", "Stade Rennais FC"],
+      "providers": {
+        "espn": "169",
+        "joj-stoiximan": "106481"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-strasbourg",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Strasbourg",
+      "nameEl": "Στρασμπούρ",
+      "aliases": ["Strasbourg", "RC Strasbourg"],
+      "providers": {
+        "espn": "180",
+        "joj-stoiximan": "109484"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-toulouse",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Toulouse",
+      "nameEl": "Τουλούζ",
+      "aliases": ["Toulouse", "Toulouse FC"],
+      "providers": {
+        "espn": "179",
+        "joj-stoiximan": "107120"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "fr-troyes",
+      "country": "fr",
+      "squad": "men-first",
+      "domesticLeague": "FR-L1",
+      "season": "2026-27",
+      "name": "Troyes",
+      "nameEl": "Τρουά",
+      "aliases": ["Troyes", "ES Troyes AC"],
+      "providers": {
+        "espn": "170",
+        "joj-stoiximan": "109164"
+      },
+      "source": "fr-l1"
+    },
+    {
+      "id": "es-alaves",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Alavés",
+      "nameEl": "Αλαβές",
+      "aliases": ["Alavés", "Deportivo Alaves"],
+      "providers": {
+        "espn": "96",
+        "joj-stoiximan": "1970458"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-athletic-club",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Athletic Club",
+      "nameEl": "Αθλέτικ Μπιλμπάο",
+      "aliases": ["Athletic Club", "Athletic Bilbao"],
+      "providers": {
+        "espn": "93",
+        "joj-stoiximan": "107463"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-atletico-madrid",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Atlético Madrid",
+      "nameEl": "Ατλέτικο Μαδρίτης",
+      "aliases": ["Atlético Madrid", "Atletico Madrid"],
+      "providers": {
+        "espn": "1068",
+        "joj-stoiximan": "107168"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-barcelona",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Barcelona",
+      "nameEl": "Μπαρτσελόνα",
+      "aliases": ["Barcelona", "FC Barcelona"],
+      "providers": {
+        "espn": "83",
+        "joj-stoiximan": "118748"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-celta-vigo",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Celta Vigo",
+      "nameEl": "Θέλτα",
+      "aliases": ["Celta Vigo", "RC Celta de Vigo"],
+      "providers": {
+        "espn": "85",
+        "joj-stoiximan": "107809"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-deportivo",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Deportivo",
+      "nameEl": "Ντεπορτίβο Λα Κορούνια",
+      "aliases": ["Deportivo", "Deportivo de A Coruña"],
+      "providers": {
+        "espn": "90",
+        "joj-stoiximan": "107791"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-elche",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Elche",
+      "nameEl": "Έλτσε",
+      "aliases": ["Elche", "Elche CF"],
+      "providers": {
+        "espn": "3751",
+        "joj-stoiximan": "106643"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-espanyol",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Espanyol",
+      "nameEl": "Εσπανιόλ",
+      "aliases": ["Espanyol", "RCD Espanyol"],
+      "providers": {
+        "espn": "88",
+        "joj-stoiximan": "108655"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-getafe",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Getafe",
+      "nameEl": "Χετάφε",
+      "aliases": ["Getafe", "Getafe CF"],
+      "providers": {
+        "espn": "2922",
+        "joj-stoiximan": "1970457"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-levante",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Levante",
+      "nameEl": "Λεβάντε",
+      "aliases": ["Levante", "Levante UD"],
+      "providers": {
+        "espn": "1538",
+        "joj-stoiximan": "109295"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-malaga",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Málaga",
+      "nameEl": "Μάλαγα",
+      "aliases": ["Málaga", "Malaga CF"],
+      "providers": {
+        "espn": "99",
+        "joj-stoiximan": "109195"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-osasuna",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Osasuna",
+      "nameEl": "Οσασούνα",
+      "aliases": ["Osasuna", "CA Osasuna"],
+      "providers": {
+        "espn": "97",
+        "joj-stoiximan": "108639"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-racing-santander",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Racing Santander",
+      "nameEl": "Ράσινγκ Σανταντέρ",
+      "aliases": ["Racing Santander"],
+      "providers": {
+        "espn": "87",
+        "joj-stoiximan": "107153"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-rayo-vallecano",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Rayo Vallecano",
+      "nameEl": "Ράγιο Βαγιεκάνο",
+      "aliases": ["Rayo Vallecano"],
+      "providers": {
+        "espn": "101",
+        "joj-stoiximan": "107232"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-real-betis",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Real Betis",
+      "nameEl": "Ρεάλ Μπέτις",
+      "aliases": ["Real Betis", "Real Betis Balompie"],
+      "providers": {
+        "espn": "244",
+        "joj-stoiximan": "1904622"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-real-madrid",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Real Madrid",
+      "nameEl": "Ρεάλ Μαδρίτης",
+      "aliases": ["Real Madrid", "Real Madrid CF"],
+      "providers": {
+        "espn": "86",
+        "joj-stoiximan": "107805"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-real-sociedad",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Real Sociedad",
+      "nameEl": "Ρεάλ Σοσιεδάδ",
+      "aliases": ["Real Sociedad"],
+      "providers": {
+        "espn": "89",
+        "joj-stoiximan": "107704"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-sevilla",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Sevilla",
+      "nameEl": "Σεβίλλη",
+      "aliases": ["Sevilla", "Sevilla FC"],
+      "providers": {
+        "espn": "243",
+        "joj-stoiximan": "1970454"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-valencia",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Valencia",
+      "nameEl": "Βαλένθια",
+      "aliases": ["Valencia", "Valencia CF"],
+      "providers": {
+        "espn": "94",
+        "joj-stoiximan": "1970455"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "es-villarreal",
+      "country": "es",
+      "squad": "men-first",
+      "domesticLeague": "ES-LL",
+      "season": "2026-27",
+      "name": "Villarreal",
+      "nameEl": "Βιγιαρεάλ",
+      "aliases": ["Villarreal", "Villarreal CF"],
+      "providers": {
+        "espn": "102",
+        "joj-stoiximan": "1970456"
+      },
+      "source": "es-ll"
+    },
+    {
+      "id": "de-1-fc-union-berlin",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "1. FC Union Berlin",
+      "nameEl": "Ουνιόν Βερολίνου",
+      "aliases": ["1. FC Union Berlin"],
+      "providers": {
+        "espn": "598",
+        "joj-stoiximan": "107376"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-bayer-leverkusen",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Bayer Leverkusen",
+      "nameEl": "Λεβερκούζεν",
+      "aliases": ["Bayer Leverkusen", "Bayer 04 Leverkusen"],
+      "providers": {
+        "espn": "131",
+        "joj-stoiximan": "108822"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-bayern-munich",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Bayern Munich",
+      "nameEl": "Μπάγερν Μονάχου",
+      "aliases": [
+        "Bayern Munich",
+        "FC Bayern Munchen",
+        "FC Bayern München",
+        "Bayern München",
+        "Bayern Munchen"
+      ],
+      "providers": {
+        "espn": "132",
+        "joj-stoiximan": "108215"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-borussia-dortmund",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Borussia Dortmund",
+      "nameEl": "Μπορούσια Ντόρτμουντ",
+      "aliases": ["Borussia Dortmund"],
+      "providers": {
+        "espn": "124",
+        "joj-stoiximan": "108294"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-borussia-monchengladbach",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Borussia Mönchengladbach",
+      "nameEl": "Γκλάντμπαχ",
+      "aliases": ["Borussia Mönchengladbach", "Borussia Monchengladbach"],
+      "providers": {
+        "espn": "268",
+        "joj-stoiximan": "108687"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-eintracht-frankfurt",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Eintracht Frankfurt",
+      "nameEl": "Άιντραχτ Φρανκφούρτης",
+      "aliases": ["Eintracht Frankfurt"],
+      "providers": {
+        "espn": "125",
+        "joj-stoiximan": "107642"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-fc-augsburg",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "FC Augsburg",
+      "nameEl": "Άουγκσμπουργκ",
+      "aliases": ["FC Augsburg"],
+      "providers": {
+        "espn": "3841",
+        "joj-stoiximan": "107489"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-fc-cologne",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "FC Cologne",
+      "nameEl": "Κολωνία",
+      "aliases": ["FC Cologne", "1. FC Köln"],
+      "providers": {
+        "espn": "122",
+        "joj-stoiximan": "106812"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-hamburg-sv",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Hamburg SV",
+      "nameEl": "Αμβούργο",
+      "aliases": ["Hamburg SV", "Hamburger SV"],
+      "providers": {
+        "espn": "127",
+        "joj-stoiximan": "107288"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-mainz",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Mainz",
+      "nameEl": "Μάιντς",
+      "aliases": ["Mainz", "FSV Mainz 05"],
+      "providers": {
+        "espn": "2950",
+        "joj-stoiximan": "106861"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-rb-leipzig",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "RB Leipzig",
+      "nameEl": "Λειψία",
+      "aliases": ["RB Leipzig"],
+      "providers": {
+        "espn": "11420",
+        "joj-stoiximan": "108344"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-sc-freiburg",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "SC Freiburg",
+      "nameEl": "Φράιμπουργκ",
+      "aliases": ["SC Freiburg"],
+      "providers": {
+        "espn": "126",
+        "joj-stoiximan": "108572"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-sc-paderborn-07",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "SC Paderborn 07",
+      "nameEl": "Πάντερμπορν",
+      "aliases": ["SC Paderborn 07"],
+      "providers": {
+        "espn": "3307",
+        "joj-stoiximan": "107643"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-sv-elversberg",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "SV Elversberg",
+      "nameEl": "Έλβερσμπεργκ",
+      "aliases": ["SV Elversberg"],
+      "providers": {
+        "espn": "10388",
+        "joj-stoiximan": "106595"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-schalke-04",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Schalke 04",
+      "nameEl": "Σάλκε",
+      "aliases": ["Schalke 04", "FC Schalke 04"],
+      "providers": {
+        "espn": "133",
+        "joj-stoiximan": "108284"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-tsg-hoffenheim",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "TSG Hoffenheim",
+      "nameEl": "Χόφενχαϊμ",
+      "aliases": ["TSG Hoffenheim", "TSG 1899 Hoffenheim"],
+      "providers": {
+        "espn": "7911",
+        "joj-stoiximan": "108875"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-vfb-stuttgart",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "VfB Stuttgart",
+      "nameEl": "Στουτγκάρδη",
+      "aliases": ["VfB Stuttgart"],
+      "providers": {
+        "espn": "134",
+        "joj-stoiximan": "108838"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "de-werder-bremen",
+      "country": "de",
+      "squad": "men-first",
+      "domesticLeague": "DE-BL",
+      "season": "2026-27",
+      "name": "Werder Bremen",
+      "nameEl": "Βέρντερ Βρέμης",
+      "aliases": ["Werder Bremen"],
+      "providers": {
+        "espn": "137",
+        "joj-stoiximan": "106358"
+      },
+      "source": "de-bl"
+    },
+    {
+      "id": "it-ac-milan",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "AC Milan",
+      "nameEl": "Μίλαν",
+      "aliases": ["AC Milan"],
+      "providers": {
+        "espn": "103",
+        "joj-stoiximan": "107075"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-as-roma",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "AS Roma",
+      "nameEl": "Ρόμα",
+      "aliases": ["AS Roma", "Roma"],
+      "providers": {
+        "espn": "104",
+        "joj-stoiximan": "107363"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-atalanta",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Atalanta",
+      "nameEl": "Αταλάντα",
+      "aliases": ["Atalanta"],
+      "providers": {
+        "espn": "105",
+        "joj-stoiximan": "107244"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-bologna",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Bologna",
+      "nameEl": "Μπολόνια",
+      "aliases": ["Bologna", "Bologna FC"],
+      "providers": {
+        "espn": "107",
+        "joj-stoiximan": "108188"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-cagliari",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Cagliari",
+      "nameEl": "Κάλιαρι",
+      "aliases": ["Cagliari", "Cagliari Calcio"],
+      "providers": {
+        "espn": "2925",
+        "joj-stoiximan": "107754"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-como",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Como",
+      "nameEl": "Κόμο",
+      "aliases": ["Como", "Como 1907"],
+      "providers": {
+        "espn": "2572",
+        "joj-stoiximan": "106478"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-fiorentina",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Fiorentina",
+      "nameEl": "Φιορεντίνα",
+      "aliases": ["Fiorentina", "AC Fiorentina"],
+      "providers": {
+        "espn": "109",
+        "joj-stoiximan": "106943"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-frosinone",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Frosinone",
+      "nameEl": "Φροζινόνε",
+      "aliases": ["Frosinone"],
+      "providers": {
+        "espn": "4057",
+        "joj-stoiximan": "1968627"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-genoa",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Genoa",
+      "nameEl": "Τζένοα",
+      "aliases": ["Genoa", "Genoa CFC"],
+      "providers": {
+        "espn": "3263",
+        "joj-stoiximan": "108232"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-internazionale",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Internazionale",
+      "nameEl": "Ίντερ",
+      "aliases": ["Internazionale", "Inter Milan", "Inter", "FC Internazionale Milano"],
+      "providers": {
+        "espn": "110",
+        "joj-stoiximan": "108866"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-juventus",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Juventus",
+      "nameEl": "Γιουβέντους",
+      "aliases": ["Juventus", "Juventus FC"],
+      "providers": {
+        "espn": "111",
+        "joj-stoiximan": "107717"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-lazio",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Lazio",
+      "nameEl": "Λάτσιο",
+      "aliases": ["Lazio", "SS Lazio"],
+      "providers": {
+        "espn": "112",
+        "joj-stoiximan": "106498"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-lecce",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Lecce",
+      "nameEl": "Λέτσε",
+      "aliases": ["Lecce", "US Lecce"],
+      "providers": {
+        "espn": "113",
+        "joj-stoiximan": "108845"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-monza",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Monza",
+      "nameEl": "Μόντσα",
+      "aliases": ["Monza", "AC Monza"],
+      "providers": {
+        "espn": "4007",
+        "joj-stoiximan": "107248"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-napoli",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Napoli",
+      "nameEl": "Νάπολι",
+      "aliases": ["Napoli", "SSC Napoli"],
+      "providers": {
+        "espn": "114",
+        "joj-stoiximan": "108856"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-parma",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Parma",
+      "nameEl": "Πάρμα",
+      "aliases": ["Parma", "Parma Calcio 1913"],
+      "providers": {
+        "espn": "115",
+        "joj-stoiximan": "106462"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-sassuolo",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Sassuolo",
+      "nameEl": "Σασουόλο",
+      "aliases": ["Sassuolo", "US Sassuolo Calcio"],
+      "providers": {
+        "espn": "3997",
+        "joj-stoiximan": "107732"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-torino",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Torino",
+      "nameEl": "Τορίνο",
+      "aliases": ["Torino", "Torino FC"],
+      "providers": {
+        "espn": "239",
+        "joj-stoiximan": "108134"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-udinese",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Udinese",
+      "nameEl": "Ουντινέζε",
+      "aliases": ["Udinese", "Udinese Calcio"],
+      "providers": {
+        "espn": "118",
+        "joj-stoiximan": "106496"
+      },
+      "source": "it-sa"
+    },
+    {
+      "id": "it-venezia",
+      "country": "it",
+      "squad": "men-first",
+      "domesticLeague": "IT-SA",
+      "season": "2026-27",
+      "name": "Venezia",
+      "nameEl": "Βενέτσια",
+      "aliases": ["Venezia", "Venezia FC"],
+      "providers": {
+        "espn": "17530",
+        "joj-stoiximan": "117857"
+      },
+      "source": "it-sa"
+    }
+  ]
+}

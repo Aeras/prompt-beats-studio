@@ -1,3 +1,7 @@
+import {
+  registeredFootballTeamKey,
+  sameRegisteredFootballTeam,
+} from "./football-team-registry.shared";
 import { z } from "zod";
 import { footballEspnContextSchema } from "./football-espn-context.shared";
 
@@ -140,7 +144,7 @@ const aliases: Record<string, string> = {
 };
 export function footballEvidenceTeamKey(name: string): string {
   const key = name.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
-  return aliases[key] ?? key;
+  return registeredFootballTeamKey(name) ?? (Object.hasOwn(aliases, key) ? aliases[key]! : key);
 }
 export function sameEvidenceFixture(
   target: FootballProviderEvidence["fixture"],
@@ -149,8 +153,10 @@ export function sameEvidenceFixture(
   return (
     Number.isFinite(Date.parse(target.kickoffUtc)) &&
     Date.parse(target.kickoffUtc) === Date.parse(candidate.kickoffUtc) &&
-    footballEvidenceTeamKey(target.homeTeam) === footballEvidenceTeamKey(candidate.homeTeam) &&
-    footballEvidenceTeamKey(target.awayTeam) === footballEvidenceTeamKey(candidate.awayTeam)
+    (sameRegisteredFootballTeam(target.homeTeam, candidate.homeTeam) ??
+      footballEvidenceTeamKey(target.homeTeam) === footballEvidenceTeamKey(candidate.homeTeam)) &&
+    (sameRegisteredFootballTeam(target.awayTeam, candidate.awayTeam) ??
+      footballEvidenceTeamKey(target.awayTeam) === footballEvidenceTeamKey(candidate.awayTeam))
   );
 }
 export function providerEvidenceUrls(bundle: FootballProviderEvidence): string[] {
