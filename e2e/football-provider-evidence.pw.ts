@@ -1,3 +1,4 @@
+import { buildFootballPredictionConsensus } from "../src/lib/football-prediction-consensus.shared";
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
@@ -23,6 +24,7 @@ async function fixture(
   pair = { home: "Arsenal", away: "Liverpool" },
   count = 1,
   allowResearch = false,
+  online = false,
 ) {
   const token =
     [
@@ -67,7 +69,7 @@ async function fixture(
   let paid = 0,
     reads = 0;
   const seenProviders: string[] = [];
-  const kickoffUtc = new Date(Date.now() + 86400000).toISOString();
+  const kickoffUtc = new Date(Math.ceil(Date.now() / 60000) * 60000 + 86400000).toISOString();
   const side = {
     id: "10",
     name: pair.home,
@@ -211,6 +213,48 @@ async function fixture(
                 limitations: [],
                 providerEvidence: snapshot,
                 bookmakerOddsSnapshot,
+                ...(online
+                  ? {
+                      externalPredictionConsensus: (() => {
+                        const accessedAt = new Date().toISOString();
+                        const target = {
+                          leagueId: "EN-PL",
+                          homeTeam: pair.home,
+                          awayTeam: pair.away,
+                          kickoffUtc,
+                        };
+                        const passage = `${pair.home} vs ${pair.away} Premier League ${kickoffUtc.slice(0, 10)} ${kickoffUtc.slice(11, 16)} UTC. Prediction: Over 2.5; Synthetic fixture with no real provider call.`;
+                        const sources = ["sportsmole.co.uk", "predictz.com"].map((host, i) => ({
+                          title: `Offline preview ${i}`,
+                          url: `https://${host}/offline-${i}`,
+                          accessedAt,
+                          excerpt: passage + ` Editorial ${i}`,
+                          researchIntent: "external_forecasts" as const,
+                        }));
+                        return buildFootballPredictionConsensus(
+                          target,
+                          sources,
+                          {
+                            onlinePredictions: sources.map((source, sourceIndex) => ({
+                              sourceIndex,
+                              passage: source.excerpt,
+                              market: "goals_over_2_5",
+                            })),
+                            onlineJudgment: {
+                              decision: "lean",
+                              primary: "goals_over_2_5",
+                              rationale:
+                                "Independent synthetic football reasoning, not measured probability.",
+                              counterargument: "There are only two retrieved published sources.",
+                              risk: "The lineups and match outcome remain uncertain.",
+                              evidenceUrls: [sources[0]!.url],
+                            },
+                          },
+                          accessedAt,
+                        );
+                      })(),
+                    }
+                  : {}),
               },
               sources: [],
               usage: null,
@@ -427,4 +471,73 @@ test("all ten games can be analyzed serially with one confirmation and no five-g
   await expect(all).toBeEnabled();
   expect(confirmations).toBe(1);
   await page.screenshot({ path: testInfo.outputPath("football-compact.png") });
+});
+
+for (const language of ["el", "en"]) {
+  test(`online consensus ${language} stays inline before expert, keyboard accessible and dispatch-free`, async ({
+    page,
+  }) => {
+    const f = await fixture(
+      page,
+      true,
+      true,
+      "matched",
+      language,
+      { home: "Arsenal", away: "Liverpool" },
+      1,
+      false,
+      true,
+    );
+    await page
+      .getByRole("button", {
+        name: language === "en" ? /^Arsenal – Liverpool/ : /^Άρσεναλ – Λίβερπουλ/,
+      })
+      .click();
+    const panel = page.getByRole("region", {
+      name: language === "en" ? "Independent Online Predictions" : "Ανεξάρτητες Online Προβλέψεις",
+    });
+    await expect(panel).toContainText(language === "en" ? "Source agreement" : "Συμφωνία πηγών");
+    await expect(panel).toContainText("2/2");
+    await expect(panel).not.toContainText("100%");
+    const disclosure = panel.locator("summary").first();
+    await disclosure.focus();
+    await page.keyboard.press("Enter");
+    await expect(panel.getByRole("link", { name: "Offline preview 0" })).toBeVisible();
+    expect(
+      (await panel.getByRole("link").first().getAttribute("href"))?.startsWith("https://"),
+    ).toBe(true);
+    const expert = page.getByRole("heading", { name: "Έμπειρος Αναλυτής · Πειραματικό" });
+    expect((await panel.boundingBox())!.y).toBeLessThan((await expert.boundingBox())!.y);
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await panel.scrollIntoViewIfNeeded();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    }
+    const a11y = await new AxeBuilder({ page })
+      .include(
+        'section[aria-label="' +
+          (language === "en" ? "Independent Online Predictions" : "Ανεξάρτητες Online Προβλέψεις") +
+          '"]',
+      )
+      .analyze();
+    expect(a11y.violations).toEqual([]);
+    await page.screenshot({
+      path: test.info().outputPath(`online-${language}.png`),
+      fullPage: true,
+    });
+    expect(f.paid()).toBe(0);
+    expect(f.reads()).toBe(0);
+  });
+}
+
+test("legacy online panel never researches retrospectively", async ({ page }) => {
+  const f = await fixture(page, true, true);
+  await page.getByRole("button", { name: /^Άρσεναλ – Λίβερπουλ/ }).click();
+  await expect(page.getByRole("region", { name: "Ανεξάρτητες Online Προβλέψεις" })).toContainText(
+    "Η παλαιότερη ανάλυση",
+  );
+  expect(f.paid()).toBe(0);
+  expect(f.reads()).toBe(0);
 });

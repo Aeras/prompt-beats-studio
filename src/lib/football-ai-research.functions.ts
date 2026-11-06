@@ -1,3 +1,7 @@
+import {
+  buildFootballPredictionConsensus,
+  extractFootballPredictionReferences,
+} from "./football-prediction-consensus.shared";
 import { usableOdds } from "./football-odds.shared";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -187,7 +191,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           .map((p) => `${p.provider}: ${p.status}`)
           .join(" ");
         const queries = [
-          `${common} ${gaps} expected goals xG xGA recent form home away verified match statistics`,
+          `${common} ${gaps} expected goals xG xGA recent form home away verified match statistics published independent predictions`,
           `${common} ${LANGUAGE[data.leagueId] ?? "English"} latest injuries expected starting eleven rotation team news`,
           `${common} футбол прогноз ставки коэффициенты анализ tactical match preview betting odds`,
         ];
@@ -199,6 +203,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             undefined,
             undefined,
             data.tavilySearchDepth,
+            { includePublicationMetadata: true },
           );
           for (const doc of result.documents) {
             if (sources.some((existing) => existing.url === doc.source.url)) continue;
@@ -206,6 +211,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               title: doc.source.title,
               url: doc.source.url,
               accessedAt: doc.source.accessedAt,
+              ...(doc.publishedAtUtc ? { publishedAtUtc: doc.publishedAtUtc } : {}),
               excerpt: doc.text.slice(0, 2500),
               researchIntent: queryIndex < 2 ? "match_facts" : "external_forecasts",
             });
@@ -218,6 +224,17 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           throw new Error("Match kickoff passed before research completed.");
         }
         const evidenceCutoff = new Date().toISOString();
+        const predictionReferences = extractFootballPredictionReferences(
+          identity,
+          evidenceSnapshot,
+        );
+        const sourceAgreement = buildFootballPredictionConsensus(
+          identity,
+          evidenceSnapshot,
+          { onlinePredictions: predictionReferences },
+          evidenceCutoff,
+          providerEvidenceUrls(providerEvidence),
+        );
         const { data: marked, error: markError } = await supabaseAdmin
           .from("private_football_research_runs" as never)
           .update({
@@ -251,11 +268,19 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             providerEvidence,
             bookmakerOddsSnapshot,
             usableBookmakerOddsSnapshot: usableOdds(bookmakerOddsSnapshot, evidenceCutoff),
-            sources: evidenceSnapshot.map((doc) => ({
+            onlineSourceAgreement: {
+              status: sourceAgreement.status,
+              sourceCount: sourceAgreement.sourceCount,
+              groups: sourceAgreement.groups,
+              excluded: sourceAgreement.excluded,
+            },
+            sources: evidenceSnapshot.map((doc, sourceIndex) => ({
+              sourceIndex,
               title: doc.title,
               url: doc.url,
               excerpt: doc.excerpt,
               retrievedAt: doc.accessedAt,
+              ...(doc.publishedAtUtc ? { publishedAtUtc: doc.publishedAtUtc } : {}),
               researchIntent: doc.researchIntent,
             })),
           }),
@@ -277,10 +302,29 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           failureCode = "invalid_ai_json";
           throw new Error("AI response was not valid JSON.");
         }
+        const interpretation =
+          raw && typeof raw === "object" && !Array.isArray(raw)
+            ? (raw as Record<string, unknown>)
+            : {};
+        const externalPredictionConsensus = buildFootballPredictionConsensus(
+          identity,
+          evidenceSnapshot,
+          {
+            onlinePredictions: predictionReferences,
+            ...(interpretation["onlineJudgment"] === undefined
+              ? {}
+              : { onlineJudgment: interpretation["onlineJudgment"] }),
+          },
+          evidenceCutoff,
+          providerEvidenceUrls(providerEvidence),
+        );
+        const wireAssessment = { ...interpretation };
+        delete wireAssessment["onlinePredictions"];
+        delete wireAssessment["onlineJudgment"];
         failureCode = "invalid_ai_schema";
         const validated = footballAiAssessmentSchema.safeParse(
           raw && typeof raw === "object" && !Array.isArray(raw)
-            ? withoutFootballSourceMetadata(raw)
+            ? withoutFootballSourceMetadata(wireAssessment)
             : raw,
         );
         if (!validated.success) {
@@ -320,6 +364,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         const savedAnalysis = footballAiAssessmentSchema.parse({
           ...assessment,
           researchBrief,
+          externalPredictionConsensus,
           providerEvidence,
           bookmakerOddsSnapshot,
           tavilySearchDepth: data.tavilySearchDepth,

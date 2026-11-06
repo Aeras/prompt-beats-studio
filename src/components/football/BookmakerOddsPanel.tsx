@@ -30,6 +30,8 @@ const statuses: Record<BookmakerOddsSnapshot["status"], string> = {
   stale: "Μη πρόσφατες αποδόσεις",
   not_configured: "Δεν έχει ρυθμιστεί",
   unavailable: "Προσωρινά μη διαθέσιμο",
+  busy: "Ανάκτηση σε εξέλιξη",
+  recovery_pending: "Άγνωστη έκβαση ανάκτησης · αναμονή ασφαλούς ανανέωσης",
   quota_exhausted: "Εξαντλήθηκε η ποσόστωση παρόχου",
   rate_limited: "Περιορισμός παρόχου",
   access_denied: "Ο πάροχος αρνήθηκε πρόσβαση",
@@ -68,6 +70,11 @@ export function BookmakerOddsPanel({
         Ανάκτηση: {snapshot.retrievedAtUtc} · Ενημέρωση αρχείου:{" "}
         {snapshot.observedAtUtc ?? "Μη διαθέσιμη"}
       </p>
+      {snapshot.feedStatuses?.map((f) => (
+        <p key={f.file} className="text-xs text-muted-foreground">
+          {f.file.includes("leagues") ? "soccer_leagues" : "soccer"}: {statuses[f.status]}
+        </p>
+      ))}
       {snapshot.quotes.length > 0 && (
         <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
           {snapshot.quotes.map((q) => {
