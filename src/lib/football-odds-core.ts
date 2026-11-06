@@ -1,3 +1,7 @@
+import {
+  registeredFootballTeamKey,
+  sameRegisteredFootballTeam,
+} from "./football-team-registry.shared";
 /**
  * PromptBeats football odds core (integrated, adapted from owner-supplied standalone candidate).
  * Pure functions: no network, credentials, persistence, AI calls, or betting dispatch.
@@ -11,6 +15,8 @@ export type OddsFixture = {
   competition: string;
   home: string;
   away: string;
+  homeTeamProviderId?: string;
+  awayTeamProviderId?: string;
   kickoffUtc: string;
   observedAtUtc: string;
   markets: OddsMarket[];
@@ -158,6 +164,8 @@ export function parseJoJLeagueDataset(input: unknown): OddsFixture[] {
           competition: str(event["leagueName"]),
           home,
           away,
+          homeTeamProviderId: str(record(arr(event["participants"])[0])?.["id"]),
+          awayTeamProviderId: str(record(arr(event["participants"])[1])?.["id"]),
           kickoffUtc,
           observedAtUtc: new Date(observedAtUtc).toISOString(),
           markets,
@@ -187,7 +195,10 @@ const TEAM_EQUIVALENTS: Readonly<Record<string, string>> = {
 };
 export function teamIdentityKey(name: string): string {
   const key = name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
-  return TEAM_EQUIVALENTS[key] ?? key;
+  return (
+    registeredFootballTeamKey(name) ??
+    (Object.hasOwn(TEAM_EQUIVALENTS, key) ? TEAM_EQUIVALENTS[key]! : key)
+  );
 }
 /**
  * Trust the upstream ESPN fixture identity. Market availability alone is never proof of a match.
@@ -202,8 +213,10 @@ export function matchJoJOdds(
   const plausible = candidates.filter(
     (c) =>
       allowed.includes(c.leagueId) &&
-      teamIdentityKey(c.home) === teamIdentityKey(fixture.home) &&
-      teamIdentityKey(c.away) === teamIdentityKey(fixture.away),
+      (sameRegisteredFootballTeam(fixture.home, c.home, "joj-stoiximan", c.homeTeamProviderId) ??
+        teamIdentityKey(c.home) === teamIdentityKey(fixture.home)) &&
+      (sameRegisteredFootballTeam(fixture.away, c.away, "joj-stoiximan", c.awayTeamProviderId) ??
+        teamIdentityKey(c.away) === teamIdentityKey(fixture.away)),
   );
   if (plausible.length === 0) return { status: "missing" };
   const exactlyTimed = plausible.filter(

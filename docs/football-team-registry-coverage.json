@@ -1,0 +1,54 @@
+{
+  "networkCalls": 0,
+  "source": "existing production cache, not a fresh provider request",
+  "files": [
+    {
+      "file": "site_pregame_stoiximan_soccer_leagues.json",
+      "observedAt": "2026-11-06T06:10:45Z",
+      "eligibleSixLeagueEvents": 111,
+      "matched": 111,
+      "canonicalCachePayloadSHA256": "c4cc72562c5d0aba6e5c3eba6e86e17b57d805f48f14ae7d20878ea0b484bd58"
+    },
+    {
+      "file": "site_pregame_stoiximan_soccer.json",
+      "observedAt": "2026-11-06T06:10:43Z",
+      "eligibleSixLeagueEvents": 4,
+      "matched": 4,
+      "canonicalCachePayloadSHA256": "e7da56a32096fac212c84b5bba8d7206faae6ba9cac4f0a2c7b82a9c812cba83"
+    }
+  ],
+  "rosters": [
+    {
+      "league": "GR-SL",
+      "count": 14,
+      "sha256": "66c63d2d4a3e90317b8f3c43f98951fbc7800a5d8683679c0ca234c78bec8ba9"
+    },
+    {
+      "league": "EN-PL",
+      "count": 20,
+      "sha256": "0746d7ba071771de6796ea769b18d090366e5fbffda7418acb6613533aaa4cf6"
+    },
+    {
+      "league": "FR-L1",
+      "count": 18,
+      "sha256": "039df194ec9b7fe7e3a09ef15d81007bcc42c34461597ab1ca77e96883082d25"
+    },
+    {
+      "league": "ES-LL",
+      "count": 20,
+      "sha256": "fc3b6f335d4cd263aaf15779ff8624f8fa9dc5a5708c92fbdf3094fbed87aa9b"
+    },
+    {
+      "league": "DE-BL",
+      "count": 18,
+      "sha256": "ddf0425e233fb607d317c9f94888fdf2d3f341bfe4c4f2067f16be6c6d43e600"
+    },
+    {
+      "league": "IT-SA",
+      "count": 20,
+      "sha256": "575f8fd96cb7e5b015902c61a344796bf312d99d470683e2c99a3b8f97331eab"
+    }
+  ],
+  "mappedClubs": 110,
+  "totalRegistered": 110
+}
