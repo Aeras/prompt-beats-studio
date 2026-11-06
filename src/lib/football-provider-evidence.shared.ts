@@ -181,6 +181,7 @@ export function withoutFootballSourceMetadata<T extends object>(assessment: T) {
     "tavilySearchDepth",
     "bookmakerOddsSnapshot",
     "externalPredictionConsensus",
+    "onlineEvidenceV2",
     "onlineSourceAgreement",
   ])
     delete result[key];
@@ -192,6 +193,7 @@ export function withoutFootballSourceMetadata<T extends object>(assessment: T) {
     | "tavilySearchDepth"
     | "bookmakerOddsSnapshot"
     | "externalPredictionConsensus"
+    | "onlineEvidenceV2"
     | "onlineSourceAgreement"
   >;
 }

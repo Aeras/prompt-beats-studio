@@ -1,0 +1,45 @@
+{
+  "inputSha256": "5a4e7a92561cdf7679eb5099a0bf49d86ea2103755ed10c1091735512d5fb515",
+  "sourceHashes": [
+    {
+      "url": "https://footystats.org/italy/juventus-fc-vs-acf-fiorentina-h2h-stats",
+      "sha256": "3f4b8118c91d018a5aeb820b972ec436fdaf9ce1eee466eeeda62fd397f2d2ca"
+    },
+    {
+      "url": "https://www.espn.com/soccer/match/_/gameId/401875003/juventus-fiorentina",
+      "sha256": "57e19ca77115c415f622e55d9fcbe14972334d4f313522550141f2f83351bf65"
+    },
+    {
+      "url": "https://statz.ai/team/fiorentina/expected-goals",
+      "sha256": "f4c65e9ff605c74f64a05004ecaf4b167be06d4cc4a874cd36b85ab3f8d4830f"
+    },
+    {
+      "url": "https://starting11.com/fixtures/fiorentina-vs-juventus",
+      "sha256": "e728737d8566b9f23e1183e5202e64f61a9a99c94ab05767e910310a6b79d1f2"
+    },
+    {
+      "url": "https://cultofcalcio.com/serie-a-preview-juventus-vs-fiorentina-team-news-lineups-prediction",
+      "sha256": "013e9d9c26f51e912da39e0cb35d27db271c0054047aa853719d39d478a1a12b"
+    },
+    {
+      "url": "https://www.sportsmole.co.uk/football/juventus/preview/juventus-vs-fiorentina-prediction-team-news-lineups_597608.html",
+      "sha256": "66fd5a119e93ba6246631d9d46af7d72c08098ec90cd699a5e9fc1da0106f9aa"
+    },
+    {
+      "url": "https://footballpredictions.com/footballpredictions/serieapredictions/fiorentina-vs-juventus-prediction-08-11-2026",
+      "sha256": "ea52cb1d95fe7b63e5d2825f22404130c9cecb9a763bffbb4194be14fc9ead80"
+    },
+    {
+      "url": "https://www.wincomparator.com/predictions/fiorentina-juventus-8522194",
+      "sha256": "5ea603578d78d959a50dab977ffeb41e8cf9b1d5f13e630010810d878f88a002"
+    },
+    {
+      "url": "https://www.docsports.com/free-picks/soccer/2026/fiorentina-vs-juventus-prediction-11-8-2026-soccer-pick-tips-and-odds.html",
+      "sha256": "0eba601ad276c3c30320c35cda4c2887d14c16b7c87a97e0b77e677d751e299d"
+    }
+  ],
+  "schema": "saved-text-corpus-v1",
+  "notRawApiReplay": true,
+  "provenance": "9 production saved truncated extracts, read-only inspection; not raw API/full articles",
+  "base": "cc4ac57ceae3990fcb88924ec5e94352763abb5f"
+}

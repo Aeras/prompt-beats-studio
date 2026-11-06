@@ -15,6 +15,19 @@ export default {
       body.auto_parameters !== false
     )
       throw new Error("Unexpected request contract");
+    if (body.query.startsWith("football-five-")) {
+      if (body.max_results !== 5 || body.include_raw_content !== "text")
+        throw Error("Wrong five-result profile");
+      return Response.json({
+        usage: { credits: 1 },
+        request_id: "offline-five-" + body.query,
+        results: Array.from({ length: 5 }, (_, i) => ({
+          title: "Synthetic multilingual source",
+          url: `https://example.org/${body.query}/${i}`,
+          raw_content: "Explicit offline transport fixture, not a real article.",
+        })),
+      });
+    }
     if (body.query.startsWith("status-"))
       return new Response("sensitive-marker", {
         status: Number(body.query.slice(7)),

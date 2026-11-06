@@ -1,3 +1,4 @@
+import { FOOTBALL_CONSENT_VERSION } from "./football-research-budget.shared";
 import { describe, expect, test } from "bun:test";
 import {
   footballAiAssessmentSchema,
@@ -16,7 +17,11 @@ describe("private football AI contracts", () => {
     };
     expect(footballAnalysisRequestSchema.safeParse(base).success).toBe(false);
     expect(
-      footballAnalysisRequestSchema.safeParse({ ...base, approvePaidRequest: true }).success,
+      footballAnalysisRequestSchema.safeParse({
+        ...base,
+        researchConsentVersion: FOOTBALL_CONSENT_VERSION,
+        approvePaidRequest: true,
+      }).success,
     ).toBe(true);
     expect(
       footballAnalysisRequestSchema.safeParse({ ...base, approvePaidRequest: false }).success,
@@ -25,6 +30,7 @@ describe("private football AI contracts", () => {
       footballAnalysisRequestSchema.safeParse({
         ...base,
         leagueId: "UNKNOWN",
+        researchConsentVersion: FOOTBALL_CONSENT_VERSION,
         approvePaidRequest: true,
       }).success,
     ).toBe(false);
@@ -38,6 +44,7 @@ describe("private football AI contracts", () => {
       requestKey: "bd849d54-8b2b-4c64-9692-5c937ecf2e71",
       modelId: "openai/gpt-6-luna",
       withTavily: true,
+      researchConsentVersion: FOOTBALL_CONSENT_VERSION,
       approvePaidRequest: true,
     };
     expect(footballAnalysisRequestSchema.parse(input).tavilySearchDepth).toBe("basic");
@@ -59,6 +66,7 @@ describe("private football AI contracts", () => {
       requestKey: "bd849d54-8b2b-4c64-9692-5c937ecf2e71",
       modelId: "openai/gpt-5.6-luna",
       withTavily: true,
+      researchConsentVersion: FOOTBALL_CONSENT_VERSION,
       approvePaidRequest: true,
     };
     expect(footballAnalysisRequestSchema.safeParse(base).success).toBe(true);

@@ -22,6 +22,12 @@ export type RetrievedInspirationDocument = {
   publishedAtUtc?: string;
   source: InspirationResearch["sources"][number];
   text: string;
+  footballRetrieval?: {
+    version: 2;
+    cleanedChars: number;
+    retainedChars: number;
+    truncated: boolean;
+  };
 };
 export function inspectMusicInspirationConfiguration(env = process.env) {
   const configured = !!env["TAVILY_API_KEY"]?.trim();
@@ -76,9 +82,24 @@ export function publicInspirationUrl(raw: string): string {
 // Tavily can return sizable raw extracts for up to three results; retain a strict
 // overall cap while allowing realistic responses before the per-source 4k trim.
 export const INSPIRATION_TAVILY_RESPONSE_MAX_BYTES = 4 * 1024 * 1024;
-async function boundedJson(response: Response): Promise<unknown> {
+async function footballAbortBound<T>(pending: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return pending;
+  if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+  let stop: (() => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    stop = () => reject(new DOMException("Aborted", "AbortError"));
+    signal.addEventListener("abort", stop, { once: true });
+  });
+  try {
+    return await Promise.race([pending, aborted]);
+  } finally {
+    if (stop) signal.removeEventListener("abort", stop);
+  }
+}
+async function boundedJson(response: Response, footballSignal?: AbortSignal): Promise<unknown> {
   if (!response.ok) {
-    await response.body?.cancel().catch(() => {});
+    const cancellation = response.body?.cancel().catch(() => {});
+    if (!footballSignal) await cancellation;
     throw new InspirationFailure(
       { stage: "search_response", code: "http", httpStatus: response.status },
       "search_provider_failed",
@@ -91,7 +112,7 @@ async function boundedJson(response: Response): Promise<unknown> {
   let bytes = 0;
   try {
     while (true) {
-      const item = await reader.read();
+      const item = await footballAbortBound(reader.read(), footballSignal);
       if (item.done) break;
       bytes += item.value.byteLength;
       if (bytes > INSPIRATION_TAVILY_RESPONSE_MAX_BYTES)
@@ -106,7 +127,8 @@ async function boundedJson(response: Response): Promise<unknown> {
       ? error
       : new InspirationFailure(inspirationDiagnostic(error, "search_response"));
   } finally {
-    await reader.cancel().catch(() => {});
+    const cancelled = reader.cancel().catch(() => {});
+    if (!footballSignal) await cancelled;
     reader.releaseLock();
   }
   const combined = new Uint8Array(bytes);
@@ -116,7 +138,7 @@ async function boundedJson(response: Response): Promise<unknown> {
     offset += chunk.byteLength;
   }
   try {
-    return JSON.parse(new TextDecoder().decode(combined));
+    return JSON.parse(new TextDecoder("utf-8", { fatal: !!footballSignal }).decode(combined));
   } catch (error) {
     throw new InspirationFailure({
       ...inspirationDiagnostic(error, "search_parse"),
@@ -145,7 +167,10 @@ export async function searchInspirationWeb(
   fetcher: typeof fetch = fetch,
   apiKey = process.env["TAVILY_API_KEY"],
   searchDepth: "basic" | "advanced" = "basic",
-  options: { includePublicationMetadata?: boolean } = {},
+  options: {
+    includePublicationMetadata?: boolean;
+    football?: { textChars?: number; format?: "text" | "markdown"; maxResults?: 3 | 5 | 7 };
+  } = {},
 ): Promise<{
   documents: RetrievedInspirationDocument[];
   credits: number | null;
@@ -156,31 +181,45 @@ export async function searchInspirationWeb(
       { stage: "search_request", code: "configuration" },
       "search_configuration_required",
     );
+  const football = options.football;
+  if (
+    football &&
+    (!Number.isInteger(football.textChars ?? 24000) ||
+      (football.textChars ?? 24000) < 4000 ||
+      (football.textChars ?? 24000) > 24000 ||
+      ![3, 5, 7].includes(football.maxResults ?? 3) ||
+      !["text", "markdown"].includes(football.format ?? "text"))
+  )
+    throw new Error("invalid_football_retrieval_options");
+  if (football && signal.aborted) throw new DOMException("Aborted", "AbortError");
   let response: Response;
   try {
-    response = await fetcher("https://api.tavily.com/search", {
-      method: "POST",
-      // Workers rejects redirect:"error" before dispatch. Manual + boundedJson
-      // rejects every non-2xx response without forwarding the key to Location.
-      redirect: "manual",
-      signal,
-      headers: { Authorization: `Bearer ${apiKey.trim()}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query,
-        search_depth: searchDepth,
-        max_results: 3,
-        topic: "general",
-        include_raw_content: "text",
-        include_answer: false,
-        include_images: false,
-        auto_parameters: false,
-        include_usage: true,
+    response = await footballAbortBound(
+      fetcher("https://api.tavily.com/search", {
+        method: "POST",
+        // Workers rejects redirect:"error" before dispatch. Manual + boundedJson
+        // rejects every non-2xx response without forwarding the key to Location.
+        redirect: "manual",
+        signal,
+        headers: { Authorization: `Bearer ${apiKey.trim()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          search_depth: searchDepth,
+          max_results: football?.maxResults ?? 3,
+          topic: "general",
+          include_raw_content: football?.format ?? "text",
+          include_answer: false,
+          include_images: false,
+          auto_parameters: false,
+          include_usage: true,
+        }),
       }),
-    });
+      football ? signal : undefined,
+    );
   } catch (error) {
     throw new InspirationFailure(inspirationDiagnostic(error, "search_request"));
   }
-  const body = await boundedJson(response);
+  const body = await boundedJson(response, football ? signal : undefined);
   const checked = searchResponseSchema.safeParse(body);
   if (!checked.success)
     throw new InspirationFailure({
@@ -200,10 +239,10 @@ export async function searchInspirationWeb(
     // A snippet is discovery only, never a substitute for retrieved source text.
     if (!result.raw_content?.trim() || seen.has(url)) continue;
     seen.add(url);
-    const text = result.raw_content
+    const cleaned = result.raw_content
       .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .slice(0, 4000);
+      .replace(/<[^>]+>/g, " ");
+    const text = cleaned.slice(0, football?.textChars ?? (football ? 24000 : 4000));
     if (!text.trim()) continue;
     const id = "web-" + createHash("sha256").update(url).digest("hex").slice(0, 20);
     const accessedAt = new Date().toISOString();
@@ -218,6 +257,16 @@ export async function searchInspirationWeb(
         : undefined;
     documents.push({
       text,
+      ...(football
+        ? {
+            footballRetrieval: {
+              version: 2 as const,
+              cleanedChars: cleaned.length,
+              retainedChars: text.length,
+              truncated: cleaned.length > text.length,
+            },
+          }
+        : {}),
       ...(options.includePublicationMetadata && publication ? { publishedAtUtc: publication } : {}),
       source: {
         id,
@@ -234,8 +283,9 @@ export async function searchInspirationWeb(
         },
         publisher: new URL(url).hostname,
         accessedAt,
-        locator:
-          "Provider-retrieved text extract, bounded to 4000 characters; not an assertion of full-document review.",
+        locator: football
+          ? `Provider-retrieved text extract, bounded to ${football.textChars ?? 24000} characters; not full-document verification.`
+          : "Provider-retrieved text extract, bounded to 4000 characters; not an assertion of full-document review.",
         sourceType: "other",
       },
     });

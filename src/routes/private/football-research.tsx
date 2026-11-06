@@ -1,3 +1,5 @@
+import { independentMessages } from "@/i18n/football-independent-assessment";
+import { FOOTBALL_CONSENT_VERSION } from "@/lib/football-research-budget.shared";
 import { OnlinePredictionsPanel } from "@/components/football/OnlinePredictionsPanel";
 import { BookmakerOddsPanel } from "@/components/football/BookmakerOddsPanel";
 import { useI18n } from "@/i18n";
@@ -252,7 +254,10 @@ function PrivateFootballResearchPage() {
     if (working || !selectedModel || !setup.data.aiAnalysisEnabled || ids.length === 0) return;
     if (
       !window.confirm(
-        `Θα γίνουν ${ids.length} ξεχωριστές έρευνες Tavily (${tavilySearchDepth === "advanced" ? "Advanced" : "Basic"}, 3 αναζητήσεις ανά αγώνα, περίπου ${ids.length * (tavilySearchDepth === "advanced" ? 6 : 3)} credits συνολικά) και κλήσεις OpenRouter, με ενδεχόμενη χρέωση ανά αγώνα. Τα συμπληρωματικά στοιχεία παρόχων προσμετρώνται στα tokens εισόδου του μοντέλου. Επιβεβαιώνεις;`,
+        independentMessages[language === "en" ? "en" : "el"].confirm(
+          ids.length,
+          tavilySearchDepth === "advanced",
+        ),
       )
     )
       return;
@@ -273,6 +278,7 @@ function PrivateFootballResearchPage() {
               requestKey: crypto.randomUUID(),
               withTavily: true,
               tavilySearchDepth,
+              researchConsentVersion: FOOTBALL_CONSENT_VERSION,
               approvePaidRequest: true,
             },
           });
@@ -489,7 +495,7 @@ function PrivateFootballResearchPage() {
                 onChange={() => setTavilySearchDepth("basic")}
                 className="h-4 w-4 accent-cyan-400"
               />
-              Basic · ~3 credits/αγώνα
+              Basic
             </label>
             <label className="flex cursor-pointer items-center gap-2">
               <input
@@ -500,14 +506,9 @@ function PrivateFootballResearchPage() {
                 onChange={() => setTavilySearchDepth("advanced")}
                 className="h-4 w-4 accent-cyan-400"
               />
-              Advanced · ~6 credits/αγώνα
+              Advanced
             </label>
           </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Ισχύει για κάθε αγώνα που αναλύεις, με τρεις αναζητήσεις Tavily. Η επιλογή δεν επηρεάζει
-            την ξεχωριστή AI αναζήτηση αγώνων ούτε τη δεύτερη κλήση του Έμπειρου Αναλυτή. Τα credits
-            είναι εκτιμήσεις.
-          </p>
         </fieldset>
         {isAi && (
           <AiSearchPanel
@@ -817,6 +818,7 @@ function PrivateFootballResearchPage() {
                           )}
                           <OnlinePredictionsPanel
                             data={entry.analysis.externalPredictionConsensus}
+                            evidenceV2={entry.analysis.onlineEvidenceV2}
                             estimates={entry.analysis.estimates}
                           />
                           <section className="rounded-xl border border-amber-400/20 bg-[#1b2131] p-4">

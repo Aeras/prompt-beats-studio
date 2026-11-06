@@ -49,8 +49,53 @@ export default {
         "Unsafe parser failure",
       );
     }
+    const football = await searchInspirationWeb(
+      "football-opt-in",
+      new AbortController().signal,
+      fetch,
+      "offline-fixture-key",
+      "basic",
+      { football: { textChars: 24000, maxResults: 3, format: "text" } },
+    );
+    check(
+      football.documents[0]?.footballRetrieval?.version === 2 && football.credits === 1,
+      "Football opt-in lost metadata/usage",
+    );
+    const abort = new AbortController();
+    abort.abort();
+    let stopped = false;
+    try {
+      await searchInspirationWeb(
+        "never-dispatched",
+        abort.signal,
+        fetch,
+        "offline-fixture-key",
+        "basic",
+        { football: {} },
+      );
+    } catch {
+      stopped = true;
+    }
+    check(stopped, "Pre-aborted Football search dispatched");
+    let total = 0;
+    for (let i = 0; i < 5; i++) {
+      const result = await searchInspirationWeb(
+        "football-five-" + i,
+        new AbortController().signal,
+        fetch,
+        "offline-fixture-key",
+        "basic",
+        { football: { textChars: 24000, maxResults: 5, format: "text" } },
+      );
+      check(
+        result.documents.length === 5 && result.credits === 1,
+        "Five-result profile lost documents/receipt",
+      );
+      total += result.documents.length;
+    }
+    check(total === 25, "Expected 25 offline transport records");
     console.log(
-      "PASS: 12 real-adapter workerd cases; native fetch; all outbound requests bound to local fixture; zero external requests",
+      "PASS: 19 real-adapter workerd cases; native fetch; all outbound requests bound to local fixture; zero external requests",
     );
   },
 };

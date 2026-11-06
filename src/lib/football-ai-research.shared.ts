@@ -1,3 +1,8 @@
+import { FOOTBALL_CONSENT_VERSION } from "./football-research-budget.shared";
+import {
+  claimLedgerSchema,
+  FOOTBALL_INDEPENDENT_ASSESSMENT_RULES,
+} from "./football-evidence-v2.shared";
 import {
   footballPredictionConsensusSchema,
   FOOTBALL_ONLINE_PREDICTION_RULES,
@@ -72,6 +77,7 @@ export function filterResearchContextUrls(
 export const footballAiAssessmentSchema = z
   .object({
     externalPredictionConsensus: footballPredictionConsensusSchema.optional(),
+    onlineEvidenceV2: claimLedgerSchema.optional(),
     bookmakerOddsSnapshot: bookmakerOddsSnapshotSchema.optional(),
     summary: z.string().trim().min(20).max(3500),
     espnData: footballEspnContextSchema.optional(),
@@ -165,6 +171,7 @@ export const footballAnalysisRequestSchema = z.object({
   tavilySearchDepth: z.enum(["basic", "advanced"]).default("basic"),
   /** Explicit user consent for this single potentially billable execution. */
   approvePaidRequest: z.literal(true),
+  researchConsentVersion: z.literal(FOOTBALL_CONSENT_VERSION),
 });
 
 export const FOOTBALL_RESEARCH_SYSTEM =
@@ -180,6 +187,11 @@ Use at most 5 suggestions, abstain when evidence is weak, and clearly explain un
 Do not promise a safe bet, guaranteed outcome, positive expectation or predictive edge.
 Write plain Greek. No Markdown code fences.` +
   FOOTBALL_ONLINE_PREDICTION_RULES;
+
+/** New profile replaces only legacy online-judgment instructions; main and Expert contracts stay separate. */
+export const FOOTBALL_COMPLETE_RESEARCH_SYSTEM =
+  FOOTBALL_RESEARCH_SYSTEM.slice(0, -FOOTBALL_ONLINE_PREDICTION_RULES.length) +
+  FOOTBALL_INDEPENDENT_ASSESSMENT_RULES;
 
 /** Validate the model's numeric claims before they can reach the market catalogue. */
 export function validateFootballMarketProbabilities(
