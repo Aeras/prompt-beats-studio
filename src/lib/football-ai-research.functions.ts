@@ -1,3 +1,4 @@
+import { usableOdds } from "./football-odds.shared";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -165,12 +166,17 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           await import("@/lib/football-provider-evidence.server");
         const { providerEvidenceUrls, withoutFootballSourceMetadata } =
           await import("@/lib/football-provider-evidence.shared");
-        const providerEvidence = await collectFootballProviderEvidence({
+        const { collectFootballBookmakerOdds } = await import("@/lib/football-odds.server");
+        const identity = {
           leagueId: fixture.leagueId,
           homeTeam: fixture.homeTeam,
           awayTeam: fixture.awayTeam,
           kickoffUtc: fixture.kickoffUtc,
-        });
+        };
+        const [providerEvidence, bookmakerOddsSnapshot] = await Promise.all([
+          collectFootballProviderEvidence(identity),
+          collectFootballBookmakerOdds(identity),
+        ]);
         // Legacy field remains readable; the complete authoritative snapshot is attached below.
         const { searchInspirationWeb } = await import("@/lib/music-inspiration-research.server");
         const kickoffDay = fixture.kickoffUtc.slice(0, 10);
@@ -243,6 +249,8 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               kickoffUtc: fixture.kickoffUtc,
             },
             providerEvidence,
+            bookmakerOddsSnapshot,
+            usableBookmakerOddsSnapshot: usableOdds(bookmakerOddsSnapshot, evidenceCutoff),
             sources: evidenceSnapshot.map((doc) => ({
               title: doc.title,
               url: doc.url,
@@ -270,7 +278,11 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           throw new Error("AI response was not valid JSON.");
         }
         failureCode = "invalid_ai_schema";
-        const validated = footballAiAssessmentSchema.safeParse(raw);
+        const validated = footballAiAssessmentSchema.safeParse(
+          raw && typeof raw === "object" && !Array.isArray(raw)
+            ? withoutFootballSourceMetadata(raw)
+            : raw,
+        );
         if (!validated.success) {
           console.error("[football-research] invalid_ai_schema", {
             runId,
@@ -309,6 +321,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           ...assessment,
           researchBrief,
           providerEvidence,
+          bookmakerOddsSnapshot,
           tavilySearchDepth: data.tavilySearchDepth,
         });
         failureCode = "persistence_failed";
@@ -511,6 +524,21 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
               .filter((source) => source.url.startsWith("https://"))
           : [],
         outcomes,
+        quoteOutcomes:
+          eligible &&
+          match &&
+          checked.success &&
+          checked.data.bookmakerOddsSnapshot?.status === "matched" &&
+          checked.data.bookmakerOddsSnapshot.fixture.leagueId === row.league_id &&
+          checked.data.bookmakerOddsSnapshot.fixture.homeTeam === row.home_team &&
+          checked.data.bookmakerOddsSnapshot.fixture.awayTeam === row.away_team &&
+          Date.parse(checked.data.bookmakerOddsSnapshot.fixture.kickoffUtc) ===
+            Date.parse(row.kickoff_utc)
+            ? checked.data.bookmakerOddsSnapshot.quotes.map((q) => ({
+                ...q,
+                outcome: footballMarketOutcome(q.market, match),
+              }))
+            : [],
       };
     });
   });

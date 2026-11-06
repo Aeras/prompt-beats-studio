@@ -7,6 +7,7 @@ export function buildFootballExpertPayload(assessment: z.infer<typeof footballAi
     researchBrief: assessment.researchBrief ?? null,
     espnData: assessment.espnData ?? null,
     providerEvidence: assessment.providerEvidence ?? null,
+    bookmakerOddsSnapshot: assessment.bookmakerOddsSnapshot ?? null,
     matchContext: assessment.matchContext ?? null,
     baseAssessment: {
       summary: assessment.summary,

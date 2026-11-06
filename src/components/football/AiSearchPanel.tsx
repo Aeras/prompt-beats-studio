@@ -313,7 +313,7 @@ export function AiSearchPanel(props: {
             >
               <input
                 type="checkbox"
-                aria-label={`${f.homeTeam} – ${f.awayTeam}`}
+                aria-label={`${footballTeamDisplayName(f.homeTeam, language)} – ${footballTeamDisplayName(f.awayTeam, language)}`}
                 disabled={!verified || props.working}
                 checked={picked.includes(id)}
                 onChange={() =>

@@ -42,6 +42,9 @@ export const getPrivateFootballResearchSetup = createServerFn({ method: "GET" })
         { id: "football-data", configured: Boolean(process.env["FOOTBALL_DATA_API_KEY"]?.trim()) },
         { id: "pitchapi", configured: Boolean(process.env["PITCHAPI_API_KEY"]?.trim()) },
       ],
+      bookmakerOddsConfigured:
+        Boolean(process.env["ARBPLAY_API_KEY"]?.trim()) &&
+        process.env["ARBPLAY_ENABLED"] !== "false",
       tavilyConfigured: Boolean(process.env["TAVILY_API_KEY"]?.trim()),
       liveFixturesConfigured: true,
       fixtureProviders: FOOTBALL_PROVIDERS.map((provider) => ({
@@ -193,5 +196,8 @@ export const getPrivateFootballProviderEvidence = createServerFn({ method: "GET"
       kickoffUtc: fixture.kickoffUtc,
     });
     await authorize();
-    return result;
+    const { collectFootballBookmakerOdds } = await import("@/lib/football-odds.server");
+    const bookmakerOddsSnapshot = await collectFootballBookmakerOdds(result.fixture);
+    await authorize();
+    return { ...result, bookmakerOddsSnapshot };
   });

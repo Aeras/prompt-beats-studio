@@ -1,3 +1,6 @@
+import { validateFootballExpertV2 } from "./football-expert-v2.shared";
+import { usableOdds } from "./football-odds.shared";
+import { FOOTBALL_EXPERT_CANONICAL_CONTRACT } from "./football-ai-research-phases.shared";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -85,11 +88,15 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
           operation: "football_research",
           executionId: reviewId,
         });
+        const oddsCutoff = new Date().toISOString();
         sent = true;
         failureCode = "provider_failed";
         const receipt = await caller({
-          system: FOOTBALL_EXPERT_ANALYST_SYSTEM,
-          prompt: JSON.stringify(buildFootballExpertPayload(assessment)),
+          system: FOOTBALL_EXPERT_ANALYST_SYSTEM + FOOTBALL_EXPERT_CANONICAL_CONTRACT,
+          prompt: JSON.stringify({
+            ...buildFootballExpertPayload(assessment),
+            usableBookmakerOddsSnapshot: usableOdds(assessment.bookmakerOddsSnapshot, oddsCutoff),
+          }),
           maxTokens: 4096,
           requestTimeoutMs: 90000,
           jsonObjectOutput: true,
@@ -121,6 +128,8 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
           throw new Error("Invalid expert decision");
         }
         const decision = parsed.data;
+        if (!validateFootballExpertV2(decision, assessment.bookmakerOddsSnapshot, oddsCutoff))
+          throw new Error("Unsupported expert market/quote");
         failureCode = "persistence_failed";
         const { error: saveError } = await supabaseAdmin
           .from("private_football_expert_reviews" as never)

@@ -3,6 +3,7 @@ import type { EvidenceStatus } from "./football-provider-evidence.shared";
 export const FOOTBALL_SOURCE_HOSTS = [
   "site.api.espn.com",
   "api.pitchapi.dev",
+  "stoiximan.jojapi.net",
   "v3.football.api-sports.io",
   "api.football-data.org",
 ] as const;
