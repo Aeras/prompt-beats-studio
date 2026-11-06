@@ -1,3 +1,4 @@
+import { z } from "zod";
 /**
  * Reusable, bounded pre-kickoff evidence snapshot. Search excerpts are untrusted
  * third-party text, not verified sports facts. The model must independently
@@ -8,6 +9,7 @@ export type FootballSourceSnapshot = {
   url: string;
   accessedAt: string;
   excerpt: string;
+  publishedAtUtc?: string;
   researchIntent: "match_facts" | "external_forecasts";
 };
 export function buildFootballSourceSnapshot(
@@ -32,6 +34,10 @@ export function buildFootballSourceSnapshot(
         accessedAt: accessed.toISOString(),
         excerpt: doc.excerpt.slice(0, 650),
         researchIntent: doc.researchIntent,
+        ...(doc.publishedAtUtc &&
+        z.string().datetime({ offset: true }).safeParse(doc.publishedAtUtc).success
+          ? { publishedAtUtc: new Date(doc.publishedAtUtc).toISOString() }
+          : {}),
       });
     } catch {
       // Discard malformed source links, not the entire research.

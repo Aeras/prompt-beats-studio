@@ -1,3 +1,4 @@
+import { OnlinePredictionsPanel } from "@/components/football/OnlinePredictionsPanel";
 import { BookmakerOddsPanel } from "@/components/football/BookmakerOddsPanel";
 import { useI18n } from "@/i18n";
 import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
@@ -814,6 +815,10 @@ function PrivateFootballResearchPage() {
                               </ul>
                             </details>
                           )}
+                          <OnlinePredictionsPanel
+                            data={entry.analysis.externalPredictionConsensus}
+                            estimates={entry.analysis.estimates}
+                          />
                           <section className="rounded-xl border border-amber-400/20 bg-[#1b2131] p-4">
                             <h3 className="font-semibold text-amber-200">
                               Έμπειρος Αναλυτής · Πειραματικό

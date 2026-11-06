@@ -27,8 +27,37 @@ DO $$ DECLARE r jsonb; t uuid; n integer; BEGIN
  PERFORM pg_temp.odds_assert(public.claim_private_football_odds_feed()->>'status'='quota_exhausted','Rolling 31-day cap survives month rollover');
  BEGIN PERFORM public.claim_private_football_odds_feed('../../other');RAISE EXCEPTION 'unsafe file accepted';EXCEPTION WHEN raise_exception THEN IF SQLERRM='unsafe file accepted' THEN RAISE;END IF;END;
 END $$;
+
+-- Read-only preview, abandoned reservation and lost acknowledgement recovery.
+TRUNCATE public.private_football_odds_feed,public.private_football_odds_budget,public.private_football_odds_attempts;
+DO $$ DECLARE r jsonb; t uuid; captured text; before_count integer; BEGIN
+ PERFORM pg_temp.odds_assert(public.read_private_football_odds_feed('site_pregame_stoiximan_soccer_leagues.json')->>'status'='unavailable','Empty preview is read-only');
+ PERFORM pg_temp.odds_assert((SELECT count(*)=0 FROM public.private_football_odds_budget),'Preview cannot create quota');
+ r:=public.claim_private_football_odds_feed(); t:=(r->>'token')::uuid;
+ PERFORM pg_temp.odds_assert(public.read_private_football_odds_feed('site_pregame_stoiximan_soccer_leagues.json')->>'status'='busy','Active worker is visible');
+ UPDATE public.private_football_odds_attempts SET created_at=now()-interval '40 seconds' WHERE token=t;
+ PERFORM pg_temp.odds_assert(public.read_private_football_odds_feed('site_pregame_stoiximan_soccer_leagues.json')->>'status'='recovery_pending','Abandoned attempt is not reported as missing');
+ PERFORM pg_temp.odds_assert(public.claim_private_football_odds_feed()->>'status'='busy','Unknown dispatch must retain 15-minute no-retry floor');
+ PERFORM public.finish_private_football_odds_feed(t,'{"offline":true}'::jsonb,'ok',0);
+ r:=public.read_private_football_odds_feed('site_pregame_stoiximan_soccer_leagues.json');
+ captured:=r->>'retrievedAtUtc';
+ PERFORM pg_temp.odds_assert(r->>'status'='cached' AND captured ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$','Read-only ack recovery returns strict UTC receipt');
+ PERFORM pg_temp.odds_assert(public.claim_private_football_odds_feed()->>'retrievedAtUtc'=captured,'Claim and read UTC format are identical');
+ PERFORM pg_temp.odds_assert((SELECT requests=1 FROM public.private_football_odds_budget),'Repeated reads/claims of fresh data spend exactly once');
+ UPDATE public.private_football_odds_feed SET retrieved_at=now()-interval '16 minutes';
+ r:=public.read_private_football_odds_feed('site_pregame_stoiximan_soccer_leagues.json');
+ PERFORM pg_temp.odds_assert(r->>'status'='stale' AND NOT r ? 'payload','Stale preview must not leak old payload');
+ r:=public.claim_private_football_odds_feed();t:=(r->>'token')::uuid;
+ UPDATE public.private_football_odds_feed SET lease_until=now()-interval '1 second';
+ BEGIN PERFORM public.finish_private_football_odds_feed(t,'{}'::jsonb,'ok',0);RAISE EXCEPTION 'expired receipt accepted';EXCEPTION WHEN raise_exception THEN IF SQLERRM='expired receipt accepted' THEN RAISE;END IF;END;
+ r:=public.claim_private_football_odds_feed();
+ PERFORM pg_temp.odds_assert(r->>'status'='claimed' AND r->>'token'<>t::text,'Expired attempt recovers normally with a new counted reservation');
+ PERFORM pg_temp.odds_assert((SELECT requests=3 FROM public.private_football_odds_budget),'Unknown attempts never refunded');
+ PERFORM pg_temp.odds_assert(NOT has_function_privilege('anon','public.read_private_football_odds_feed(text)','EXECUTE') AND NOT has_function_privilege('authenticated','public.read_private_football_odds_feed(text)','EXECUTE'),'Recovery remains service-only');
+END $$;
 SET LOCAL ROLE authenticated;
 DO $$ BEGIN
+ BEGIN PERFORM public.read_private_football_odds_feed('site_pregame_stoiximan_soccer.json');RAISE EXCEPTION 'authenticated read allowed';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
  BEGIN PERFORM public.claim_private_football_odds_feed();RAISE EXCEPTION 'authenticated call allowed';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
  BEGIN PERFORM * FROM public.private_football_odds_feed;RAISE EXCEPTION 'raw feed readable';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
 END $$;

@@ -524,7 +524,12 @@ test("complementary captures keep their per-file times and do not mix full marke
     }),
     finish: async () => {},
   };
-  const result = await collectFootballBookmakerOdds(target, { env, journal: j, now });
+  // The read occurs after both captures, never before the second receipt.
+  const result = await collectFootballBookmakerOdds(target, {
+    env,
+    journal: j,
+    now: () => Date.parse(time) + 1000,
+  });
   expect(result.quotes).toHaveLength(5);
   expect(result.retrievedAtUtc).toBe("2026-11-06T12:00:01.000Z");
   expect(result.quotes.find((q) => q.market === "both_teams_score_yes")?.observedAtUtc).toBe(
@@ -538,6 +543,10 @@ test("lost durable receipt acknowledgement recovers cached data without a second
     calls = 0,
     first = true;
   const j: OddsJournal = {
+    read: async () =>
+      saved
+        ? { status: "cached", payload: saved, retrievedAtUtc: time }
+        : { status: "recovery_pending" },
     claim: async () =>
       saved
         ? { status: "cached", payload: saved, retrievedAtUtc: time }
@@ -560,7 +569,7 @@ test("lost durable receipt acknowledgement recovers cached data without a second
       return fetcher("");
     }) as typeof fetch,
   };
-  expect((await collectBookmakerOdds(target, options)).status).toBe("unavailable");
+  expect((await collectBookmakerOdds(target, options)).status).toBe("matched");
   expect((await collectBookmakerOdds(target, options)).status).toBe("matched");
   expect(calls).toBe(1);
 });

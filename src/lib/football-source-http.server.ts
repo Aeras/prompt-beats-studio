@@ -21,6 +21,15 @@ type Options = {
   headers?: Record<string, string>;
   maxBytes?: number;
 };
+/** Some adapters do not reject pending reads when their signal aborts. Bound the await too. */
+function untilAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new FootballSourceError("timeout"));
+    if (signal.aborted) abort();
+    signal.addEventListener("abort", abort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
+}
 /** Fixed hosts, bare Workers-safe fetch, bounded streamed UTF-8 JSON. No redirects/retries/raw errors. */
 export async function footballSourceJson(url: URL, options: Options = {}): Promise<unknown> {
   if (
@@ -36,15 +45,19 @@ export async function footballSourceJson(url: URL, options: Options = {}): Promi
     ? AbortSignal.any([options.signal, AbortSignal.timeout(6000)])
     : AbortSignal.timeout(6000);
   const max = options.maxBytes ?? 1_200_000;
+  if (signal.aborted) throw new FootballSourceError("timeout");
   try {
-    const response = await fetcher(url, {
-      method: "GET",
-      redirect: "manual",
+    const response = await untilAbort(
+      fetcher(url, {
+        method: "GET",
+        redirect: "manual",
+        signal,
+        ...(options.headers ? { headers: options.headers } : {}),
+      }),
       signal,
-      ...(options.headers ? { headers: options.headers } : {}),
-    });
+    );
     if (!response.ok) {
-      await response.body?.cancel();
+      void response.body?.cancel().catch(() => undefined);
       const retry = response.headers.get("retry-after") ?? "";
       const retryAfterMs = /^\d+$/.test(retry)
         ? Number(retry) * 1000
@@ -63,11 +76,11 @@ export async function footballSourceJson(url: URL, options: Options = {}): Promi
     if (
       !/\bapplication\/(?:[a-z.+-]*\+)?json\b/i.test(response.headers.get("content-type") ?? "")
     ) {
-      await response.body?.cancel();
+      void response.body?.cancel().catch(() => undefined);
       throw new FootballSourceError("invalid_response");
     }
     if (Number(response.headers.get("content-length") ?? 0) > max) {
-      await response.body?.cancel();
+      void response.body?.cancel().catch(() => undefined);
       throw new FootballSourceError("too_large");
     }
     const reader = response.body?.getReader();
@@ -77,7 +90,7 @@ export async function footballSourceJson(url: URL, options: Options = {}): Promi
       size = 0;
     try {
       while (true) {
-        const part = await reader.read();
+        const part = await untilAbort(reader.read(), signal);
         if (part.done) break;
         size += part.value.byteLength;
         if (size > max) throw new FootballSourceError("too_large");
@@ -93,7 +106,8 @@ export async function footballSourceJson(url: URL, options: Options = {}): Promi
         throw new FootballSourceError("invalid_response");
       }
     } finally {
-      await reader.cancel().catch(() => undefined);
+      // Cancellation itself may never settle for a broken transport; do not hold the journal open.
+      void reader.cancel().catch(() => undefined);
     }
     try {
       return JSON.parse(text);

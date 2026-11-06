@@ -197,7 +197,9 @@ export const getPrivateFootballProviderEvidence = createServerFn({ method: "GET"
     });
     await authorize();
     const { collectFootballBookmakerOdds } = await import("@/lib/football-odds.server");
-    const bookmakerOddsSnapshot = await collectFootballBookmakerOdds(result.fixture);
+    const bookmakerOddsSnapshot = await collectFootballBookmakerOdds(result.fixture, {
+      cacheOnly: true,
+    });
     await authorize();
     return { ...result, bookmakerOddsSnapshot };
   });

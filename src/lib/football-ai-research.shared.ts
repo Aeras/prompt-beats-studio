@@ -1,3 +1,7 @@
+import {
+  footballPredictionConsensusSchema,
+  FOOTBALL_ONLINE_PREDICTION_RULES,
+} from "./football-prediction-consensus.shared";
 import { FOOTBALL_BASE_ANALYST_V2_RULES } from "./football-analyst-v2.shared";
 import { bookmakerOddsSnapshotSchema } from "./football-odds.shared";
 import { footballProviderEvidenceSchema } from "./football-provider-evidence.shared";
@@ -10,6 +14,7 @@ const footballSourceReferenceSchema = z
     title: z.string().max(180),
     url: z.string().url().max(2000),
     accessedAt: z.string().datetime(),
+    publishedAtUtc: z.string().datetime().optional(),
     excerpt: z.string().max(650),
     researchIntent: z.enum(["match_facts", "external_forecasts"]),
   })
@@ -66,6 +71,7 @@ export function filterResearchContextUrls(
 /** Subjective, explicitly labelled AI estimates. Historical qualitative results remain valid. */
 export const footballAiAssessmentSchema = z
   .object({
+    externalPredictionConsensus: footballPredictionConsensusSchema.optional(),
     bookmakerOddsSnapshot: bookmakerOddsSnapshotSchema.optional(),
     summary: z.string().trim().min(20).max(3500),
     espnData: footballEspnContextSchema.optional(),
@@ -172,7 +178,8 @@ Lead with actionable top market estimates and a short plain-Greek summary (2-3 s
 Corners require actual trustworthy corners statistics: if absent, omit them.
 Use at most 5 suggestions, abstain when evidence is weak, and clearly explain uncertainties.
 Do not promise a safe bet, guaranteed outcome, positive expectation or predictive edge.
-Write plain Greek. No Markdown code fences.`;
+Write plain Greek. No Markdown code fences.` +
+  FOOTBALL_ONLINE_PREDICTION_RULES;
 
 /** Validate the model's numeric claims before they can reach the market catalogue. */
 export function validateFootballMarketProbabilities(

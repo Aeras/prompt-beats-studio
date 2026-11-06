@@ -25,25 +25,42 @@ export const oddsTargetSchema = z
     kickoffUtc: utc,
   })
   .strict();
+export const oddsFeedStateSchema = z.enum([
+  "matched",
+  "missing",
+  "ambiguous",
+  "conflict",
+  "stale",
+  "not_configured",
+  "unavailable",
+  "busy",
+  "recovery_pending",
+  "quota_exhausted",
+  "rate_limited",
+  "access_denied",
+  "invalid_response",
+  "timeout",
+  "too_large",
+]);
 export const bookmakerOddsSnapshotSchema = z
   .object({
     version: z.literal(1),
     provider: z.literal("arbplay-stoiximan"),
-    status: z.enum([
-      "matched",
-      "missing",
-      "ambiguous",
-      "conflict",
-      "stale",
-      "not_configured",
-      "unavailable",
-      "quota_exhausted",
-      "rate_limited",
-      "access_denied",
-      "invalid_response",
-      "timeout",
-      "too_large",
-    ]),
+    status: oddsFeedStateSchema,
+    feedStatuses: z
+      .array(
+        z
+          .object({
+            file: z.enum([
+              "site_pregame_stoiximan_soccer_leagues.json",
+              "site_pregame_stoiximan_soccer.json",
+            ]),
+            status: oddsFeedStateSchema,
+          })
+          .strict(),
+      )
+      .max(2)
+      .optional(),
     retrievedAtUtc: utc,
     observedAtUtc: utc.optional(),
     fixture: oddsTargetSchema,

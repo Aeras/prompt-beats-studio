@@ -180,6 +180,8 @@ export function withoutFootballSourceMetadata<T extends object>(assessment: T) {
     "researchBrief",
     "tavilySearchDepth",
     "bookmakerOddsSnapshot",
+    "externalPredictionConsensus",
+    "onlineSourceAgreement",
   ])
     delete result[key];
   return result as Omit<
@@ -189,5 +191,7 @@ export function withoutFootballSourceMetadata<T extends object>(assessment: T) {
     | "researchBrief"
     | "tavilySearchDepth"
     | "bookmakerOddsSnapshot"
+    | "externalPredictionConsensus"
+    | "onlineSourceAgreement"
   >;
 }

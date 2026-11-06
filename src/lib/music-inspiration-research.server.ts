@@ -18,6 +18,8 @@ export const INSPIRATION_LIMITS = {
   extended: { queries: 5, results: 3, textChars: 4000, timeoutMs: 120000 },
 } as const;
 export type RetrievedInspirationDocument = {
+  /** Optional search-provider publication metadata; not an editorial verification. */
+  publishedAtUtc?: string;
   source: InspirationResearch["sources"][number];
   text: string;
 };
@@ -128,6 +130,7 @@ const searchResponseSchema = z.object({
       z.object({
         title: z.string().max(2000),
         url: z.string().max(2048),
+        published_date: z.unknown().optional(),
         raw_content: z.string().nullable().optional(),
         content: z.string().optional(),
       }),
@@ -142,6 +145,7 @@ export async function searchInspirationWeb(
   fetcher: typeof fetch = fetch,
   apiKey = process.env["TAVILY_API_KEY"],
   searchDepth: "basic" | "advanced" = "basic",
+  options: { includePublicationMetadata?: boolean } = {},
 ): Promise<{
   documents: RetrievedInspirationDocument[];
   credits: number | null;
@@ -204,8 +208,17 @@ export async function searchInspirationWeb(
     const id = "web-" + createHash("sha256").update(url).digest("hex").slice(0, 20);
     const accessedAt = new Date().toISOString();
     const contentSha256 = createHash("sha256").update(text).digest("hex");
+    const publication =
+      typeof result.published_date === "string" &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(
+        result.published_date,
+      ) &&
+      z.string().datetime({ offset: true }).safeParse(result.published_date).success
+        ? new Date(result.published_date).toISOString()
+        : undefined;
     documents.push({
       text,
+      ...(options.includePublicationMetadata && publication ? { publishedAtUtc: publication } : {}),
       source: {
         id,
         title: result.title.slice(0, 300),

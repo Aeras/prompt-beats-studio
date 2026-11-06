@@ -5,6 +5,7 @@ import type { footballAiAssessmentSchema } from "./football-ai-research.shared";
 export function buildFootballExpertPayload(assessment: z.infer<typeof footballAiAssessmentSchema>) {
   return {
     researchBrief: assessment.researchBrief ?? null,
+    externalPredictionConsensus: assessment.externalPredictionConsensus ?? null,
     espnData: assessment.espnData ?? null,
     providerEvidence: assessment.providerEvidence ?? null,
     bookmakerOddsSnapshot: assessment.bookmakerOddsSnapshot ?? null,

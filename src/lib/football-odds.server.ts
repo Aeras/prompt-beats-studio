@@ -21,6 +21,8 @@ export const ARBPLAY_COMPETITIONS: Readonly<Record<string, readonly string[]>> =
   "UEFA-EL": ["182761"],
 };
 export type OddsJournal = {
+  /** Read-only: never reserves a provider request. */
+  read?: (file: string) => Promise<{ status: string; payload?: unknown; retrievedAtUtc?: string }>;
   claim: (
     file: string,
   ) => Promise<{ status: string; token?: string; payload?: unknown; retrievedAtUtc?: string }>;
@@ -34,6 +36,7 @@ export type OddsJournal = {
 export async function collectBookmakerOdds(
   target: OddsTarget,
   options: {
+    cacheOnly?: boolean;
     env?: Record<string, string | undefined>;
     journal?: OddsJournal;
     fetcher?: typeof fetch;
@@ -69,40 +72,61 @@ export async function collectBookmakerOdds(
   let journal: OddsJournal | undefined;
   let token: string | undefined;
   let failure: BookmakerOddsSnapshot["status"] = "unavailable";
+  let stage = "journal_claim";
   try {
     journal = options.journal ?? (await databaseJournal());
-    const claim = await journal.claim(file);
+    let claim: Awaited<ReturnType<OddsJournal["claim"]>> = options.cacheOnly
+      ? ((await journal.read?.(file)) ?? { status: "unavailable" })
+      : await journal.claim(file);
+    if (claim.status === "busy" && journal.read) claim = await journal.read(file);
+
     if (claim.status !== "cached" && claim.status !== "claimed")
       return empty(
         claim.status === "quota_exhausted"
           ? "quota_exhausted"
           : claim.status === "rate_limited"
             ? "rate_limited"
-            : "unavailable",
+            : ["busy", "recovery_pending", "stale"].includes(claim.status)
+              ? (claim.status as "busy" | "recovery_pending" | "stale")
+              : "unavailable",
       );
     token = claim.token;
     let payload = claim.payload,
       retrievedAtUtc = claim.retrievedAtUtc;
     if (claim.status === "claimed") {
       if (!token) throw new Error("Missing reservation");
+      stage = "source_request";
       payload = await footballSourceJson(new URL("https://stoiximan.jojapi.net/v1/data/" + file), {
         ...(options.fetcher ? { fetcher: options.fetcher } : {}),
         maxBytes: 4_000_000,
         headers: { "X-JoJAPI-Key": env["ARBPLAY_API_KEY"]!.trim() },
       });
+      stage = "source_validation";
+      failure = "invalid_response";
       if (
         !payload ||
         typeof payload !== "object" ||
         (payload as Record<string, unknown>)["file"] !== file
       )
         throw new Error("Wrong feed");
-      failure = "invalid_response";
       parseJoJLeagueDataset(payload); // validate before caching; no raw feed delivered to browser
       retrievedAtUtc = new Date(now()).toISOString();
       failure = "unavailable";
-      await journal.finish(token, payload, "ok", 0);
-      token = undefined;
+      stage = "journal_receipt";
+      const receiptToken = token;
+      token = undefined; // An uncertain receipt is NEVER overwritten with a failure.
+      try {
+        await journal.finish(receiptToken, payload, "ok", 0);
+      } catch {
+        console.warn("[football-odds]", { file, stage, status: "recovery_pending" });
+        // A committed receipt with a lost acknowledgement is recoverable without another GET.
+        const recovered = await journal.read?.(file);
+        if (recovered?.status !== "cached") return empty("recovery_pending");
+        payload = recovered.payload;
+        retrievedAtUtc = recovered.retrievedAtUtc;
+      }
     }
+    stage = "cache_validation";
     failure = "invalid_response";
     if (
       !retrievedAtUtc ||
@@ -112,7 +136,18 @@ export async function collectBookmakerOdds(
       (payload as Record<string, unknown>)["file"] !== file
     )
       throw new Error("Invalid cache receipt");
+    const retrieved = Date.parse(retrievedAtUtc);
+    const observed = Date.parse((payload as Record<string, unknown>)["updated_at"] as string);
+    if (
+      retrieved > now() ||
+      now() - retrieved >= 15 * 60000 ||
+      !Number.isFinite(observed) ||
+      observed > retrieved ||
+      now() - observed > 15 * 60000
+    )
+      return empty("stale");
     const candidates = parseJoJLeagueDataset(payload);
+    stage = "fixture_matching";
     const match = matchJoJOdds(
       {
         leagueId: target.leagueId,
@@ -132,6 +167,7 @@ export async function collectBookmakerOdds(
     );
   } catch (e) {
     const status = e instanceof FootballSourceError ? e.status : failure;
+    console.warn("[football-odds]", { file, stage, status });
     if (token && journal)
       await journal
         .finish(token, null, status, e instanceof FootballSourceError ? e.retryAfterMs : 0)
@@ -147,24 +183,32 @@ export async function collectBookmakerOdds(
 async function databaseJournal(): Promise<OddsJournal> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return {
+    read: async (file) => {
+      const r = await supabaseAdmin
+        .rpc("read_private_football_odds_feed" as never, { _file: file } as never)
+        .abortSignal(AbortSignal.timeout(8000));
+      if (r.error) throw new Error("Odds recovery unavailable");
+      return r.data as unknown as Awaited<ReturnType<NonNullable<OddsJournal["read"]>>>;
+    },
     claim: async (file) => {
-      const r = await supabaseAdmin.rpc(
-        "claim_private_football_odds_feed" as never,
-        { _file: file } as never,
-      );
+      const r = await supabaseAdmin
+        .rpc("claim_private_football_odds_feed" as never, { _file: file } as never)
+        .abortSignal(AbortSignal.timeout(8000));
       if (r.error) throw new Error("Odds journal unavailable");
       return r.data as unknown as Awaited<ReturnType<OddsJournal["claim"]>>;
     },
     finish: async (token, payload, status, retryAfterMs) => {
-      const r = await supabaseAdmin.rpc(
-        "finish_private_football_odds_feed" as never,
-        {
-          _token: token,
-          _payload: payload,
-          _status: status,
-          _retry_after_ms: Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, retryAfterMs)),
-        } as never,
-      );
+      const r = await supabaseAdmin
+        .rpc(
+          "finish_private_football_odds_feed" as never,
+          {
+            _token: token,
+            _payload: payload,
+            _status: status,
+            _retry_after_ms: Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, retryAfterMs)),
+          } as never,
+        )
+        .abortSignal(AbortSignal.timeout(8000));
       if (r.error) throw new Error("Odds checkpoint unavailable");
     },
   };
@@ -180,13 +224,24 @@ export async function collectFootballBookmakerOdds(
     ...options,
     file: "site_pregame_stoiximan_soccer.json",
   });
+  const feedStatuses = [
+    { file: FILE, status: long.status },
+    { file: "site_pregame_stoiximan_soccer.json" as const, status: near.status },
+  ];
+  if (long.status === "missing" && near.status !== "missing" && near.status !== "matched")
+    return { ...near, feedStatuses, notes: [...near.notes, "Πηγή soccer_leagues: missing"] };
   if (near.status !== "matched")
-    return { ...long, notes: [...long.notes, `Πρόσθετη πηγή soccer: ${near.status}`] };
+    return {
+      ...long,
+      feedStatuses,
+      notes: [...long.notes, `Πρόσθετη πηγή soccer: ${near.status}`],
+    };
   if (long.status !== "matched")
-    return { ...near, notes: [...near.notes, `Πηγή soccer_leagues: ${long.status}`] };
+    return { ...near, feedStatuses, notes: [...near.notes, `Πηγή soccer_leagues: ${long.status}`] };
   if (long.providerFixtureId !== near.providerFixtureId)
     return {
       ...long,
+      feedStatuses,
       status: "conflict" as const,
       quotes: [],
       notes: [...long.notes, "Τα δύο αρχεία διαφωνούν στην ταυτότητα αγώνα."],
@@ -208,6 +263,7 @@ export async function collectFootballBookmakerOdds(
     quotes.some((q) => Date.parse(retrievedAtUtc) - Date.parse(q.observedAtUtc) > 15 * 60000);
   return bookmakerOddsSnapshotSchema.parse({
     ...newer,
+    feedStatuses,
     retrievedAtUtc,
     status: expired ? "stale" : "matched",
     quotes: expired ? [] : quotes,
