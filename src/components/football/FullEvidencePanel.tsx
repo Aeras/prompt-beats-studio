@@ -1,3 +1,4 @@
+import { IndependentMarketsPanel } from "./IndependentMarketsPanel";
 import { useI18n } from "@/i18n";
 import { footballEvidenceMarketLabel } from "@/i18n/football-evidence-v2";
 import { descriptiveMarketKey, descriptiveMarketFamily } from "@/lib/football-evidence-v2.shared";
@@ -24,6 +25,16 @@ const exclusions: Record<string, string> = {
   candidate_limit: "Πολλές επιλογές της ίδιας πηγής",
 };
 export function FullEvidencePanel({ report }: { report: FullEvidenceReport }) {
+  if (report.restoration)
+    return (
+      <IndependentMarketsPanel
+        report={report}
+        audit={<LegacyFullEvidencePanel report={report} />}
+      />
+    );
+  return <LegacyFullEvidencePanel report={report} />;
+}
+function LegacyFullEvidencePanel({ report }: { report: FullEvidenceReport }) {
   const { language } = useI18n(),
     en = language === "en",
     locale = en ? "en" : "el";

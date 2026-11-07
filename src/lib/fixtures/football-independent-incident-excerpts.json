@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "provenance": "Anonymized persisted incident quotes from prior authorized read-only receipt investigation. Not a new capture or exact raw replay; no full article or personal identifiers. Excerpt bounded at20 words per host.",
+  "fixture": {
+    "leagueId": "IT-SA",
+    "homeTeam": "Fiorentina",
+    "awayTeam": "Juventus",
+    "kickoffUtc": "2026-11-08T19:45:00Z"
+  },
+  "samples": [
+    {
+      "url": "https://footballpredictions.com/footballpredictions/serieapredictions/fiorentina-vs-juventus-prediction-08-11-2026",
+      "language": "en",
+      "accessedAt": "2026-11-07T15:48:27.233Z",
+      "sourceDigest": "003eed3228439fcec0f64145b222dc8dd88f10d2f0c88c02de0188c7ad7d51e1",
+      "quote": "Our prediction for this match: Fiorentina 1 - 1 Juventus",
+      "originalOffset": null,
+      "annotationBy": "Codex analyst; not independent human-certified ground truth",
+      "kind": "editorial",
+      "originalRuntimeEligible": false,
+      "contextAvailability": "saved literal quote only; full original bytes unavailable",
+      "excerptDigest": "d975bbc7567b5444be20d5fe9af59c52c346ea16f5548e6ae77f0de51028e830"
+    },
+    {
+      "url": "https://www.forebet.com/en/football/matches/fiorentina-juventus-2496596",
+      "language": "en",
+      "accessedAt": "2026-11-07T15:48:27.233Z",
+      "sourceDigest": "2849d6a70fa46597854f50bd6920c739c44755ae87a6502199ffcfda9f1e0a65",
+      "quote": "Our algorithm prediction: Juventus to win 1-2.",
+      "originalOffset": null,
+      "annotationBy": "Codex analyst; not independent human-certified ground truth",
+      "kind": "algorithm",
+      "originalRuntimeEligible": false,
+      "contextAvailability": "saved literal quote only; full original bytes unavailable",
+      "excerptDigest": "cdaed56b692524f9b62940c16023bbcc5f62d8bd4666c6ac7c94a06c4c22a369"
+    },
+    {
+      "url": "https://ratingbet.com/predictions/fiorentina-vs-juventus-prediction-team-news-lineups-expert-analysis",
+      "language": "en",
+      "accessedAt": "2026-11-07T15:48:27.233Z",
+      "sourceDigest": "db2cb9a171a5068cccf999d8ce6cd3d6d8b4a96621e1d9509ffa57be4201dafb",
+      "quote": "We are backing \"over 2.5 goals\" in this match (odds – 1.78).",
+      "originalOffset": null,
+      "annotationBy": "Codex analyst; not independent human-certified ground truth",
+      "kind": "editorial",
+      "originalRuntimeEligible": false,
+      "contextAvailability": "saved literal quote only; full original bytes unavailable",
+      "excerptDigest": "04bea8ce58541ce3bfe3bb89c544474a5aa2151cc1f8d56585b3509ad38e9668"
+    },
+    {
+      "url": "https://www.docsports.com/free-picks/soccer/2026/fiorentina-vs-juventus-prediction-11-8-2026-soccer-pick-tips-and-odds.html",
+      "language": "en",
+      "accessedAt": "2026-11-07T15:48:27.233Z",
+      "sourceDigest": "b1f5ae2e527719589d211cfc577211a5560e8191378c11dd66eed6e62ae86934",
+      "quote": "Guy Bruhn's Pick: Take Fiorentina (-182)",
+      "originalOffset": null,
+      "annotationBy": "Codex analyst; not independent human-certified ground truth",
+      "kind": "editorial",
+      "originalRuntimeEligible": false,
+      "contextAvailability": "saved literal quote only; full original bytes unavailable",
+      "excerptDigest": "13a3e0feca24d16ea822c8d03448bdfd2205ca3507c13dd15e98848813f760a3"
+    },
+    {
+      "url": "https://betteam.pro/prognozy/futbol/seriya-a/fiorentina-yuventus-08-11-2026-prognoz-i-stavki-na-match/23290053",
+      "language": "ru",
+      "accessedAt": "2026-11-07T15:48:30.815Z",
+      "sourceDigest": "018183b4495352281538cb6bc7b9561e1fdcd7b83c12918c6838462737bf5a10",
+      "quote": "👤 ПРОГНОЗ АНАЛИТИКА\nФ2(0)\n1.53   Melbet\nЭто авторский прогноз, подготовленный профессиональным аналитиком Betteam. Подробное обоснование данной ставки читайте в текстовом",
+      "originalOffset": null,
+      "annotationBy": "Codex analyst; not independent human-certified ground truth",
+      "kind": "editorial",
+      "originalRuntimeEligible": false,
+      "contextAvailability": "saved literal quote only; full original bytes unavailable",
+      "excerptDigest": "577ca571765a8b4c9f68bc4551e4111edcc874a23dab03ceb720fc2cac145919"
+    },
+    {
+      "url": "https://www.vedomosti.ru/sport/rb/predictions/article/fiorentina-yuventus-2026-prognoz",
+      "language": "ru",
+      "accessedAt": "2026-11-07T15:48:30.815Z",
+      "sourceDigest": "f7049d9045b389181947e413ee81c42085dc29dfbb0834df0232ddade7d20964",
+      "quote": "Учитывая текущую форму «Ювентуса», его надежную оборону и трудности «Фиорентины» в атаке, ставка на «Тотал меньше 2.5» выглядит наиболее обоснованной.",
+      "originalOffset": null,
+      "annotationBy": "Codex analyst; not independent human-certified ground truth",
+      "kind": "editorial",
+      "originalRuntimeEligible": false,
+      "contextAvailability": "saved literal quote only; full original bytes unavailable",
+      "excerptDigest": "5b43fb5e471e01522b52828c359f99acd16e195230a8171a1d5bb1722f9ae26d"
+    },
+    {
+      "url": "https://www.freesupertips.com/predictions/fiorentina-vs-juventus-predictions-betting-tips-match-previews",
+      "language": "ru",
+      "accessedAt": "2026-11-07T15:48:30.815Z",
+      "sourceDigest": "ccf9d155c169267651e931cf4a4b5e26d6592f4038692e1662b75805782f6f40",
+      "quote": "Juventus to Win\nReason for tip\nJuventus have been in much better form recently, winning three of their last four",
+      "originalOffset": null,
+      "annotationBy": "Codex analyst; not independent human-certified ground truth",
+      "kind": "editorial",
+      "originalRuntimeEligible": false,
+      "contextAvailability": "saved literal quote only; full original bytes unavailable",
+      "excerptDigest": "4b2631c1d247066e0e2c990e09635b7dc90cc8fc911014f966c94e8e6e580c7e"
+    }
+  ]
+}

@@ -21,6 +21,67 @@ import {
   type FootballProviderEvidence,
 } from "../src/lib/football-provider-evidence.shared";
 
+for (const locale of ["el", "en"] as const)
+  test(`restored market bars ${locale}: all markets, exact sources, alternative, keyboard and mobile`, async ({
+    page,
+  }) => {
+    const state = await fixture(
+      page,
+      true,
+      true,
+      "matched",
+      locale,
+      { home: "Arsenal", away: "Liverpool" },
+      1,
+      false,
+      false,
+      false,
+      "combo",
+      false,
+      "v2_experimental",
+      undefined,
+      "restored",
+    );
+    await page
+      .locator("button[aria-expanded]")
+      .filter({ hasText: locale === "el" ? "Άρσεναλ" : "Arsenal" })
+      .click();
+    const panel = page
+      .getByRole("region", {
+        name: locale === "el" ? "Ανεξάρτητη εκτίμηση AI" : "Independent AI assessment",
+      })
+      .first();
+    await expect(panel.getByRole("meter")).toHaveCount(2);
+    const over = panel
+      .locator("details")
+      .filter({ has: page.getByRole("meter", { name: "Over 2.5", exact: true }) })
+      .first();
+    await over.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(over.getByRole("link")).toHaveAttribute(
+      "href",
+      "https://predictz.com/synthetic-full",
+    );
+    await expect(over.locator("blockquote")).toHaveText("Our pick: Over 2.5");
+    await expect(
+      panel.getByText(locale === "el" ? /^Εναλλακτική:/ : /^Alternative:/),
+    ).toBeVisible();
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      expect(
+        (await new AxeBuilder({ page }).include("#football-predictions").analyze()).violations,
+      ).toEqual([]);
+      await page.screenshot({
+        path: test.info().outputPath(`restored-${locale}-${width}.png`),
+        fullPage: true,
+      });
+    }
+    expect(state.paid()).toBe(0);
+  });
+
 const user = {
   id: "bb000000-0000-4000-8000-000000000008",
   aud: "authenticated",
@@ -45,7 +106,7 @@ async function fixture(
   holdResearch = false,
   savedProfile?: FootballSearchProfileVersion,
   failedPlanningCode?: string,
-  fullMode?: "complete" | "incomplete",
+  fullMode?: "complete" | "incomplete" | "restored",
 ) {
   const token =
     [
@@ -405,6 +466,7 @@ async function fixture(
       let report: FullEvidenceReport;
       try {
         const r = await runFullFootballEvidence({
+          restoration: fullMode === "restored",
           fixture: target,
           cutoff: now,
           runId: "ae000000-0000-4000-8000-000000000001",
@@ -412,7 +474,7 @@ async function fixture(
           context: { fixture: target, providerEvidence: snapshot },
           system: "Synthetic full assessment",
           providerUrls: ["https://espn.com/synthetic-provider"],
-          capacity: { context: fullMode === "complete" ? 1000000 : null, output: 16384 },
+          capacity: { context: fullMode !== "incomplete" ? 1000000 : null, output: 16384 },
           signal: new AbortController().signal,
           authorize: async () => {},
           journal: async () => {},
@@ -443,14 +505,34 @@ async function fixture(
                     rationale: "Snippet only, not an independent vote",
                   },
                 ],
-                independentAssessment: {
-                  decision: "lean",
-                  selection: { kind: "total", period: "FT", selection: "over", line: 2.5 },
-                  rationale:
-                    "Synthetic independent football reasoning with uncertainty and contrary evidence.",
-                  supportingClaimIds: [],
-                  evidenceUrls: [hits[0]!.url, "https://espn.com/synthetic-provider"],
-                },
+                independentAssessment:
+                  fullMode === "restored"
+                    ? {
+                        decision: "lean",
+                        rationale: "Synthetic independent football reasoning and uncertainty.",
+                        primary: {
+                          market: { kind: "total", period: "FT", selection: "over", line: 2.5 },
+                          rationale:
+                            "Published goals picks and provider attacking form support this qualitative preference.",
+                          risk: "Finishing may be weaker than the recent sample suggests.",
+                          evidenceUrls: [hits[0]!.url, "https://espn.com/synthetic-provider"],
+                        },
+                        alternative: {
+                          market: { kind: "dc", period: "FT", selection: "X2" },
+                          rationale:
+                            "An alternative viewpoint follows the other source and the away defensive form.",
+                          risk: "The home advantage could outweigh the away form.",
+                          evidenceUrls: [hits[1]!.url],
+                        },
+                      }
+                    : {
+                        decision: "lean",
+                        selection: { kind: "total", period: "FT", selection: "over", line: 2.5 },
+                        rationale:
+                          "Synthetic independent football reasoning with uncertainty and contrary evidence.",
+                        supportingClaimIds: [],
+                        evidenceUrls: [hits[0]!.url, "https://espn.com/synthetic-provider"],
+                      },
               }),
               stopReason: "end_turn",
               usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },

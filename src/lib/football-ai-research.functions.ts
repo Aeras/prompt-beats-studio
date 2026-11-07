@@ -464,6 +464,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           const { runFullFootballEvidence, footballFullModelCapacity } =
             await import("./football-full-evidence.server");
           const result = await runFullFootballEvidence({
+            restoration: true,
             fixture: identity,
             cutoff: evidenceCutoff,
             runId,
@@ -861,7 +862,13 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
             const value = (row.usage as { research?: { fullEvidenceV2?: unknown } } | null)
               ?.research?.fullEvidenceV2;
             return readFullEvidence(
-              [{ kind: "football-full-evidence", version: 1, payload: value }],
+              [
+                {
+                  kind: "football-full-evidence",
+                  version: value && typeof value === "object" && "restoration" in value ? 2 : 1,
+                  payload: value,
+                },
+              ],
               {
                 leagueId: row.league_id,
                 homeTeam: row.home_team,
