@@ -1,3 +1,8 @@
+import {
+  runFullFootballEvidence,
+  FullCoverageError,
+} from "../src/lib/football-full-evidence.server";
+import type { FullEvidenceReport, FullEvidenceHit } from "../src/lib/football-full-evidence.shared";
 import { fromJSON } from "seroval";
 import { readFile } from "node:fs/promises";
 import {
@@ -40,6 +45,7 @@ async function fixture(
   holdResearch = false,
   savedProfile?: FootballSearchProfileVersion,
   failedPlanningCode?: string,
+  fullMode?: "complete" | "incomplete",
 ) {
   const token =
     [
@@ -368,6 +374,104 @@ async function fixture(
           ]
         : [];
     else if (name.includes("getMyModeration")) result = { role: "super_admin", status: "active" };
+    if (fullMode && name.includes("getPrivateFootballResearchHistory")) {
+      const now = new Date().toISOString();
+      const target = { leagueId: "EN-PL", homeTeam: pair.home, awayTeam: pair.away, kickoffUtc };
+      const head = `${pair.home} vs ${pair.away} Premier League ${kickoffUtc.slice(0, 10)} ${kickoffUtc.slice(11, 16)} UTC.\n`;
+      const quote = "Our pick: Over 2.5",
+        second = "Our pick: X2";
+      const h = (
+        url: string | null,
+        text: string,
+        status: FullEvidenceHit["status"] = "full_or_partial_raw_text",
+      ): FullEvidenceHit => ({
+        url,
+        title: status === "snippet_only" ? "Synthetic snippet" : "Synthetic independent preview",
+        accessedAt: now,
+        status,
+        text,
+        rawChars: text.length,
+        cleanedChars: text.length,
+        snippetChars: status === "snippet_only" ? text.length : 0,
+        language: "en",
+      });
+      const hits = [
+        h("https://predictz.com/synthetic-full", head + "RAW_BODY_SENTINEL ".repeat(2000) + quote),
+        h("https://sportsmole.co.uk/synthetic-full", head + second),
+        h("https://unknown.example.org/snippet", "Our pick: BTTS Yes", "snippet_only"),
+      ];
+      hits.push({ ...hits[0]! });
+      hits.push(h(null, "", "invalid_or_unsafe_url"));
+      let report: FullEvidenceReport;
+      try {
+        const r = await runFullFootballEvidence({
+          fixture: target,
+          cutoff: now,
+          runId: "ae000000-0000-4000-8000-000000000001",
+          hits,
+          context: { fixture: target, providerEvidence: snapshot },
+          system: "Synthetic full assessment",
+          providerUrls: ["https://espn.com/synthetic-provider"],
+          capacity: { context: fullMode === "complete" ? 1000000 : null, output: 16384 },
+          signal: new AbortController().signal,
+          authorize: async () => {},
+          journal: async () => {},
+          caller: () => async (call) => {
+            const p = JSON.parse(call.prompt);
+            return {
+              text: JSON.stringify({
+                evidenceCandidates: [
+                  {
+                    sourceId: p.sources[0].sourceId,
+                    quote,
+                    market: { kind: "total", period: "FT", selection: "over", line: 2.5 },
+                    kind: "editorial",
+                    rationale: "Synthetic source-authored pick",
+                  },
+                  {
+                    sourceId: p.sources[1].sourceId,
+                    quote: second,
+                    market: { kind: "dc", period: "FT", selection: "X2" },
+                    kind: "editorial",
+                    rationale: "Synthetic source-authored second pick",
+                  },
+                  {
+                    sourceId: p.sources[2].sourceId,
+                    quote: "Our pick: BTTS Yes",
+                    market: { kind: "btts", period: "FT", selection: "yes" },
+                    kind: "editorial",
+                    rationale: "Snippet only, not an independent vote",
+                  },
+                ],
+                independentAssessment: {
+                  decision: "lean",
+                  selection: { kind: "total", period: "FT", selection: "over", line: 2.5 },
+                  rationale:
+                    "Synthetic independent football reasoning with uncertainty and contrary evidence.",
+                  supportingClaimIds: [],
+                  evidenceUrls: [hits[0]!.url, "https://espn.com/synthetic-provider"],
+                },
+              }),
+              stopReason: "end_turn",
+              usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+              provider: "openrouter",
+              model: "offline",
+            };
+          },
+        });
+        report = r.report;
+      } catch (error) {
+        if (!(error instanceof FullCoverageError)) throw error;
+        report = error.report;
+      }
+      result = (result as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        fullEvidenceV2: report,
+        ...(fullMode === "incomplete"
+          ? { status: "failed", analysis: null, error_code: "incomplete_coverage" }
+          : {}),
+      }));
+    }
     if (failedPlanningCode && name.includes("getPrivateFootballResearchHistory")) {
       result = (result as Record<string, unknown>[]).map((row) => ({
         ...row,
@@ -820,7 +924,7 @@ for (const depth of ["basic", "advanced"] as const)
       searchProfileVersion: "v2_experimental",
       tavilySearchDepth: depth,
       approvePaidRequest: true,
-      researchConsentVersion: "football-search-v2-consent-1",
+      researchConsentVersion: "football-v2-full-evidence-1",
       researchConsent: {
         searchProfileVersion: "v2_experimental",
         depth,
@@ -828,6 +932,8 @@ for (const depth of ["basic", "advanced"] as const)
         fixtureId: "999",
         searchCalls: 2,
         resultsPerSearch: 10,
+        evidenceVersion: "full-v2-1",
+        maxModelCalls: 5,
       },
     });
     state.releaseResearch();
@@ -922,3 +1028,71 @@ for (const [code, message] of Object.entries(FOOTBALL_V2_PLANNING_FAILURES))
     ).toEqual([]);
     expect(state.paid()).toBe(0);
   });
+
+for (const locale of ["el", "en"] as const)
+  for (const mode of ["complete", "incomplete"] as const)
+    test(`full V2 ${locale}/${mode}: three source lists, truthful coverage, exact citations and no history dispatch`, async ({
+      page,
+    }) => {
+      const state = await fixture(
+        page,
+        true,
+        true,
+        "matched",
+        locale,
+        { home: "Arsenal", away: "Liverpool" },
+        1,
+        false,
+        false,
+        false,
+        "combo",
+        false,
+        "v2_experimental",
+        undefined,
+        mode,
+      );
+      await page
+        .locator("button[aria-expanded]")
+        .filter({ hasText: locale === "el" ? "Άρσεναλ" : "Arsenal" })
+        .click();
+      const panel = page.getByRole("region", {
+        name: locale === "el" ? "Ανεξάρτητη εκτίμηση AI" : "Independent AI assessment",
+      });
+      await expect(panel).toBeVisible();
+      if (mode === "incomplete")
+        await expect(panel.getByRole("status")).toContainText(
+          locale === "el" ? "Ατελής κάλυψη" : "incomplete",
+        );
+      for (const width of [320, 390]) {
+        await page.setViewportSize({ width, height: 844 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+          true,
+        );
+      }
+      const summaries = panel.locator("summary");
+      await expect(summaries).toHaveCount(3);
+      for (const s of await summaries.all()) {
+        await s.focus();
+        await page.keyboard.press("Enter");
+      }
+      const lists = panel.locator("details");
+      await expect(lists.nth(0).locator("li")).toHaveCount(5);
+      if (mode === "complete") {
+        await expect(lists.nth(1).locator("li")).toHaveCount(3);
+        await expect(lists.nth(2).locator("a")).toHaveCount(2);
+        await expect(
+          lists.nth(2).locator('a[href="https://sportsmole.co.uk/synthetic-full"]'),
+        ).toHaveCount(0);
+        await expect(panel).not.toContainText("RAW_BODY_SENTINEL");
+      }
+      await expect(panel).not.toContainText("sourceId");
+      await expect(panel).not.toContainText("claimId");
+      expect(
+        (await new AxeBuilder({ page }).include("#football-predictions").analyze()).violations,
+      ).toEqual([]);
+      await page.screenshot({
+        path: test.info().outputPath(`full-evidence-${locale}-${mode}.png`),
+        fullPage: true,
+      });
+      expect(state.paid()).toBe(0);
+    });

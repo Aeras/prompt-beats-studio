@@ -1,3 +1,5 @@
+import { runFullFootballEvidence } from "./football-full-evidence.server";
+import { packFullEvidence } from "./football-full-evidence.shared";
 import { searchInspirationWeb } from "./music-inspiration-research.server";
 import {
   footballV2PlanningMessage,
@@ -132,6 +134,9 @@ for (const [iteration, mode] of (
     "v2-unknown-team",
     "v2-league-mismatch",
     "v2-invalid-date",
+    "v2-capacity-unknown",
+    "v2-staged",
+    ...Array.from({ length: 10 }, (_, i) => `v2-batch-${i}` as const),
   ] as const
 ).entries())
   test(`actual research handler ${iteration}: ${mode}, profile-derived searches, one paid attempt, authoritative provenance and retained usage`, async () => {
@@ -250,6 +255,18 @@ for (const [iteration, mode] of (
       excerpt: `${identity.homeTeam} vs ${identity.awayTeam} ${identity.leagueId === "EN-PL" ? "Premier League" : "Serie A"} ${kickoff.slice(0, 10)} ${kickoff.slice(11, 16)} UTC.\n${i < 5 ? "Επιλογή" : i < 10 ? "Our pick" : "Прогноз"}: ${i === 0 && mode === "combo" ? "GG & Over 2.5" : i >= 10 && i < 15 ? "ТБ 2,5" : "Over 2.5"}; ${i < 5 ? "Συνθετικό ελληνικό κείμενο για τα αγωνιστικά στοιχεία και τις εκτιμήσεις του συγκεκριμένου αγώνα" : i >= 10 && i < 15 ? "Синтетический русский текст о матче, только для проверки языка и подтверждения формы прогноза" : "Distinct synthetic English report"} ${i}.`,
       researchIntent: "external_forecasts" as const,
     }));
+    if (mode === "v2-staged")
+      for (const s of sources)
+        s.excerpt =
+          s.excerpt +
+          "\n" +
+          (s.excerpt.includes("Επιλογή")
+            ? "Συνθετική περιγραφή αγώνα. "
+            : s.excerpt.includes("Прогноз")
+              ? "Синтетическое описание матча. "
+              : "Synthetic article narrative. "
+          ).repeat(600) +
+          "\nOur pick: Over 2.5";
     if (mode === "incident-score")
       sources[0]!.excerpt = `Inter vs Como Serie A ${kickoff.slice(0, 10)}\nOur prediction for this match: Inter 2 - 1 Como`;
     const raw = {
@@ -353,16 +370,69 @@ for (const [iteration, mode] of (
       from: () => chain,
     };
     const dynamicImport = async (path: string) => {
+      if (path.includes("football-full-evidence.server"))
+        return {
+          runFullFootballEvidence,
+          footballFullModelCapacity: async () => ({
+            context: mode === "v2-capacity-unknown" ? null : 1000000,
+            output: 16384,
+          }),
+        };
       if (path.includes("ai-provider"))
         return {
           resolveAiModelForUser: async () => ({ model: "offline", provider: "openrouter" }),
           modelCaller: () => async (input: { prompt: string; system: string }) => {
             calls++;
             expect(marked).toBe(true);
-            expect(input).toHaveProperty("maxTokens", FOOTBALL_MODEL_OUTPUT_TOKENS);
             if (mode === "timeout" || mode === "v2-model-timeout")
               throw new Error("offline provider timeout");
             const prompt = JSON.parse(input.prompt);
+            if (v2) {
+              if (prompt.readingChunks) {
+                expect(input).toHaveProperty("maxTokens", 8192);
+                const evidenceCandidates = prompt.readingChunks
+                  .filter((c: { text: string }) => c.text.includes("Our pick: Over 2.5"))
+                  .map((c: { sourceId: string }) => ({
+                    sourceId: c.sourceId,
+                    quote: "Our pick: Over 2.5",
+                    market: { kind: "total", period: "FT", selection: "over", line: 2.5 },
+                    kind: "editorial",
+                    rationale: "Synthetic offline authored pick",
+                  }));
+                return {
+                  text: JSON.stringify({ evidenceCandidates }),
+                  usage,
+                  stopReason: "end_turn",
+                  provider: "openrouter",
+                  model: "offline",
+                };
+              }
+              expect(input).toHaveProperty("maxTokens", FOOTBALL_MODEL_OUTPUT_TOKENS);
+              if (prompt.readingMode) {
+                expect(prompt.sources).toHaveLength(candidateCount);
+                expect(prompt.validatedCandidates.length).toBeGreaterThan(0);
+              } else {
+                expect(prompt.sources).toHaveLength(candidateCount);
+                expect(prompt.sources[19].text).toBe(sources[19]!.excerpt);
+              }
+              expect(prompt.context.providerEvidence.providers[0].home.recentResults).toHaveLength(
+                1,
+              );
+              expect(prompt.context.providerEvidence.providers[0].home.injuries).toHaveLength(1);
+              expect(input.system).toContain("Read every supplied source text");
+              return {
+                text: JSON.stringify({
+                  ...raw,
+                  evidenceCandidates: [],
+                  independentAssessment: { ...raw.independentAssessment, supportingClaimIds: [] },
+                }),
+                usage,
+                stopReason: "end_turn",
+                provider: "openrouter",
+                model: "offline",
+              };
+            }
+            expect(input).toHaveProperty("maxTokens", FOOTBALL_MODEL_OUTPUT_TOKENS);
             expect(prompt.sources).toHaveLength(candidateCount);
             expect(prompt.providerEvidence.providers[0].home.recentResults).toHaveLength(1);
             expect(prompt.providerEvidence.providers[0].home.injuries).toHaveLength(1);
@@ -483,6 +553,7 @@ for (const [iteration, mode] of (
     };
     const scope = {
       dynamicImport,
+      packFullEvidence,
       getRequest: () => ({
         signal:
           mode === "cancelled" || mode === "v2-cancelled"
@@ -578,6 +649,24 @@ for (const [iteration, mode] of (
       expect(searches).toBe(0);
       return;
     }
+    if (mode === "v2-capacity-unknown") {
+      await expect(handler(input)).rejects.toThrow("cannot be automatically retried");
+      expect(searches).toBe(2);
+      expect(calls).toBe(0);
+      const failed = updates.find((u) => u["status"] === "failed")!;
+      expect(failed["error_code"]).toBe("incomplete_coverage");
+      const report = (
+        failed["usage"] as {
+          research: { fullEvidenceV2: { coverage: string; reason: string; sources: unknown[] } };
+        }
+      ).research.fullEvidenceV2;
+      expect(report.coverage).toBe("incomplete_coverage");
+      expect(report.reason).toBe("capacity_unknown");
+      expect(report.sources).toHaveLength(20);
+      await expect(handler(input)).rejects.toThrow("already recorded");
+      expect(searches).toBe(2);
+      return;
+    }
     if (mode === "v2-forged-consent") {
       input.data.researchConsent!.depth = depth === "basic" ? "advanced" : "basic";
       await expect(handler(input)).rejects.toThrow("selected search profile");
@@ -644,12 +733,14 @@ for (const [iteration, mode] of (
         "v2-advanced",
         "v2-fiorentina",
         "v2-manchester",
+        "v2-staged",
         "v2-search-failure",
         "v2-forged-consent",
         "v2-denied",
         "v2-cancelled",
         "v1-basic",
-      ].includes(mode)
+      ].includes(mode) ||
+      mode.startsWith("v2-batch-")
     ) {
       const result = await handler(input);
       expect(result.analysis.externalPredictionConsensus.sourceCount).toBeGreaterThan(0);
@@ -728,7 +819,8 @@ for (const [iteration, mode] of (
         updates.some(
           (u) =>
             u["status"] === "completed" &&
-            (u["usage"] as { inputTokens?: number })?.inputTokens === usage.inputTokens,
+            (u["usage"] as { inputTokens?: number })?.inputTokens ===
+              usage.inputTokens * (mode === "v2-staged" ? calls : 1),
         ),
       ).toBe(true);
     } else {
@@ -737,10 +829,12 @@ for (const [iteration, mode] of (
         updates.some(
           (u) =>
             u["status"] === "failed" &&
-            (mode === "timeout" || mode === "v2-model-timeout"
-              ? !!(u["usage"] as { research?: unknown })?.research &&
-                !("inputTokens" in (u["usage"] as object))
-              : (u["usage"] as { inputTokens?: number })?.inputTokens === usage.inputTokens),
+            (mode === "v2-model-timeout"
+              ? (u["usage"] as { inputTokens?: number | null })?.inputTokens === null
+              : mode === "timeout"
+                ? !!(u["usage"] as { research?: unknown })?.research &&
+                  !("inputTokens" in (u["usage"] as object))
+                : (u["usage"] as { inputTokens?: number })?.inputTokens === usage.inputTokens),
         ),
       ).toBe(true);
     }
@@ -758,5 +852,5 @@ for (const [iteration, mode] of (
       await expect(handler(other)).rejects.toThrow("already recorded");
     }
     expect(searches).toBe(searchCount);
-    expect(calls).toBe(1);
+    expect(calls).toBe(mode === "v2-staged" ? 4 : 1);
   });

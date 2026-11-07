@@ -150,7 +150,7 @@ for (const profile of ["v1_current", "v2_experimental"] as const)
       expect(b.searchCredits).toBe(p.searchCalls * (depth === "basic" ? 1 : 2));
       expect(b.maxResults).toBe(p.maxCandidates);
       expect(b.totalUsd).toBeNull();
-      expect(b.modelCalls).toBe(1);
+      expect(b.modelCalls).toBe(profile === "v2_experimental" ? 5 : 1);
       expect(b.automaticRetries).toBe(0);
       expect(b.extraExtractCalls).toBe(0);
     });

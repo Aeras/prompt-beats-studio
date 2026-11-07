@@ -34,10 +34,15 @@ export function footballResearchBudget(
       : Math.max(inputRate, rate(prices.cached) ?? 0, rate(prices.cacheWrite) ?? 0);
   const config = FOOTBALL_SEARCH_PROFILES[profileVersion];
   const searchCredits = config.searchCalls * (depth === "advanced" ? 2 : 1);
+  const modelCalls = profileVersion === "v2_experimental" ? 5 : 1;
+  const outputTokenAllowance =
+    profileVersion === "v2_experimental"
+      ? 4 * 8192 + FOOTBALL_MODEL_OUTPUT_TOKENS
+      : FOOTBALL_MODEL_OUTPUT_TOKENS;
   const modelUsd =
     maxInputRate === null || outputRate === null
       ? null
-      : (inputTokenAllowance * maxInputRate + FOOTBALL_MODEL_OUTPUT_TOKENS * outputRate) / 1e6;
+      : (modelCalls * inputTokenAllowance * maxInputRate + outputTokenAllowance * outputRate) / 1e6;
   const searchUsd = credit === null ? null : searchCredits * credit;
   return {
     profile: profileVersion === "v1_current" ? FOOTBALL_SEARCH_PROFILE : "forecast-only-2",
@@ -46,7 +51,8 @@ export function footballResearchBudget(
     resultsPerSearch: config.resultsPerSearch,
     maxResults: config.maxCandidates,
     searchCredits,
-    modelCalls: 1,
+    modelCalls,
+    ...(profileVersion === "v2_experimental" ? { outputTokenAllowance } : {}),
     outputTokens: FOOTBALL_MODEL_OUTPUT_TOKENS,
     maxPromptBytes: FOOTBALL_MAX_PROMPT_BYTES,
     inputTokenAllowance,
