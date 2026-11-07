@@ -94,8 +94,31 @@ export default {
       total += result.documents.length;
     }
     check(total === 25, "Expected 25 offline transport records");
+    for (const depth of ["basic", "advanced"] as const) {
+      let docs = 0,
+        credits = 0;
+      for (const language of ["en", "ru"]) {
+        const r = await searchInspirationWeb(
+          `football-ten-${depth}-${language}`,
+          new AbortController().signal,
+          fetch,
+          "offline-fixture-key",
+          depth,
+          { football: { maxResults: 10, textChars: 24000, format: "text" } },
+        );
+        check(
+          r.documents.length === 10 &&
+            r.footballAudit?.receivedResults === 10 &&
+            r.footballAudit?.discoveredSources.length === 10,
+          "Ten-result transport lost candidates",
+        );
+        docs += r.documents.length;
+        credits += r.credits ?? 0;
+      }
+      check(docs === 20 && credits === (depth === "basic" ? 2 : 4), "V2 counts/credits mismatch");
+    }
     console.log(
-      "PASS: 19 real-adapter workerd cases; native fetch; all outbound requests bound to local fixture; zero external requests",
+      "PASS: 23 real-adapter workerd cases; native fetch; all outbound requests bound to local fixture; zero external requests",
     );
   },
 };

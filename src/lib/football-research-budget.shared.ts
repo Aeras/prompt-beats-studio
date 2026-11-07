@@ -1,3 +1,7 @@
+import {
+  FOOTBALL_SEARCH_PROFILES,
+  type FootballSearchProfileVersion,
+} from "./football-search-profiles.shared";
 import { z } from "zod";
 export const FOOTBALL_SEARCH_PROFILE = "P1-Preserve" as const;
 export const FOOTBALL_SEARCH_CALLS = 5;
@@ -17,6 +21,7 @@ export function footballResearchBudget(
     cached?: number | null;
     cacheWrite?: number | null;
   },
+  profileVersion: FootballSearchProfileVersion = "v1_current",
 ) {
   const rate = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
   const inputRate = rate(prices.input),
@@ -27,17 +32,19 @@ export function footballResearchBudget(
     inputRate === null
       ? null
       : Math.max(inputRate, rate(prices.cached) ?? 0, rate(prices.cacheWrite) ?? 0);
-  const searchCredits = depth === "advanced" ? 10 : 5;
+  const config = FOOTBALL_SEARCH_PROFILES[profileVersion];
+  const searchCredits = config.searchCalls * (depth === "advanced" ? 2 : 1);
   const modelUsd =
     maxInputRate === null || outputRate === null
       ? null
       : (inputTokenAllowance * maxInputRate + FOOTBALL_MODEL_OUTPUT_TOKENS * outputRate) / 1e6;
   const searchUsd = credit === null ? null : searchCredits * credit;
   return {
-    profile: FOOTBALL_SEARCH_PROFILE,
-    searchCalls: 5,
-    resultsPerSearch: 5,
-    maxResults: 25,
+    profile: profileVersion === "v1_current" ? FOOTBALL_SEARCH_PROFILE : "forecast-only-2",
+    searchProfileVersion: profileVersion,
+    searchCalls: config.searchCalls,
+    resultsPerSearch: config.resultsPerSearch,
+    maxResults: config.maxCandidates,
     searchCredits,
     modelCalls: 1,
     outputTokens: FOOTBALL_MODEL_OUTPUT_TOKENS,
@@ -60,9 +67,23 @@ export const footballSearchReceiptSchema = z
     state: z.enum(["unconfirmed", "observed"]),
     credits: z.number().int().nonnegative().nullable(),
     requestId: z.string().max(200).nullable(),
+    crossQueryDuplicates: z.number().int().nonnegative().max(10).optional(),
+    retrieval: z
+      .object({
+        requestedResults: z.number().int().min(1).max(10),
+        receivedResults: z.number().int().nonnegative(),
+        acceptedRawDocs: z.number().int().nonnegative(),
+        droppedMissingRaw: z.number().int().nonnegative(),
+        droppedUnsafeUrl: z.number().int().nonnegative(),
+        droppedDuplicateUrl: z.number().int().nonnegative(),
+        droppedExcess: z.number().int().nonnegative(),
+        truncatedDocs: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
     returnedSources: z
       .array(z.object({ url: z.string().url().max(2000), title: z.string().max(180) }).strict())
-      .max(5)
+      .max(10)
       .optional(),
   })
   .strict();

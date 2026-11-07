@@ -1,3 +1,8 @@
+import {
+  footballSearchProfileSchema,
+  FOOTBALL_V2_RU_LABELS,
+  type FootballSearchProfileVersion,
+} from "./football-search-profiles.shared";
 import { z } from "zod";
 import { footballTeamRegistry, normalizeFootballTeamName } from "./football-team-registry.shared";
 import { oddsTargetSchema, type OddsTarget } from "./football-odds.shared";
@@ -114,7 +119,7 @@ const incidentRussianAliases: Record<string, string[]> = {
   internazionale: ["Интер", "Интера"],
   como: ["Комо"],
 };
-export function evidenceTeamAliases(name: string) {
+export function evidenceTeamAliases(name: string, profileVersion?: FootballSearchProfileVersion) {
   const r = footballTeamRegistry.resolve(name);
   return [
     ...new Set(
@@ -124,6 +129,9 @@ export function evidenceTeamAliases(name: string) {
             r.team.nameEl,
             ...r.team.aliases,
             ...(incidentRussianAliases[n(r.team.name)] ?? []),
+            ...(profileVersion === "v2_experimental" && FOOTBALL_V2_RU_LABELS[r.team.id]
+              ? [FOOTBALL_V2_RU_LABELS[r.team.id]!]
+              : []),
           ]
         : [name]
       ).map(n),
@@ -184,7 +192,10 @@ export function traceFootballFixture(
   text: string,
   f: OddsTarget,
   cutoff: string,
-  options: { truncated?: boolean } = {},
+  options: {
+    truncated?: boolean;
+    searchProfileVersion?: FootballSearchProfileVersion | undefined;
+  } = {},
 ) {
   // Explicit publication/byline rows are not fixture kickoff declarations.
   const fixtureContext = text
@@ -195,8 +206,8 @@ export function traceFootballFixture(
     )
     .join("\n");
   const t = n(fixtureContext).replace(/[«»“”]/gu, ""),
-    home = evidenceTeamAliases(f.homeTeam),
-    away = evidenceTeamAliases(f.awayTeam);
+    home = evidenceTeamAliases(f.homeTeam, options.searchProfileVersion),
+    away = evidenceTeamAliases(f.awayTeam, options.searchProfileVersion);
   const failures: z.infer<typeof fixtureTraceSchema>["failures"] = [];
   const add = (code: (typeof bindingCodes)[number], bad: boolean) => {
     if (bad) failures.push(code);
@@ -418,7 +429,11 @@ export function parseAuthoredMarket(value: string): DescriptiveMarket {
   return { kind: "other", label: value.slice(0, 140) || "unmapped" };
 }
 /** Contextual authored values; a named score is never inferred from a result table. */
-function authoredValue(value: string, fixture?: OddsTarget): DescriptiveMarket {
+function authoredValue(
+  value: string,
+  fixture?: OddsTarget,
+  profileVersion?: FootballSearchProfileVersion,
+): DescriptiveMarket {
   const clean = value
     .trim()
     .replace(/^for this match\s*:\s*/iu, "")
@@ -434,7 +449,7 @@ function authoredValue(value: string, fixture?: OddsTarget): DescriptiveMarket {
     [fixture.homeTeam, "1"],
     [fixture.awayTeam, "2"],
   ] as const) {
-    for (const a of evidenceTeamAliases(name)) {
+    for (const a of evidenceTeamAliases(name, profileVersion)) {
       const russianWin = v.match(
         /^на\s+[«“"]?победу\s+(.+?)[»”"]?\s*выглядит наиболее обоснованнои\.?$/u,
       );
@@ -447,8 +462,8 @@ function authoredValue(value: string, fixture?: OddsTarget): DescriptiveMarket {
         return { kind: "dc", period: "FT", selection: selection === "1" ? "1X" : "X2" };
     }
   }
-  for (const h of evidenceTeamAliases(fixture.homeTeam))
-    for (const a of evidenceTeamAliases(fixture.awayTeam)) {
+  for (const h of evidenceTeamAliases(fixture.homeTeam, profileVersion))
+    for (const a of evidenceTeamAliases(fixture.awayTeam, profileVersion)) {
       const score = v.match(
         new RegExp("^" + esc(h) + "\\s+(\\d{1,2})\\s*[-:]\\s*(\\d{1,2})\\s+" + esc(a) + "$", "u"),
       );
@@ -488,7 +503,11 @@ export type LiteralPick = {
   reasons: string[];
 };
 /** Sentence-level stance. No inference from odds, results, headlines or score predictions. */
-export function extractLiteralPicks(text: string, fixture?: OddsTarget): LiteralPick[] {
+export function extractLiteralPicks(
+  text: string,
+  fixture?: OddsTarget,
+  profileVersion?: FootballSearchProfileVersion,
+): LiteralPick[] {
   const result: LiteralPick[] = [];
   const pattern =
     /(?:^|[\n.!?;]\s*)([^\n.!?;]{0,450}(?:prediction|pick|tip|we predict|we recommend|our selection|we back|we expect|επιλέγουμε|θα πάμε με|καταλήγουμε στο|πιστεύουμε|наш выбор|πρόβλεψη|επιλογή|προτείνουμε|προγνωστικό|прогноз|ставка|рекомендуем)[^\n!?;]{0,450})/giu;
@@ -504,14 +523,18 @@ export function extractLiteralPicks(text: string, fixture?: OddsTarget): Literal
       .split(/(?:\s+because\b|\s+as\b|\s+γιατι\b|\s+επειδη\b|\s+потому\b)/iu)[0]!
       .trim()
       .replace(/\.$/, "");
-    let market = authoredValue(value, fixture);
+    let market = authoredValue(value, fixture, profileVersion);
     if (fixture && market.kind === "other") {
       const v = n(value);
       for (const [name, selection] of [
         [fixture.homeTeam, "1"],
         [fixture.awayTeam, "2"],
       ] as const)
-        if (evidenceTeamAliases(name).some((a) => v === a + " to win" || v === a + " wins"))
+        if (
+          evidenceTeamAliases(name, profileVersion).some(
+            (a) => v === a + " to win" || v === a + " wins",
+          )
+        )
           market = { kind: "1x2", period: "FT", selection };
     }
     const reasons: string[] = [];
@@ -561,7 +584,7 @@ export function extractLiteralPicks(text: string, fixture?: OddsTarget): Literal
     if (unsafeBlockContext(m.index!)) continue;
     const quote = m[1]!.trim(),
       value = m[2]!.trim(),
-      market = authoredValue(value, fixture);
+      market = authoredValue(value, fixture, profileVersion);
     if (
       market.kind === "other" ||
       /not|avoid|maybe|perhaps|δεν|όχι|ίσως|не\s|возможно|odds|коэффициент/iu.test(quote)
@@ -620,7 +643,8 @@ const uncheckedClaimLedgerSchema = z
   .object({
     version: z.literal(2),
     fixture: oddsTargetSchema,
-    profile: z.enum(["legacy-3", "P1-Preserve"]),
+    profile: z.enum(["legacy-3", "P1-Preserve", "forecast-only-2"]),
+    searchProfileVersion: footballSearchProfileSchema.optional(),
     judgment: independentAssessmentSchema.optional(),
     judgmentStatus: z.enum(["available", "abstain", "invalid_evidence", "not_provided"]).optional(),
     cutoff: z.string().datetime(),
@@ -717,6 +741,20 @@ const uncheckedClaimLedgerSchema = z
   })
   .strict();
 export const claimLedgerSchema = uncheckedClaimLedgerSchema.superRefine((data, ctx) => {
+  if (data.searchProfileVersion) {
+    const v2 = data.searchProfileVersion === "v2_experimental",
+      expected = v2 ? ["en", "ru"] : ["el", "en", "ru", "en", "en"];
+    if (
+      data.profile !== (v2 ? "forecast-only-2" : "P1-Preserve") ||
+      data.queries.length !== expected.length ||
+      data.queries.some(
+        (q, i) => q.language !== expected[i] || (v2 && q.intent !== "external_forecasts"),
+      ) ||
+      (v2 && data.sources.length > 20)
+    )
+      ctx.addIssue({ code: "custom", message: "Search profile provenance mismatch" });
+  }
+
   for (const [index, claim] of data.claims.entries()) {
     const source = data.sources[claim.sourceIndex];
     const exact = source?.windows.some(
@@ -755,7 +793,7 @@ export type FootballClaimLedger = z.infer<typeof claimLedgerSchema>;
 export function footballV2SynthesisBrief(ledger: FootballClaimLedger, maxChars = 8000) {
   const result: {
     version: 2;
-    profile: "legacy-3" | "P1-Preserve";
+    profile: "legacy-3" | "P1-Preserve" | "forecast-only-2";
     sourceCount: number;
     groups: FootballClaimLedger["groups"];
     claims: {
@@ -833,9 +871,12 @@ const evidenceSidecarSchema = z
   .strict();
 /** Persist V2 outside the strict V1 analysis object, atomically in its existing source JSON. */
 export function packFootballEvidenceV2<
-  T extends { onlineEvidenceV2?: FootballClaimLedger | undefined },
+  T extends {
+    onlineEvidenceV2?: FootballClaimLedger | undefined;
+    searchProfileVersion?: FootballSearchProfileVersion | undefined;
+  },
 >(analysis: T, sources: readonly unknown[]) {
-  const { onlineEvidenceV2, ...legacyAnalysis } = analysis;
+  const { onlineEvidenceV2, searchProfileVersion, ...legacyAnalysis } = analysis;
   return {
     analysis: legacyAnalysis,
     sources: onlineEvidenceV2
@@ -844,7 +885,10 @@ export function packFootballEvidenceV2<
           evidenceSidecarSchema.parse({
             kind: "football-online-evidence",
             version: 2,
-            payload: onlineEvidenceV2,
+            payload: {
+              ...onlineEvidenceV2,
+              ...(searchProfileVersion ? { searchProfileVersion } : {}),
+            },
           }),
         ]
       : [...sources],

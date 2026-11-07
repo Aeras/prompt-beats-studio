@@ -1,3 +1,7 @@
+import {
+  FOOTBALL_SEARCH_PROFILES,
+  type FootballSearchProfileVersion,
+} from "@/lib/football-search-profiles.shared";
 import type { DescriptiveMarket } from "@/lib/football-evidence-v2.shared";
 export const independentMessages = {
   el: {
@@ -12,8 +16,12 @@ export const independentMessages = {
     opinions: "γνώμες πηγών, όχι πιθανότητα επιτυχίας",
     none: "Δεν υπάρχουν διαθέσιμες επαληθεύσιμες πηγές για αυτή την εκτίμηση.",
     qualitative: "Ποιοτική εκτίμηση, χωρίς εγγύηση αποτελέσματος ή προσφερόμενης απόδοσης.",
-    confirm: (count: number, advanced: boolean) =>
-      `Θα γίνουν ${count} ξεχωριστές έρευνες: 5 αναζητήσεις ανά αγώνα (ελληνικά, αγγλικά, ρωσικά, στατιστικά και ειδήσεις), έως 25 αποτελέσματα και μία κλήση AI ανά αγώνα. Εκτιμώμενη χρήση αναζήτησης: έως ${count * (advanced ? 10 : 5)} credits. Η AI χρεώνεται με βάση τη χρήση και το επιλεγμένο μοντέλο. Δεν γίνεται αυτόματη πληρωμένη επανάληψη. Επιβεβαιώνεις;`,
+    confirm: (
+      count: number,
+      advanced: boolean,
+      profile: FootballSearchProfileVersion = "v1_current",
+    ) =>
+      `${FOOTBALL_SEARCH_PROFILES[profile].label} · ${advanced ? "Advanced" : "Basic"}. Θα γίνουν ${count} ξεχωριστές έρευνες: ${FOOTBALL_SEARCH_PROFILES[profile].searchCalls} αναζητήσεις ανά αγώνα (${profile === "v1_current" ? "ελληνικά, αγγλικά, ρωσικά, στατιστικά και ειδήσεις" : "αγγλικά και ρωσικά προγνωστικά, χωρίς web αναζήτηση στατιστικών/ειδήσεων"}), έως ${FOOTBALL_SEARCH_PROFILES[profile].resultsPerSearch} αποτελέσματα ανά αναζήτηση, έως ${FOOTBALL_SEARCH_PROFILES[profile].maxCandidates} ανά αγώνα και μία κλήση AI. Εκτιμώμενη χρήση αναζήτησης: έως ${count * FOOTBALL_SEARCH_PROFILES[profile].searchCalls * (advanced ? 2 : 1)} credits. Η AI χρεώνεται με βάση τη χρήση και το επιλεγμένο μοντέλο. Δεν γίνεται αυτόματη πληρωμένη επανάληψη. Επιβεβαιώνεις;`,
   },
   en: {
     title: "Independent AI assessment",
@@ -27,8 +35,12 @@ export const independentMessages = {
     opinions: "source opinions, not a probability of success",
     none: "No checkable sources are available for this assessment.",
     qualitative: "Qualitative assessment, without an outcome guarantee or claim of offered odds.",
-    confirm: (count: number, advanced: boolean) =>
-      `${count} separate research runs: 5 searches per match (Greek, English, Russian, statistics and news), up to 25 results and one AI call per match. Estimated search usage: up to ${count * (advanced ? 10 : 5)} credits. AI is charged according to usage and the selected model. No automatic paid retry. Confirm?`,
+    confirm: (
+      count: number,
+      advanced: boolean,
+      profile: FootballSearchProfileVersion = "v1_current",
+    ) =>
+      `${profile === "v1_current" ? "Version 1 — Current" : "Version 2 — Experimental"} · ${advanced ? "Advanced" : "Basic"}. ${count} separate research runs: ${FOOTBALL_SEARCH_PROFILES[profile].searchCalls} searches per match (${profile === "v1_current" ? "Greek, English, Russian, statistics and news" : "English/Russian forecasts only; no web statistics/news search"}), up to ${FOOTBALL_SEARCH_PROFILES[profile].resultsPerSearch} results per search, ${FOOTBALL_SEARCH_PROFILES[profile].maxCandidates} per match and one AI call. Estimated search usage: up to ${count * FOOTBALL_SEARCH_PROFILES[profile].searchCalls * (advanced ? 2 : 1)} credits. AI is charged according to usage and the selected model. No automatic paid retry. Confirm?`,
   },
 } as const;
 export function legacyMarketAst(m: string): DescriptiveMarket | undefined {

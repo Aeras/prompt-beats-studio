@@ -1,10 +1,21 @@
 import { independentMessages } from "@/i18n/football-independent-assessment";
-import { FOOTBALL_CONSENT_VERSION } from "@/lib/football-research-budget.shared";
+import {
+  FOOTBALL_SEARCH_PROFILES,
+  footballProfileConsent,
+  type FootballSearchProfileVersion,
+} from "@/lib/football-search-profiles.shared";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { OnlinePredictionsPanel } from "@/components/football/OnlinePredictionsPanel";
 import { BookmakerOddsPanel } from "@/components/football/BookmakerOddsPanel";
 import { useI18n } from "@/i18n";
 import { footballTeamDisplayName } from "@/lib/football-ai-team-names.shared";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -117,6 +128,9 @@ function PrivateFootballResearchPage() {
   );
   const [selected, setSelected] = useState<string[]>([]);
   const [working, setWorking] = useState(false);
+  const [searchProfileVersion, setSearchProfileVersion] =
+    useState<FootballSearchProfileVersion>("v1_current");
+  const dispatchLock = useRef(false);
   const [tavilySearchDepth, setTavilySearchDepth] = useState<"basic" | "advanced">("basic");
   const [expertBusy, setExpertBusy] = useState<string | null>(null);
   const [providerPreview, setProviderPreview] = useState<string | null>(null);
@@ -251,16 +265,34 @@ function PrivateFootballResearchPage() {
   const toggleExpanded = (id: string) =>
     setExpanded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const start = async (ids: string[]) => {
-    if (working || !selectedModel || !setup.data.aiAnalysisEnabled || ids.length === 0) return;
+    if (
+      working ||
+      dispatchLock.current ||
+      !selectedModel ||
+      !setup.data.aiAnalysisEnabled ||
+      ids.length === 0
+    )
+      return;
+    const approved = {
+      profile: searchProfileVersion,
+      depth: tavilySearchDepth,
+      modelId: selectedModel.id,
+      provider,
+      league,
+      weekDate,
+      ids: [...ids],
+    };
     if (
       !window.confirm(
         independentMessages[language === "en" ? "en" : "el"].confirm(
           ids.length,
-          tavilySearchDepth === "advanced",
+          approved.depth === "advanced",
+          approved.profile,
         ),
       )
     )
       return;
+    dispatchLock.current = true;
     setWorking(true);
     setProgress({ done: 0, total: ids.length });
     setBatchError("");
@@ -270,15 +302,22 @@ function PrivateFootballResearchPage() {
         try {
           await runPrivateFootballResearch({
             data: {
-              fixtureProvider: provider,
-              leagueId: league as FootballAiDiscoveryLeagueId,
-              weekDate,
-              fixtureId: ids[i]!,
-              modelId: selectedModel.id,
+              fixtureProvider: approved.provider,
+              leagueId: approved.league as FootballAiDiscoveryLeagueId,
+              weekDate: approved.weekDate,
+              fixtureId: approved.ids[i]!,
+              modelId: approved.modelId,
               requestKey: crypto.randomUUID(),
               withTavily: true,
-              tavilySearchDepth,
-              researchConsentVersion: FOOTBALL_CONSENT_VERSION,
+              tavilySearchDepth: approved.depth,
+              searchProfileVersion: approved.profile,
+              researchConsentVersion: FOOTBALL_SEARCH_PROFILES[approved.profile].consentVersion,
+              researchConsent: footballProfileConsent(
+                approved.profile,
+                approved.depth,
+                approved.modelId,
+                approved.ids[i]!,
+              ),
               approvePaidRequest: true,
             },
           });
@@ -293,6 +332,7 @@ function PrivateFootballResearchPage() {
         }
       }
     } finally {
+      dispatchLock.current = false;
       setWorking(false);
       setSelected([]);
       setProviderPreview(null);
@@ -369,801 +409,834 @@ function PrivateFootballResearchPage() {
           </div>
         </div>
       </header>
-      <main
-        id="football-predictions"
-        role="tabpanel"
-        hidden={activeTab !== "predictions"}
-        className="mx-auto max-w-6xl space-y-5 px-3 pb-10 pt-4 text-slate-100 sm:px-6"
-      >
-        <section
-          className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
-          aria-label="Επιλογές έρευνας"
-        >
-          <h2 className="mb-4 text-lg font-bold text-white">Ρυθμίσεις ανάλυσης</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-2 text-sm font-medium">
-              Πάροχος αγώνων
-              <select
-                className={field}
-                value={provider}
-                onChange={(e) => {
-                  const v = e.target.value as FootballProviderId | "ai-search";
-                  setProvider(v);
-                  setSelected([]);
-                  setProviderPreview(null);
-                  if (v === "football-data" && league === "GR-SL") setLeague("EN-PL");
-                  if (v === "espn" && !FOOTBALL_ESPN_LEAGUES.some((x) => x.id === league))
-                    setLeague("EN-PL");
-                  if (
-                    v !== "ai-search" &&
-                    v !== "espn" &&
-                    !FOOTBALL_LEAGUES.some((x) => x.id === league)
-                  )
-                    setLeague("EN-PL");
-                }}
-              >
-                {FOOTBALL_PROVIDERS.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.label}
-                    {x.id === "espn" ? " · Προεπιλογή" : ""}
-                  </option>
-                ))}
-                <option value="ai-search">AI Αναζήτηση BETA · Gemini 3.8 Flash</option>
-              </select>
+      <div id="football-predictions" role="tabpanel" hidden={activeTab !== "predictions"}>
+        <main className="mx-auto max-w-6xl space-y-5 px-3 pb-10 pt-4 text-slate-100 sm:px-6">
+          <div className="max-w-sm space-y-2">
+            <label htmlFor="football-search-profile" className="text-sm font-medium">
+              Προφίλ αναζήτησης
             </label>
-            <label className="space-y-2 text-sm font-medium">
-              Πρωτάθλημα
-              <select
-                className={field}
-                value={league}
-                onChange={(e) => {
-                  setLeague(e.target.value);
-                  setSelected([]);
-                  setProviderPreview(null);
-                }}
-              >
-                {isAi &&
-                  FOOTBALL_AI_DISCOVERY_LEAGUES.map((x) => (
+            <Select
+              value={searchProfileVersion}
+              onValueChange={(value) =>
+                setSearchProfileVersion(value as FootballSearchProfileVersion)
+              }
+              disabled={working}
+            >
+              <SelectTrigger id="football-search-profile" className={field + " h-11"}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(FOOTBALL_SEARCH_PROFILES).map(([id, config]) => (
+                  <SelectItem key={id} value={id}>
+                    {config.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <section
+            className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
+            aria-label="Επιλογές έρευνας"
+          >
+            <h2 className="mb-4 text-lg font-bold text-white">Ρυθμίσεις ανάλυσης</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-2 text-sm font-medium">
+                Πάροχος αγώνων
+                <select
+                  className={field}
+                  value={provider}
+                  onChange={(e) => {
+                    const v = e.target.value as FootballProviderId | "ai-search";
+                    setProvider(v);
+                    setSelected([]);
+                    setProviderPreview(null);
+                    if (v === "football-data" && league === "GR-SL") setLeague("EN-PL");
+                    if (v === "espn" && !FOOTBALL_ESPN_LEAGUES.some((x) => x.id === league))
+                      setLeague("EN-PL");
+                    if (
+                      v !== "ai-search" &&
+                      v !== "espn" &&
+                      !FOOTBALL_LEAGUES.some((x) => x.id === league)
+                    )
+                      setLeague("EN-PL");
+                  }}
+                >
+                  {FOOTBALL_PROVIDERS.map((x) => (
                     <option key={x.id} value={x.id}>
-                      {x.symbol} {x.label}
+                      {x.label}
+                      {x.id === "espn" ? " · Προεπιλογή" : ""}
                     </option>
                   ))}
-                {!isAi &&
-                  (provider === "espn" ? FOOTBALL_ESPN_LEAGUES : FOOTBALL_LEAGUES).map((x) => (
-                    <option
-                      key={x.id}
-                      value={x.id}
-                      disabled={
-                        provider === "football-data" &&
-                        !FOOTBALL_DATA_LEAGUES.some((id) => id === x.id)
-                      }
-                    >
+                  <option value="ai-search">AI Αναζήτηση BETA · Gemini 3.8 Flash</option>
+                </select>
+              </label>
+              <label className="space-y-2 text-sm font-medium">
+                Πρωτάθλημα
+                <select
+                  className={field}
+                  value={league}
+                  onChange={(e) => {
+                    setLeague(e.target.value);
+                    setSelected([]);
+                    setProviderPreview(null);
+                  }}
+                >
+                  {isAi &&
+                    FOOTBALL_AI_DISCOVERY_LEAGUES.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.symbol} {x.label}
+                      </option>
+                    ))}
+                  {!isAi &&
+                    (provider === "espn" ? FOOTBALL_ESPN_LEAGUES : FOOTBALL_LEAGUES).map((x) => (
+                      <option
+                        key={x.id}
+                        value={x.id}
+                        disabled={
+                          provider === "football-data" &&
+                          !FOOTBALL_DATA_LEAGUES.some((id) => id === x.id)
+                        }
+                      >
+                        {x.label}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="space-y-2 text-sm font-medium">
+                Ημερομηνία εβδομάδας
+                <input
+                  className={field}
+                  type="date"
+                  value={weekDate}
+                  onChange={(e) => {
+                    setWeekDate(e.target.value);
+                    setSelected([]);
+                    setProviderPreview(null);
+                  }}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium">
+                Μοντέλο AI
+                <select
+                  className={field}
+                  value={selectedModel?.id ?? ""}
+                  onChange={(e) => setModel(e.target.value)}
+                >
+                  <option value="">Επιλογή μοντέλου</option>
+                  {setup.data.models.map((x) => (
+                    <option key={x.id} value={x.id}>
                       {x.label}
                     </option>
                   ))}
-              </select>
-            </label>
-            <label className="space-y-2 text-sm font-medium">
-              Ημερομηνία εβδομάδας
-              <input
-                className={field}
-                type="date"
-                value={weekDate}
-                onChange={(e) => {
-                  setWeekDate(e.target.value);
-                  setSelected([]);
-                  setProviderPreview(null);
-                }}
-              />
-            </label>
-            <label className="space-y-2 text-sm font-medium">
-              Μοντέλο AI
-              <select
-                className={field}
-                value={selectedModel?.id ?? ""}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                <option value="">Επιλογή μοντέλου</option>
-                {setup.data.models.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <p className="mt-4 text-xs text-slate-400">
-            Tavily: {setup.data.tavilyConfigured ? "Διαθέσιμο" : "Μη διαθέσιμο"} · Πάροχος:{" "}
-            {configured ? "Διαθέσιμος" : "Δεν έχει ρυθμιστεί API key"}.
-          </p>
-        </section>
+                </select>
+              </label>
+            </div>
+            <p className="mt-4 text-xs text-slate-400">
+              Tavily: {setup.data.tavilyConfigured ? "Διαθέσιμο" : "Μη διαθέσιμο"} · Πάροχος:{" "}
+              {configured ? "Διαθέσιμος" : "Δεν έχει ρυθμιστεί API key"}.
+            </p>
+          </section>
 
-        <fieldset
-          aria-labelledby="football-tavily-title"
-          disabled={working}
-          className="rounded-2xl border border-cyan-300/20 bg-[#152137] p-4"
-        >
-          <h3 id="football-tavily-title" className="text-sm font-semibold text-cyan-100">
-            Αναζήτηση Tavily για την ανάλυση
-          </h3>
-          <div className="mt-1 flex flex-wrap gap-5 text-sm text-slate-100">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                name="football-tavily-depth"
-                value="basic"
-                checked={tavilySearchDepth === "basic"}
-                onChange={() => setTavilySearchDepth("basic")}
-                className="h-4 w-4 accent-cyan-400"
-              />
-              Basic
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                name="football-tavily-depth"
-                value="advanced"
-                checked={tavilySearchDepth === "advanced"}
-                onChange={() => setTavilySearchDepth("advanced")}
-                className="h-4 w-4 accent-cyan-400"
-              />
-              Advanced
-            </label>
-          </div>
-        </fieldset>
-        {isAi && (
-          <AiSearchPanel
-            leagueId={league as FootballAiDiscoveryLeagueId}
-            weekDate={weekDate}
-            enabled={Boolean(user) && setup.isSuccess}
-            working={working}
-            canAnalyze={Boolean(selectedModel) && setup.data.aiAnalysisEnabled}
-            onAnalyze={(ids) => void start(ids)}
-          />
-        )}
-        {!isAi && (
+          <fieldset
+            aria-labelledby="football-tavily-title"
+            disabled={working}
+            className="rounded-2xl border border-cyan-300/20 bg-[#152137] p-4"
+          >
+            <h3 id="football-tavily-title" className="text-sm font-semibold text-cyan-100">
+              Αναζήτηση Tavily για την ανάλυση
+            </h3>
+            <div className="mt-1 flex flex-wrap gap-5 text-sm text-slate-100">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="football-tavily-depth"
+                  value="basic"
+                  checked={tavilySearchDepth === "basic"}
+                  onChange={() => setTavilySearchDepth("basic")}
+                  className="h-4 w-4 accent-cyan-400"
+                />
+                Basic
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="football-tavily-depth"
+                  value="advanced"
+                  checked={tavilySearchDepth === "advanced"}
+                  onChange={() => setTavilySearchDepth("advanced")}
+                  className="h-4 w-4 accent-cyan-400"
+                />
+                Advanced
+              </label>
+            </div>
+          </fieldset>
+          {isAi && (
+            <AiSearchPanel
+              leagueId={league as FootballAiDiscoveryLeagueId}
+              weekDate={weekDate}
+              enabled={Boolean(user) && setup.isSuccess}
+              working={working}
+              canAnalyze={Boolean(selectedModel) && setup.data.aiAnalysisEnabled}
+              onAnalyze={(ids) => void start(ids)}
+            />
+          )}
+          {!isAi && (
+            <section
+              className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
+              aria-label="Λίστα αγώνων"
+            >
+              <h2 className="text-lg font-bold">Λίστα αγώνων</h2>
+              <p className="mb-4 text-xs text-slate-400">Επιλέξτε αγώνες για ανάλυση</p>
+              {working && (
+                <p
+                  role="status"
+                  className="mb-3 rounded-xl bg-cyan-400/10 p-3 text-sm text-cyan-200"
+                >
+                  Ανάλυση {progress.done} / {progress.total} · Μην κλείσεις τη σελίδα μέχρι να
+                  ολοκληρωθούν τα αιτήματα.
+                </p>
+              )}
+              {batchError && (
+                <p role="alert" className="mb-3 text-sm text-amber-300">
+                  {batchError}
+                </p>
+              )}
+              {fixtures.isPending && configured && (
+                <p className="text-sm text-slate-400">Ανάκτηση αγώνων…</p>
+              )}
+              {fixtures.isError && (
+                <p role="alert" className="text-sm text-rose-300">
+                  Αποτυχία ανάκτησης αγώνων.
+                </p>
+              )}
+              {!configured && (
+                <p className="text-sm text-amber-300">
+                  Δεν υπάρχει API key για τον επιλεγμένο πάροχο.
+                </p>
+              )}
+              {fixtures.data?.status === "ok" && fixtures.data.fixtures.length === 0 && (
+                <p className="text-sm text-slate-400">Δεν βρέθηκαν αγώνες.</p>
+              )}
+              <ul className="space-y-2">
+                {fixtures.data?.status === "ok" &&
+                  fixtures.data.fixtures.map((f) => {
+                    const canAnalyze =
+                      f.state === "scheduled" && Date.parse(f.kickoffUtc) > Date.now();
+                    const key = fixtureKey(f.sourceFixtureId);
+                    return (
+                      <li
+                        key={key}
+                        className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3 sm:flex"
+                      >
+                        <input
+                          aria-label={`Επιλογή αγώνα ${footballTeamDisplayName(f.homeTeam, language)} – ${footballTeamDisplayName(f.awayTeam, language)}`}
+                          type="checkbox"
+                          disabled={!canAnalyze || working}
+                          checked={selected.includes(key)}
+                          onChange={() => toggle(key)}
+                          className="h-5 w-5 accent-cyan-400"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-white">
+                            {footballTeamDisplayName(f.homeTeam, language)} –{" "}
+                            {footballTeamDisplayName(f.awayTeam, language)}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {new Date(f.kickoffUtc).toLocaleString("el-GR", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                              timeZone: "Europe/Athens",
+                            })}
+                          </p>
+                        </div>
+                        <div className="col-start-2 flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-1 text-[11px] ${canAnalyze ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-600/30 text-slate-400"}`}
+                          >
+                            {canAnalyze
+                              ? "Πριν τη σέντρα"
+                              : f.state === "live"
+                                ? "Σε εξέλιξη"
+                                : "Μη διαθέσιμος"}
+                          </span>
+                          {canAnalyze && (
+                            <button
+                              type="button"
+                              onClick={() => setProviderPreview(f.sourceFixtureId)}
+                              className="min-h-11 rounded-lg border border-cyan-400/40 px-3 py-2 text-xs text-cyan-200"
+                              aria-label={`Στοιχεία παρόχων ${footballTeamDisplayName(f.homeTeam, language)} – ${footballTeamDisplayName(f.awayTeam, language)}`}
+                            >
+                              Στοιχεία παρόχων
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+              </ul>
+              {providerPreview && (
+                <div className="mt-4 space-y-2">
+                  {providerDetails.isPending && (
+                    <p role="status" className="text-sm text-slate-300">
+                      Ανάκτηση στοιχείων από τους διαθέσιμους παρόχους…
+                    </p>
+                  )}
+                  {providerDetails.isError && (
+                    <p role="alert" className="text-sm text-amber-200">
+                      Η συλλογή στοιχείων απέτυχε. Δεν ξεκίνησε AI ανάλυση.
+                    </p>
+                  )}
+                  {providerDetails.data && <ProviderEvidencePanel data={providerDetails.data} />}
+                  {providerDetails.data?.bookmakerOddsSnapshot && (
+                    <BookmakerOddsPanel snapshot={providerDetails.data.bookmakerOddsSnapshot} />
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
           <section
             className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
-            aria-label="Λίστα αγώνων"
+            aria-label="Αποθηκευμένες αναλύσεις"
           >
-            <h2 className="text-lg font-bold">Λίστα αγώνων</h2>
-            <p className="mb-4 text-xs text-slate-400">Επιλέξτε αγώνες για ανάλυση</p>
-            {working && (
-              <p role="status" className="mb-3 rounded-xl bg-cyan-400/10 p-3 text-sm text-cyan-200">
-                Ανάλυση {progress.done} / {progress.total} · Μην κλείσεις τη σελίδα μέχρι να
-                ολοκληρωθούν τα αιτήματα.
-              </p>
-            )}
-            {batchError && (
-              <p role="alert" className="mb-3 text-sm text-amber-300">
-                {batchError}
-              </p>
-            )}
-            {fixtures.isPending && configured && (
-              <p className="text-sm text-slate-400">Ανάκτηση αγώνων…</p>
-            )}
-            {fixtures.isError && (
-              <p role="alert" className="text-sm text-rose-300">
-                Αποτυχία ανάκτησης αγώνων.
-              </p>
-            )}
-            {!configured && (
-              <p className="text-sm text-amber-300">
-                Δεν υπάρχει API key για τον επιλεγμένο πάροχο.
-              </p>
-            )}
-            {fixtures.data?.status === "ok" && fixtures.data.fixtures.length === 0 && (
-              <p className="text-sm text-slate-400">Δεν βρέθηκαν αγώνες.</p>
-            )}
-            <ul className="space-y-2">
-              {fixtures.data?.status === "ok" &&
-                fixtures.data.fixtures.map((f) => {
-                  const canAnalyze =
-                    f.state === "scheduled" && Date.parse(f.kickoffUtc) > Date.now();
-                  const key = fixtureKey(f.sourceFixtureId);
-                  return (
-                    <li
-                      key={key}
-                      className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-white/10 bg-[#0d192b] p-3 sm:flex"
-                    >
-                      <input
-                        aria-label={`Επιλογή αγώνα ${footballTeamDisplayName(f.homeTeam, language)} – ${footballTeamDisplayName(f.awayTeam, language)}`}
-                        type="checkbox"
-                        disabled={!canAnalyze || working}
-                        checked={selected.includes(key)}
-                        onChange={() => toggle(key)}
-                        className="h-5 w-5 accent-cyan-400"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-white">
-                          {footballTeamDisplayName(f.homeTeam, language)} –{" "}
-                          {footballTeamDisplayName(f.awayTeam, language)}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {new Date(f.kickoffUtc).toLocaleString("el-GR", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                            timeZone: "Europe/Athens",
-                          })}
-                        </p>
-                      </div>
-                      <div className="col-start-2 flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-1 text-[11px] ${canAnalyze ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-600/30 text-slate-400"}`}
-                        >
-                          {canAnalyze
-                            ? "Πριν τη σέντρα"
-                            : f.state === "live"
-                              ? "Σε εξέλιξη"
-                              : "Μη διαθέσιμος"}
-                        </span>
-                        {canAnalyze && (
-                          <button
-                            type="button"
-                            onClick={() => setProviderPreview(f.sourceFixtureId)}
-                            className="min-h-11 rounded-lg border border-cyan-400/40 px-3 py-2 text-xs text-cyan-200"
-                            aria-label={`Στοιχεία παρόχων ${footballTeamDisplayName(f.homeTeam, language)} – ${footballTeamDisplayName(f.awayTeam, language)}`}
-                          >
-                            Στοιχεία παρόχων
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-            </ul>
-            {providerPreview && (
-              <div className="mt-4 space-y-2">
-                {providerDetails.isPending && (
-                  <p role="status" className="text-sm text-slate-300">
-                    Ανάκτηση στοιχείων από τους διαθέσιμους παρόχους…
-                  </p>
-                )}
-                {providerDetails.isError && (
-                  <p role="alert" className="text-sm text-amber-200">
-                    Η συλλογή στοιχείων απέτυχε. Δεν ξεκίνησε AI ανάλυση.
-                  </p>
-                )}
-                {providerDetails.data && <ProviderEvidencePanel data={providerDetails.data} />}
-                {providerDetails.data?.bookmakerOddsSnapshot && (
-                  <BookmakerOddsPanel snapshot={providerDetails.data.bookmakerOddsSnapshot} />
-                )}
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-bold">Αποτελέσματα αναλύσεων</h2>
+                <p className="text-xs text-slate-400">
+                  Κάθε ανάλυση παραμένει αποθηκευμένη στο ιδιωτικό ιστορικό.
+                </p>
               </div>
-            )}
-          </section>
-        )}
-
-        <section
-          className="rounded-3xl border border-white/10 bg-[#152137] p-4 shadow-lg sm:p-6"
-          aria-label="Αποθηκευμένες αναλύσεις"
-        >
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-bold">Αποτελέσματα αναλύσεων</h2>
-              <p className="text-xs text-slate-400">
-                Κάθε ανάλυση παραμένει αποθηκευμένη στο ιδιωτικό ιστορικό.
-              </p>
+              <button
+                type="button"
+                disabled={history.isFetching}
+                onClick={() => void history.refetch()}
+                className="rounded-xl border border-white/15 px-3 py-2 text-xs text-cyan-200 disabled:opacity-40"
+              >
+                Ανανέωση
+              </button>
             </div>
-            <button
-              type="button"
-              disabled={history.isFetching}
-              onClick={() => void history.refetch()}
-              className="rounded-xl border border-white/15 px-3 py-2 text-xs text-cyan-200 disabled:opacity-40"
-            >
-              Ανανέωση
-            </button>
-          </div>
-          {history.isError && (
-            <p role="alert" className="text-sm text-rose-300">
-              Το ιστορικό δεν είναι διαθέσιμο.
-            </p>
-          )}
-          {history.data?.length === 0 && (
-            <p className="text-sm text-slate-400">Δεν έχουν αποθηκευτεί αναλύσεις.</p>
-          )}
-          <div className="space-y-3">
-            {history.data?.map((entry) => {
-              const open = expanded.includes(entry.id);
-              return (
-                <article
-                  key={entry.id}
-                  className="overflow-hidden rounded-2xl border border-cyan-300/15 bg-gradient-to-br from-[#12233b] to-[#171c32]"
-                >
-                  <div className="flex items-center">
-                    {clearMode === "selected" && entry.status !== "processing" && (
-                      <input
-                        type="checkbox"
-                        aria-label={`Επιλογή ανάλυσης ${footballTeamDisplayName(entry.home_team, language)} – ${footballTeamDisplayName(entry.away_team, language)}`}
-                        checked={clearSelected.includes(entry.id)}
-                        onChange={() =>
-                          setClearSelected((prev) =>
-                            prev.includes(entry.id)
-                              ? prev.filter((id) => id !== entry.id)
-                              : [...prev, entry.id],
-                          )
-                        }
-                        className="ml-3 h-5 w-5 shrink-0 accent-cyan-400"
-                      />
-                    )}
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      onClick={() => toggleExpanded(entry.id)}
-                      className="flex w-full items-center justify-between gap-3 p-4 text-left"
-                    >
-                      <span className="min-w-0">
-                        <span className="block font-bold text-white">
-                          {footballTeamDisplayName(entry.home_team, language)} –{" "}
-                          {footballTeamDisplayName(entry.away_team, language)}
+            {history.isError && (
+              <p role="alert" className="text-sm text-rose-300">
+                Το ιστορικό δεν είναι διαθέσιμο.
+              </p>
+            )}
+            {history.data?.length === 0 && (
+              <p className="text-sm text-slate-400">Δεν έχουν αποθηκευτεί αναλύσεις.</p>
+            )}
+            <div className="space-y-3">
+              {history.data?.map((entry) => {
+                const open = expanded.includes(entry.id);
+                return (
+                  <article
+                    key={entry.id}
+                    className="overflow-hidden rounded-2xl border border-cyan-300/15 bg-gradient-to-br from-[#12233b] to-[#171c32]"
+                  >
+                    <div className="flex items-center">
+                      {clearMode === "selected" && entry.status !== "processing" && (
+                        <input
+                          type="checkbox"
+                          aria-label={`Επιλογή ανάλυσης ${footballTeamDisplayName(entry.home_team, language)} – ${footballTeamDisplayName(entry.away_team, language)}`}
+                          checked={clearSelected.includes(entry.id)}
+                          onChange={() =>
+                            setClearSelected((prev) =>
+                              prev.includes(entry.id)
+                                ? prev.filter((id) => id !== entry.id)
+                                : [...prev, entry.id],
+                            )
+                          }
+                          className="ml-3 h-5 w-5 shrink-0 accent-cyan-400"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        onClick={() => toggleExpanded(entry.id)}
+                        className="flex w-full items-center justify-between gap-3 p-4 text-left"
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-bold text-white">
+                            {footballTeamDisplayName(entry.home_team, language)} –{" "}
+                            {footballTeamDisplayName(entry.away_team, language)}
+                          </span>
+                          <span className="mt-1 block text-xs text-slate-400">
+                            {new Date(entry.created_at).toLocaleDateString("el-GR")} ·{" "}
+                            {entry.model_id}
+                            <span className="block text-xs text-slate-400">
+                              {entry.analysis?.searchProfileVersion
+                                ? FOOTBALL_SEARCH_PROFILES[entry.analysis.searchProfileVersion]
+                                    .label
+                                : "Παλαιότερη ανάλυση · προφίλ μη καταγεγραμμένο"}
+                            </span>
+                            {entry.analysis?.tavilySearchDepth && (
+                              <>
+                                {" · Tavily "}
+                                {entry.analysis.tavilySearchDepth === "advanced"
+                                  ? "Advanced"
+                                  : "Basic"}
+                              </>
+                            )}
+                          </span>
                         </span>
-                        <span className="mt-1 block text-xs text-slate-400">
-                          {new Date(entry.created_at).toLocaleDateString("el-GR")} ·{" "}
-                          {entry.model_id}
-                          {entry.analysis?.tavilySearchDepth && (
-                            <>
-                              {" · Tavily "}
-                              {entry.analysis.tavilySearchDepth === "advanced"
-                                ? "Advanced"
-                                : "Basic"}
-                            </>
-                          )}
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-1 text-[11px] ${entry.status === "completed" ? "bg-emerald-400/15 text-emerald-300" : entry.status === "failed" ? "bg-rose-400/15 text-rose-300" : "bg-amber-400/15 text-amber-200"}`}
+                          >
+                            {STATUS[entry.status] ?? entry.status}
+                          </span>
+                          <span className="text-cyan-300">{open ? "⌃" : "⌄"}</span>
                         </span>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-1 text-[11px] ${entry.status === "completed" ? "bg-emerald-400/15 text-emerald-300" : entry.status === "failed" ? "bg-rose-400/15 text-rose-300" : "bg-amber-400/15 text-amber-200"}`}
-                        >
-                          {STATUS[entry.status] ?? entry.status}
-                        </span>
-                        <span className="text-cyan-300">{open ? "⌃" : "⌄"}</span>
-                      </span>
-                    </button>
-                  </div>
-                  {open && (
-                    <div className="space-y-4 border-t border-white/10 p-4">
-                      {entry.analysis ? (
-                        <>
-                          {entry.analysis.bookmakerOddsSnapshot && (
-                            <BookmakerOddsPanel
-                              snapshot={entry.analysis.bookmakerOddsSnapshot}
-                              estimates={entry.analysis.estimates ?? []}
-                              outcomes={entry.quoteOutcomes}
-                            />
-                          )}
-                          {entry.analysis.providerEvidence && (
-                            <ProviderEvidencePanel data={entry.analysis.providerEvidence} />
-                          )}
-                          {entry.analysis.espnData && (
-                            <details className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-3">
-                              <summary className="cursor-pointer font-semibold text-cyan-200">
-                                Δεδομένα ESPN που χρησιμοποιήθηκαν
-                              </summary>
-                              <div className="mt-3">
-                                <EspnDataPanel data={entry.analysis.espnData} />
-                              </div>
-                            </details>
-                          )}
-                          <section className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-4">
-                            <h3 className="text-base font-bold text-cyan-200">
-                              Εκτιμώμενες πιθανότητες AI
-                            </h3>
-                            <p className="mb-4 mt-1 text-xs text-slate-400">
-                              Υποκειμενικές εκτιμήσεις από διασταύρωση πηγών — όχι στατιστικά
-                              βαθμονομημένες πιθανότητες.
-                            </p>
-                            {entry.analysis.estimates?.length ? (
-                              <div className="space-y-3">
-                                {entry.analysis.estimates.map((estimate) => (
-                                  <div key={estimate.market} className="space-y-1">
-                                    <div className="flex justify-between gap-3 text-sm">
-                                      <span className="font-medium text-slate-100">
-                                        {MARKET_LABELS[estimate.market] ?? estimate.market}
-                                      </span>
-                                      <strong className="tabular-nums text-cyan-200">
-                                        {estimate.percent}%
-                                      </strong>
-                                    </div>
-                                    <div
-                                      className="h-2.5 overflow-hidden rounded-full bg-slate-700/80"
-                                      role="progressbar"
-                                      aria-label={MARKET_LABELS[estimate.market] ?? estimate.market}
-                                      aria-valuenow={estimate.percent}
-                                      aria-valuemin={0}
-                                      aria-valuemax={100}
-                                    >
+                      </button>
+                    </div>
+                    {open && (
+                      <div className="space-y-4 border-t border-white/10 p-4">
+                        {entry.analysis ? (
+                          <>
+                            {entry.analysis.bookmakerOddsSnapshot && (
+                              <BookmakerOddsPanel
+                                snapshot={entry.analysis.bookmakerOddsSnapshot}
+                                estimates={entry.analysis.estimates ?? []}
+                                outcomes={entry.quoteOutcomes}
+                              />
+                            )}
+                            {entry.analysis.providerEvidence && (
+                              <ProviderEvidencePanel data={entry.analysis.providerEvidence} />
+                            )}
+                            {entry.analysis.espnData && (
+                              <details className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-3">
+                                <summary className="cursor-pointer font-semibold text-cyan-200">
+                                  Δεδομένα ESPN που χρησιμοποιήθηκαν
+                                </summary>
+                                <div className="mt-3">
+                                  <EspnDataPanel data={entry.analysis.espnData} />
+                                </div>
+                              </details>
+                            )}
+                            <section className="rounded-xl border border-cyan-300/20 bg-[#0a2036] p-4">
+                              <h3 className="text-base font-bold text-cyan-200">
+                                Εκτιμώμενες πιθανότητες AI
+                              </h3>
+                              <p className="mb-4 mt-1 text-xs text-slate-400">
+                                Υποκειμενικές εκτιμήσεις από διασταύρωση πηγών — όχι στατιστικά
+                                βαθμονομημένες πιθανότητες.
+                              </p>
+                              {entry.analysis.estimates?.length ? (
+                                <div className="space-y-3">
+                                  {entry.analysis.estimates.map((estimate) => (
+                                    <div key={estimate.market} className="space-y-1">
+                                      <div className="flex justify-between gap-3 text-sm">
+                                        <span className="font-medium text-slate-100">
+                                          {MARKET_LABELS[estimate.market] ?? estimate.market}
+                                        </span>
+                                        <strong className="tabular-nums text-cyan-200">
+                                          {estimate.percent}%
+                                        </strong>
+                                      </div>
                                       <div
-                                        className={`h-full rounded-full ${estimate.percent >= 65 ? "bg-emerald-400" : estimate.percent >= 40 ? "bg-cyan-400" : "bg-amber-400"}`}
-                                        style={{ width: `${estimate.percent}%` }}
-                                      />
+                                        className="h-2.5 overflow-hidden rounded-full bg-slate-700/80"
+                                        role="progressbar"
+                                        aria-label={
+                                          MARKET_LABELS[estimate.market] ?? estimate.market
+                                        }
+                                        aria-valuenow={estimate.percent}
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                      >
+                                        <div
+                                          className={`h-full rounded-full ${estimate.percent >= 65 ? "bg-emerald-400" : estimate.percent >= 40 ? "bg-cyan-400" : "bg-amber-400"}`}
+                                          style={{ width: `${estimate.percent}%` }}
+                                        />
+                                      </div>
+                                      <p className="text-xs text-slate-400">{estimate.reason}</p>
                                     </div>
-                                    <p className="text-xs text-slate-400">{estimate.reason}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-amber-200">
-                                Παλαιότερη ανάλυση χωρίς αριθμητικές εκτιμήσεις. Δεν κατασκευάζουμε
-                                ποσοστά εκ των υστέρων.
-                              </p>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-amber-200">
+                                  Παλαιότερη ανάλυση χωρίς αριθμητικές εκτιμήσεις. Δεν
+                                  κατασκευάζουμε ποσοστά εκ των υστέρων.
+                                </p>
+                              )}
+                            </section>
+                            {entry.sources.length > 0 && (
+                              <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
+                                <summary className="cursor-pointer font-semibold text-white">
+                                  Πηγές έρευνας ({entry.sources.length})
+                                </summary>
+                                <p className="mt-2 text-xs text-slate-400">
+                                  Τα δημοσιεύματα αποτελούν ερευνητικό υλικό, όχι αυτόματα
+                                  επαληθευμένα γεγονότα.
+                                </p>
+                                <ul className="mt-2 space-y-2 text-sm">
+                                  {entry.sources.map((source, index) => (
+                                    <li key={`${source.url}-${index}`}>
+                                      <a
+                                        href={source.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="break-all text-cyan-300 underline"
+                                      >
+                                        {source.title || source.url}
+                                      </a>
+                                      <span className="ml-2 text-xs text-slate-400">
+                                        {source.researchIntent === "external_forecasts"
+                                          ? "Εξωτερική εκτίμηση"
+                                          : "Στοιχεία αγώνα"}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </details>
                             )}
-                          </section>
-                          {entry.sources.length > 0 && (
-                            <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
-                              <summary className="cursor-pointer font-semibold text-white">
-                                Πηγές έρευνας ({entry.sources.length})
-                              </summary>
-                              <p className="mt-2 text-xs text-slate-400">
-                                Τα δημοσιεύματα αποτελούν ερευνητικό υλικό, όχι αυτόματα
-                                επαληθευμένα γεγονότα.
-                              </p>
-                              <ul className="mt-2 space-y-2 text-sm">
-                                {entry.sources.map((source, index) => (
-                                  <li key={`${source.url}-${index}`}>
-                                    <a
-                                      href={source.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="break-all text-cyan-300 underline"
-                                    >
-                                      {source.title || source.url}
-                                    </a>
-                                    <span className="ml-2 text-xs text-slate-400">
-                                      {source.researchIntent === "external_forecasts"
-                                        ? "Εξωτερική εκτίμηση"
-                                        : "Στοιχεία αγώνα"}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </details>
-                          )}
-                          <OnlinePredictionsPanel
-                            data={entry.analysis.externalPredictionConsensus}
-                            evidenceV2={entry.analysis.onlineEvidenceV2}
-                            estimates={entry.analysis.estimates}
-                          />
-                          <section className="rounded-xl border border-amber-400/20 bg-[#1b2131] p-4">
-                            <h3 className="font-semibold text-amber-200">
-                              Έμπειρος Αναλυτής · Πειραματικό
-                            </h3>
-                            {entry.expertReview?.decision ? (
-                              <div className="mt-2 space-y-2 text-sm">
-                                <p>
-                                  {entry.expertReview.decision.decision === "abstain"
-                                    ? "Αποχή — δεν προκύπτει τεκμηριωμένη επιλογή"
-                                    : `Προσωπική εκτίμηση: ${MARKET_LABELS[entry.expertReview.decision.primary?.market ?? ""] ?? entry.expertReview.decision.primary?.market}`}
-                                </p>
-                                <p>
-                                  {entry.expertReview.decision.primary?.rationale ??
-                                    entry.expertReview.decision.abstentionReason}
-                                </p>
-                                {entry.expertReview.decision.primary && (
-                                  <>
-                                    <p>
-                                      {`Υποκειμενική εμπιστοσύνη αναλυτή: ${entry.expertReview.decision.primary.confidence} · εκτίμηση: ${entry.expertReview.decision.primary.percent ?? "—"}%`}
-                                    </p>
-                                    <p>
-                                      Κύριος κίνδυνος:{" "}
-                                      {entry.expertReview.decision.primary.mainRisk}
-                                    </p>
-                                  </>
-                                )}
-                                {entry.expertReview.decision.planB && (
+                            <OnlinePredictionsPanel
+                              data={entry.analysis.externalPredictionConsensus}
+                              evidenceV2={entry.analysis.onlineEvidenceV2}
+                              estimates={entry.analysis.estimates}
+                            />
+                            <section className="rounded-xl border border-amber-400/20 bg-[#1b2131] p-4">
+                              <h3 className="font-semibold text-amber-200">
+                                Έμπειρος Αναλυτής · Πειραματικό
+                              </h3>
+                              {entry.expertReview?.decision ? (
+                                <div className="mt-2 space-y-2 text-sm">
                                   <p>
-                                    Εναλλακτική: {entry.expertReview.decision.planB.market} —{" "}
-                                    {entry.expertReview.decision.planB.rationale}
+                                    {entry.expertReview.decision.decision === "abstain"
+                                      ? "Αποχή — δεν προκύπτει τεκμηριωμένη επιλογή"
+                                      : `Προσωπική εκτίμηση: ${MARKET_LABELS[entry.expertReview.decision.primary?.market ?? ""] ?? entry.expertReview.decision.primary?.market}`}
                                   </p>
-                                )}
-                              </div>
-                            ) : entry.expertReview ? (
-                              <p className="mt-2 text-sm text-slate-400">
-                                Κατάσταση αξιολόγησης:{" "}
-                                {STATUS[entry.expertReview.status] ?? entry.expertReview.status}
-                                {entry.expertReview.status === "failed" && (
-                                  <>
-                                    {" · "}
-                                    {EXPERT_FAILURE_REASON[entry.expertReview.errorCode ?? ""] ??
-                                      "Δεν υπάρχουν επαρκή διαγνωστικά για αυτή την αποτυχία."}
-                                  </>
-                                )}
-                              </p>
-                            ) : entry.analysis.researchBrief &&
-                              Date.parse(entry.kickoff_utc) > Date.now() ? (
-                              <button
-                                type="button"
-                                disabled={working || !!expertBusy || !model}
-                                className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm text-amber-100 disabled:opacity-40"
-                                onClick={async () => {
-                                  const selectedModel = setup.data?.models.find(
-                                    (m) => m.id === model,
-                                  );
-                                  if (
-                                    !selectedModel ||
-                                    !window.confirm(
-                                      "Πειραματική ανεξάρτητη εκτίμηση με νέα χρεώσιμη AI κλήση, χωρίς νέα αναζήτηση. Συνέχεια;",
-                                    )
-                                  )
-                                    return;
-                                  setExpertBusy(entry.id);
-                                  setExpertError("");
-                                  try {
-                                    await runPrivateFootballExpertReview({
-                                      data: {
-                                        runId: entry.id,
-                                        modelId: selectedModel.id,
-                                        approvePaidRequest: true,
-                                      },
-                                    });
-                                    await history.refetch();
-                                  } catch {
-                                    setExpertError(
-                                      "Η πειραματική ανάλυση απέτυχε ή καταχωρίστηκε ήδη. Δεν επαναλαμβάνεται αυτόματα.",
-                                    );
-                                    await history.refetch();
-                                  } finally {
-                                    setExpertBusy(null);
-                                  }
-                                }}
-                              >
-                                {expertBusy === entry.id
-                                  ? "Αξιολόγηση…"
-                                  : "Εκτίμηση Έμπειρου Αναλυτή"}
-                              </button>
-                            ) : (
-                              <p className="mt-2 text-sm text-slate-400">
-                                Δεν υπάρχει κατάλληλο αποθηκευμένο ερευνητικό δελτίο ή ο αγώνας έχει
-                                αρχίσει.
-                              </p>
-                            )}
-                            {expertError && expertBusy === null && (
-                              <p className="mt-2 text-xs text-rose-300" role="alert">
-                                {expertError}
-                              </p>
-                            )}
-                          </section>
-                          {entry.analysis.matchContext && (
-                            <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
-                              <summary className="cursor-pointer font-semibold text-white">
-                                Δεδομένα αγώνα · βαθμολογία, φόρμα, κίνητρο και απουσίες
-                              </summary>
-                              <ul className="mt-2 space-y-2 text-sm text-slate-200">
-                                {entry.analysis.matchContext.claims.map((claim, index) => (
-                                  <li key={index}>
-                                    <strong>{claim.category}:</strong> {claim.claim}
-                                    <a
-                                      href={claim.sourceUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="ml-2 text-cyan-300 underline"
-                                    >
-                                      Πηγή
-                                    </a>
-                                    {claim.status === "scenario" && (
-                                      <span className="ml-2 text-amber-200">(σενάριο)</span>
-                                    )}
-                                  </li>
-                                ))}
-                              </ul>
-                              {entry.analysis.matchContext.missing.length > 0 && (
-                                <p className="mt-2 text-xs text-amber-100">
-                                  Ελλείψεις: {entry.analysis.matchContext.missing.join(" · ")}
-                                </p>
-                              )}
-                              {entry.analysis.matchContext.conflicts.length > 0 && (
-                                <p className="mt-2 text-xs text-amber-100">
-                                  Αντικρουόμενα: {entry.analysis.matchContext.conflicts.join(" · ")}
-                                </p>
-                              )}
-                            </details>
-                          )}
-                          <div className="rounded-xl bg-cyan-400/5 p-4">
-                            <h3 className="mb-2 font-semibold text-cyan-200">Σύνοψη ανάλυσης</h3>
-                            <p className="line-clamp-3 whitespace-pre-line text-sm leading-6 text-slate-200">
-                              {entry.analysis.summary}
-                            </p>
-                          </div>
-                          <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
-                            <summary className="mb-3 cursor-pointer font-semibold text-white">
-                              Προτεινόμενα σημεία και αιτιολόγηση
-                            </summary>
-                            <div className="space-y-2">
-                              {entry.analysis.suggestions.length === 0 && (
-                                <p className="text-sm text-slate-400">
-                                  Δεν προκύπτει τεκμηριωμένη επιλογή.
-                                </p>
-                              )}
-                              {entry.analysis.suggestions.map((item) => (
-                                <div
-                                  key={item.market}
-                                  className="rounded-xl border border-white/10 bg-[#0c1728] p-3"
-                                >
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <strong className="text-sm text-white">
-                                      {MARKET_LABELS[item.market] ?? item.market}
-                                    </strong>
-                                    <span className="text-xs text-amber-200">
-                                      {EVIDENCE[item.evidence] ?? item.evidence}
-                                    </span>
-                                  </div>
-                                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                                    {item.rationale}
+                                  <p>
+                                    {entry.expertReview.decision.primary?.rationale ??
+                                      entry.expertReview.decision.abstentionReason}
                                   </p>
-                                  {entry.outcomes.find((x) => x.market === item.market)?.outcome !=
-                                    null && (
-                                    <p className="mt-2 text-xs text-cyan-300">
-                                      Επίσημη επαλήθευση:{" "}
-                                      {entry.outcomes.find((x) => x.market === item.market)?.outcome
-                                        ? "Επιτυχία"
-                                        : "Αποτυχία"}
+                                  {entry.expertReview.decision.primary && (
+                                    <>
+                                      <p>
+                                        {`Υποκειμενική εμπιστοσύνη αναλυτή: ${entry.expertReview.decision.primary.confidence} · εκτίμηση: ${entry.expertReview.decision.primary.percent ?? "—"}%`}
+                                      </p>
+                                      <p>
+                                        Κύριος κίνδυνος:{" "}
+                                        {entry.expertReview.decision.primary.mainRisk}
+                                      </p>
+                                    </>
+                                  )}
+                                  {entry.expertReview.decision.planB && (
+                                    <p>
+                                      Εναλλακτική: {entry.expertReview.decision.planB.market} —{" "}
+                                      {entry.expertReview.decision.planB.rationale}
                                     </p>
                                   )}
                                 </div>
-                              ))}
-                            </div>
-                          </details>
-                          <details className="rounded-xl border border-white/10 bg-[#0d192b] p-4">
-                            <summary className="cursor-pointer font-semibold text-cyan-200">
-                              Λεπτομέρειες ανάλυσης
-                            </summary>
-                            <div className="mt-3 space-y-3 text-sm leading-7 text-slate-300">
-                              {entry.analysis.deepDive ? (
-                                <>
-                                  <h4 className="font-semibold text-white">Πρόσφατη φόρμα</h4>
-                                  <p>{entry.analysis.deepDive.form}</p>
-                                  <h4 className="font-semibold text-white">Τακτική εικόνα</h4>
-                                  <p>{entry.analysis.deepDive.tactics}</p>
-                                  <h4 className="font-semibold text-white">
-                                    Ειδήσεις και απουσίες
-                                  </h4>
-                                  <p>{entry.analysis.deepDive.teamNews}</p>
-                                  <h4 className="font-semibold text-amber-200">Αβεβαιότητες</h4>
-                                  <p>{entry.analysis.deepDive.uncertainty}</p>
-                                </>
-                              ) : (
-                                <p>{entry.analysis.summary}</p>
-                              )}
-                              {entry.analysis.suggestions.map((item) => (
-                                <p key={item.market}>
-                                  <strong>{MARKET_LABELS[item.market] ?? item.market}:</strong>{" "}
-                                  {item.rationale}
+                              ) : entry.expertReview ? (
+                                <p className="mt-2 text-sm text-slate-400">
+                                  Κατάσταση αξιολόγησης:{" "}
+                                  {STATUS[entry.expertReview.status] ?? entry.expertReview.status}
+                                  {entry.expertReview.status === "failed" && (
+                                    <>
+                                      {" · "}
+                                      {EXPERT_FAILURE_REASON[entry.expertReview.errorCode ?? ""] ??
+                                        "Δεν υπάρχουν επαρκή διαγνωστικά για αυτή την αποτυχία."}
+                                    </>
+                                  )}
                                 </p>
-                              ))}
-                              {entry.analysis.limitations.length > 0 && (
-                                <>
-                                  <h4 className="font-semibold text-amber-200">Περιορισμοί</h4>
-                                  {entry.analysis.limitations.map((x, i) => (
-                                    <p key={i}>{x}</p>
-                                  ))}
-                                </>
+                              ) : entry.analysis.researchBrief &&
+                                Date.parse(entry.kickoff_utc) > Date.now() ? (
+                                <button
+                                  type="button"
+                                  disabled={working || !!expertBusy || !model}
+                                  className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm text-amber-100 disabled:opacity-40"
+                                  onClick={async () => {
+                                    const selectedModel = setup.data?.models.find(
+                                      (m) => m.id === model,
+                                    );
+                                    if (
+                                      !selectedModel ||
+                                      !window.confirm(
+                                        "Πειραματική ανεξάρτητη εκτίμηση με νέα χρεώσιμη AI κλήση, χωρίς νέα αναζήτηση. Συνέχεια;",
+                                      )
+                                    )
+                                      return;
+                                    setExpertBusy(entry.id);
+                                    setExpertError("");
+                                    try {
+                                      await runPrivateFootballExpertReview({
+                                        data: {
+                                          runId: entry.id,
+                                          modelId: selectedModel.id,
+                                          approvePaidRequest: true,
+                                        },
+                                      });
+                                      await history.refetch();
+                                    } catch {
+                                      setExpertError(
+                                        "Η πειραματική ανάλυση απέτυχε ή καταχωρίστηκε ήδη. Δεν επαναλαμβάνεται αυτόματα.",
+                                      );
+                                      await history.refetch();
+                                    } finally {
+                                      setExpertBusy(null);
+                                    }
+                                  }}
+                                >
+                                  {expertBusy === entry.id
+                                    ? "Αξιολόγηση…"
+                                    : "Εκτίμηση Έμπειρου Αναλυτή"}
+                                </button>
+                              ) : (
+                                <p className="mt-2 text-sm text-slate-400">
+                                  Δεν υπάρχει κατάλληλο αποθηκευμένο ερευνητικό δελτίο ή ο αγώνας
+                                  έχει αρχίσει.
+                                </p>
                               )}
+                              {expertError && expertBusy === null && (
+                                <p className="mt-2 text-xs text-rose-300" role="alert">
+                                  {expertError}
+                                </p>
+                              )}
+                            </section>
+                            {entry.analysis.matchContext && (
+                              <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
+                                <summary className="cursor-pointer font-semibold text-white">
+                                  Δεδομένα αγώνα · βαθμολογία, φόρμα, κίνητρο και απουσίες
+                                </summary>
+                                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                                  {entry.analysis.matchContext.claims.map((claim, index) => (
+                                    <li key={index}>
+                                      <strong>{claim.category}:</strong> {claim.claim}
+                                      <a
+                                        href={claim.sourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="ml-2 text-cyan-300 underline"
+                                      >
+                                        Πηγή
+                                      </a>
+                                      {claim.status === "scenario" && (
+                                        <span className="ml-2 text-amber-200">(σενάριο)</span>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                                {entry.analysis.matchContext.missing.length > 0 && (
+                                  <p className="mt-2 text-xs text-amber-100">
+                                    Ελλείψεις: {entry.analysis.matchContext.missing.join(" · ")}
+                                  </p>
+                                )}
+                                {entry.analysis.matchContext.conflicts.length > 0 && (
+                                  <p className="mt-2 text-xs text-amber-100">
+                                    Αντικρουόμενα:{" "}
+                                    {entry.analysis.matchContext.conflicts.join(" · ")}
+                                  </p>
+                                )}
+                              </details>
+                            )}
+                            <div className="rounded-xl bg-cyan-400/5 p-4">
+                              <h3 className="mb-2 font-semibold text-cyan-200">Σύνοψη ανάλυσης</h3>
+                              <p className="line-clamp-3 whitespace-pre-line text-sm leading-6 text-slate-200">
+                                {entry.analysis.summary}
+                              </p>
                             </div>
-                          </details>
-                          <p className="text-xs leading-5 text-slate-400">
-                            Τα ποσοστά είναι εκτιμήσεις της AI, όχι εγγυήσεις ή μετρημένες
-                            πιθανότητες. Δεν αποτελούν απόδειξη στοιχηματικού πλεονεκτήματος.
+                            <details className="rounded-xl border border-white/10 bg-[#0d192b] p-3">
+                              <summary className="mb-3 cursor-pointer font-semibold text-white">
+                                Προτεινόμενα σημεία και αιτιολόγηση
+                              </summary>
+                              <div className="space-y-2">
+                                {entry.analysis.suggestions.length === 0 && (
+                                  <p className="text-sm text-slate-400">
+                                    Δεν προκύπτει τεκμηριωμένη επιλογή.
+                                  </p>
+                                )}
+                                {entry.analysis.suggestions.map((item) => (
+                                  <div
+                                    key={item.market}
+                                    className="rounded-xl border border-white/10 bg-[#0c1728] p-3"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <strong className="text-sm text-white">
+                                        {MARKET_LABELS[item.market] ?? item.market}
+                                      </strong>
+                                      <span className="text-xs text-amber-200">
+                                        {EVIDENCE[item.evidence] ?? item.evidence}
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                                      {item.rationale}
+                                    </p>
+                                    {entry.outcomes.find((x) => x.market === item.market)
+                                      ?.outcome != null && (
+                                      <p className="mt-2 text-xs text-cyan-300">
+                                        Επίσημη επαλήθευση:{" "}
+                                        {entry.outcomes.find((x) => x.market === item.market)
+                                          ?.outcome
+                                          ? "Επιτυχία"
+                                          : "Αποτυχία"}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                            <details className="rounded-xl border border-white/10 bg-[#0d192b] p-4">
+                              <summary className="cursor-pointer font-semibold text-cyan-200">
+                                Λεπτομέρειες ανάλυσης
+                              </summary>
+                              <div className="mt-3 space-y-3 text-sm leading-7 text-slate-300">
+                                {entry.analysis.deepDive ? (
+                                  <>
+                                    <h4 className="font-semibold text-white">Πρόσφατη φόρμα</h4>
+                                    <p>{entry.analysis.deepDive.form}</p>
+                                    <h4 className="font-semibold text-white">Τακτική εικόνα</h4>
+                                    <p>{entry.analysis.deepDive.tactics}</p>
+                                    <h4 className="font-semibold text-white">
+                                      Ειδήσεις και απουσίες
+                                    </h4>
+                                    <p>{entry.analysis.deepDive.teamNews}</p>
+                                    <h4 className="font-semibold text-amber-200">Αβεβαιότητες</h4>
+                                    <p>{entry.analysis.deepDive.uncertainty}</p>
+                                  </>
+                                ) : (
+                                  <p>{entry.analysis.summary}</p>
+                                )}
+                                {entry.analysis.suggestions.map((item) => (
+                                  <p key={item.market}>
+                                    <strong>{MARKET_LABELS[item.market] ?? item.market}:</strong>{" "}
+                                    {item.rationale}
+                                  </p>
+                                ))}
+                                {entry.analysis.limitations.length > 0 && (
+                                  <>
+                                    <h4 className="font-semibold text-amber-200">Περιορισμοί</h4>
+                                    {entry.analysis.limitations.map((x, i) => (
+                                      <p key={i}>{x}</p>
+                                    ))}
+                                  </>
+                                )}
+                              </div>
+                            </details>
+                            <p className="text-xs leading-5 text-slate-400">
+                              Τα ποσοστά είναι εκτιμήσεις της AI, όχι εγγυήσεις ή μετρημένες
+                              πιθανότητες. Δεν αποτελούν απόδειξη στοιχηματικού πλεονεκτήματος.
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-slate-400">
+                            {entry.status === "failed"
+                              ? `${FAILURE_REASON[entry.error_code ?? ""] ?? "Η ανάλυση απέτυχε."} Δεν επαναλαμβάνεται αυτόματα.`
+                              : "Η ανάλυση δεν έχει ολοκληρωθεί."}
                           </p>
-                        </>
-                      ) : (
-                        <p className="text-sm text-slate-400">
-                          {entry.status === "failed"
-                            ? `${FAILURE_REASON[entry.error_code ?? ""] ?? "Η ανάλυση απέτυχε."} Δεν επαναλαμβάνεται αυτόματα.`
-                            : "Η ανάλυση δεν έχει ολοκληρωθεί."}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-          <div className="mt-4 flex items-center justify-between gap-2">
-            <div className="relative min-w-0 flex-1">
-              <button
-                type="button"
-                disabled={
-                  clearing ||
-                  working ||
-                  !(history.data ?? []).some((item) => item.status !== "processing")
-                }
-                onClick={() => setClearMenu((value) => !value)}
-                className="w-full whitespace-nowrap rounded-xl border border-white/20 px-2 py-2 text-sm font-semibold text-slate-200 disabled:opacity-40"
-              >
-                Εκκαθάριση ▾
-              </button>
-              {clearMenu && (
-                <div className="absolute bottom-full left-0 z-20 mb-1 w-52 rounded-xl border border-white/20 bg-[#0c1728] p-2 shadow-xl">
-                  <button
-                    type="button"
-                    className="block w-full rounded-lg p-2 text-left text-sm hover:bg-white/10"
-                    onClick={() => {
-                      setClearConfirm(
-                        (history.data ?? [])
-                          .filter((item) => item.status !== "processing")
-                          .map((item) => item.id),
-                      );
-                      setClearMenu(false);
-                    }}
-                  >
-                    Εκκαθάριση όλων
-                  </button>
-                  <button
-                    type="button"
-                    className="block w-full rounded-lg p-2 text-left text-sm hover:bg-white/10"
-                    onClick={() => {
-                      setClearMode("selected");
-                      setClearConfirm([]);
-                      setClearMenu(false);
-                    }}
-                  >
-                    Εκκαθάριση επιλεγμένων
-                  </button>
-                </div>
-              )}
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
-            <button
-              type="button"
-              onClick={saveResults}
-              disabled={!history.data?.length}
-              className="min-w-0 flex-1 whitespace-nowrap rounded-xl bg-cyan-500 px-2 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40"
-            >
-              Εξαγωγή
-            </button>
-          </div>
-          {clearMode === "selected" && (
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!clearSelected.length || clearing}
-                onClick={() => void clearResults(clearSelected)}
-                className="rounded-xl bg-rose-500/20 px-3 py-2 text-sm text-rose-200 disabled:opacity-40"
-              >
-                Επιβεβαίωση ({clearSelected.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setClearMode("none");
-                  setClearSelected([]);
-                  setClearConfirm([]);
-                }}
-                className="rounded-xl border border-white/20 px-3 py-2 text-sm"
-              >
-                Ακύρωση
-              </button>
-            </div>
-          )}
-          {clearConfirm.length > 0 && (
-            <div className="mt-3 rounded-xl border border-rose-400/30 bg-[#0c1728] p-3">
-              <p className="text-sm">
-                Εκκαθάριση {clearConfirm.length} αναλύσεων από την προβολή; Τα στοιχεία ελέγχου
-                διατηρούνται.
-              </p>
-              <div className="mt-2 flex gap-2">
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <div className="relative min-w-0 flex-1">
                 <button
                   type="button"
-                  disabled={clearing}
-                  onClick={() => void clearResults(clearConfirm)}
-                  className="rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                  disabled={
+                    clearing ||
+                    working ||
+                    !(history.data ?? []).some((item) => item.status !== "processing")
+                  }
+                  onClick={() => setClearMenu((value) => !value)}
+                  className="w-full whitespace-nowrap rounded-xl border border-white/20 px-2 py-2 text-sm font-semibold text-slate-200 disabled:opacity-40"
                 >
-                  Επιβεβαίωση
+                  Εκκαθάριση ▾
+                </button>
+                {clearMenu && (
+                  <div className="absolute bottom-full left-0 z-20 mb-1 w-52 rounded-xl border border-white/20 bg-[#0c1728] p-2 shadow-xl">
+                    <button
+                      type="button"
+                      className="block w-full rounded-lg p-2 text-left text-sm hover:bg-white/10"
+                      onClick={() => {
+                        setClearConfirm(
+                          (history.data ?? [])
+                            .filter((item) => item.status !== "processing")
+                            .map((item) => item.id),
+                        );
+                        setClearMenu(false);
+                      }}
+                    >
+                      Εκκαθάριση όλων
+                    </button>
+                    <button
+                      type="button"
+                      className="block w-full rounded-lg p-2 text-left text-sm hover:bg-white/10"
+                      onClick={() => {
+                        setClearMode("selected");
+                        setClearConfirm([]);
+                        setClearMenu(false);
+                      }}
+                    >
+                      Εκκαθάριση επιλεγμένων
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={saveResults}
+                disabled={!history.data?.length}
+                className="min-w-0 flex-1 whitespace-nowrap rounded-xl bg-cyan-500 px-2 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40"
+              >
+                Εξαγωγή
+              </button>
+            </div>
+            {clearMode === "selected" && (
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!clearSelected.length || clearing}
+                  onClick={() => void clearResults(clearSelected)}
+                  className="rounded-xl bg-rose-500/20 px-3 py-2 text-sm text-rose-200 disabled:opacity-40"
+                >
+                  Επιβεβαίωση ({clearSelected.length})
                 </button>
                 <button
                   type="button"
-                  onClick={() => setClearConfirm([])}
-                  className="rounded-lg border border-white/20 px-3 py-2 text-sm"
+                  onClick={() => {
+                    setClearMode("none");
+                    setClearSelected([]);
+                    setClearConfirm([]);
+                  }}
+                  className="rounded-xl border border-white/20 px-3 py-2 text-sm"
                 >
                   Ακύρωση
                 </button>
               </div>
-            </div>
-          )}
-          {clearError && (
-            <p role="alert" className="mt-2 text-sm text-rose-300">
-              {clearError}
-            </p>
-          )}
-        </section>
-      </main>
+            )}
+            {clearConfirm.length > 0 && (
+              <div className="mt-3 rounded-xl border border-rose-400/30 bg-[#0c1728] p-3">
+                <p className="text-sm">
+                  Εκκαθάριση {clearConfirm.length} αναλύσεων από την προβολή; Τα στοιχεία ελέγχου
+                  διατηρούνται.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={clearing}
+                    onClick={() => void clearResults(clearConfirm)}
+                    className="rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                  >
+                    Επιβεβαίωση
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClearConfirm([])}
+                    className="rounded-lg border border-white/20 px-3 py-2 text-sm"
+                  >
+                    Ακύρωση
+                  </button>
+                </div>
+              </div>
+            )}
+            {clearError && (
+              <p role="alert" className="mt-2 text-sm text-rose-300">
+                {clearError}
+              </p>
+            )}
+          </section>
+        </main>
+      </div>
       <section id="football-kino" role="tabpanel" hidden={activeTab !== "kino"}>
         {activeTab === "kino" && <KinoWorkspace key={user.id} ownerId={user.id} />}
       </section>

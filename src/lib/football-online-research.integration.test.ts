@@ -1,4 +1,12 @@
-import { planFootballForecasts } from "./football-forecast-planner.shared";
+import { searchInspirationWeb } from "./music-inspiration-research.server";
+import {
+  footballProfileConsent,
+  FOOTBALL_SEARCH_PROFILES,
+} from "./football-search-profiles.shared";
+import {
+  planFootballForecasts,
+  planFootballSearchProfile,
+} from "./football-forecast-planner.shared";
 import {
   footballResearchBudget,
   FOOTBALL_CONSENT_VERSION,
@@ -25,6 +33,8 @@ import {
 } from "./football-prediction-consensus.shared";
 import { buildFootballSourceSnapshot } from "./football-ai-source-snapshot.shared";
 import {
+  footballAnalysisRequestSchema,
+  footballResearchSystemForProfile,
   footballAiAssessmentSchema,
   footballResearchEvidenceSnapshotSchema,
   FOOTBALL_COMPLETE_RESEARCH_SYSTEM as FOOTBALL_RESEARCH_SYSTEM,
@@ -107,9 +117,18 @@ for (const [iteration, mode] of (
     "old-consent",
     "cancelled",
     "incident-score",
+    "v2-basic",
+    "v2-advanced",
+    "v2-search-failure",
+    "v2-forged-consent",
+    "v2-denied",
+    "v2-cancelled",
+    "v2-second-failure",
+    "v2-model-timeout",
+    "v1-basic",
   ] as const
 ).entries())
-  test(`actual research handler ${iteration}: ${mode}, five searches, one paid attempt, authoritative provenance and retained usage`, async () => {
+  test(`actual research handler ${iteration}: ${mode}, profile-derived searches, one paid attempt, authoritative provenance and retained usage`, async () => {
     const source = readFileSync(
       new URL("./football-ai-research.functions.ts", import.meta.url),
       "utf8",
@@ -127,6 +146,12 @@ for (const [iteration, mode] of (
       .slice(0, part.lastIndexOf(");"))
       .trim()
       .replaceAll("import(", "dynamicImport(");
+    const v2 = mode.startsWith("v2-");
+    const depth = (v2 && mode !== "v2-advanced") || mode === "v1-basic" ? "basic" : "advanced";
+    const searchCount = v2 ? 2 : 5,
+      resultsPerSearch = v2 ? 10 : 5,
+      candidateCount = v2 ? 20 : 25;
+    const profile = v2 ? "v2_experimental" : "v1_current";
     const { time, kickoff } = offlineFixtureTimes(Date.now());
     const identity = {
       leagueId: "IT-SA",
@@ -203,7 +228,7 @@ for (const [iteration, mode] of (
       "theguardian.com",
       "espn.com",
     ];
-    const sources = Array.from({ length: 25 }, (_, i) => ({
+    const sources = Array.from({ length: candidateCount }, (_, i) => ({
       title: `Synthetic editorial ${i}`,
       url: `https://${hosts[i % hosts.length]}/offline-${i}`,
       accessedAt: time,
@@ -316,17 +341,29 @@ for (const [iteration, mode] of (
       if (path.includes("ai-provider"))
         return {
           resolveAiModelForUser: async () => ({ model: "offline", provider: "openrouter" }),
-          modelCaller: () => async (input: { prompt: string }) => {
+          modelCaller: () => async (input: { prompt: string; system: string }) => {
             calls++;
             expect(marked).toBe(true);
             expect(input).toHaveProperty("maxTokens", FOOTBALL_MODEL_OUTPUT_TOKENS);
-            if (mode === "timeout") throw new Error("offline provider timeout");
+            if (mode === "timeout" || mode === "v2-model-timeout")
+              throw new Error("offline provider timeout");
             const prompt = JSON.parse(input.prompt);
-            expect(prompt.sources).toHaveLength(25);
+            expect(prompt.sources).toHaveLength(candidateCount);
             expect(prompt.providerEvidence.providers[0].home.recentResults).toHaveLength(1);
             expect(prompt.providerEvidence.providers[0].home.injuries).toHaveLength(1);
-            expect(prompt.onlineEvidenceV2.profile).toBe("P1-Preserve");
+            expect(prompt.onlineEvidenceV2.profile).toBe(v2 ? "forecast-only-2" : "P1-Preserve");
             expect(prompt.onlineEvidenceV2.version).toBe(2);
+            if (v2) {
+              expect(prompt.performedSearches).toEqual([
+                { language: "en", intent: "external_forecasts" },
+                { language: "ru", intent: "external_forecasts" },
+              ]);
+              expect(input).toHaveProperty(
+                "system",
+                footballResearchSystemForProfile("v2_experimental"),
+              );
+              expect(prompt.sources[19].url).toBe(sources[19]!.url);
+            }
             if (mode === "incident-score")
               expect(
                 prompt.onlineEvidenceV2.claims.some(
@@ -374,23 +411,52 @@ for (const [iteration, mode] of (
             signal: AbortSignal,
             _fetch: unknown,
             _key: unknown,
-            depth: string,
+            depth: "basic" | "advanced",
             options: { football: { maxResults: number } },
           ) => {
-            expect(options.football.maxResults).toBe(5);
-            expect(depth).toBe("advanced");
+            expect(options.football.maxResults).toBe(resultsPerSearch);
+            expect(depth).toBe(
+              (v2 && mode !== "v2-advanced") || mode === "v1-basic" ? "basic" : "advanced",
+            );
             expect(signal.aborted).toBe(false);
             expect(updates.at(-1)?.["usage"]).toHaveProperty("research.searches");
             const journal = (
               updates.at(-1)?.["usage"] as { research: { searches: { state: string }[] } }
             ).research.searches;
             expect(journal.at(-1)!.state).toBe("unconfirmed");
-            const plan = planFootballForecasts(identity, "P1-Preserve");
+            const plan = planFootballSearchProfile(identity, profile);
             expect(query).toBe(plan.queries[searches]!.query);
             const index = searches++;
-            if (mode === "search-timeout") throw new Error("offline search timeout");
+            if (
+              mode === "search-timeout" ||
+              mode === "v2-search-failure" ||
+              (mode === "v2-second-failure" && index === 1)
+            )
+              throw new Error("offline search timeout");
+            if (v2)
+              return searchInspirationWeb(
+                query,
+                signal,
+                async (_url, init) => {
+                  const request = JSON.parse(String(init?.body));
+                  expect(_url).toBe("https://api.tavily.com/search");
+                  expect(request.max_results).toBe(10);
+                  expect(request.search_depth).toBe(depth);
+                  expect(request.include_raw_content).toBe("text");
+                  return Response.json({
+                    usage: { credits: depth === "basic" ? 1 : 2 },
+                    request_id: `offline-${index}`,
+                    results: sources
+                      .slice(index * 10, index * 10 + 10)
+                      .map((s) => ({ title: s.title, url: s.url, raw_content: s.excerpt })),
+                  });
+                },
+                "offline-fixture-key",
+                depth,
+                { football: { textChars: 24000, maxResults: 10, format: "text" } },
+              );
             return {
-              credits: 2,
+              credits: depth === "basic" ? 1 : 2,
               requestId: `offline-${index}`,
               documents: sources
                 .slice(index * 5, index * 5 + 5)
@@ -403,9 +469,15 @@ for (const [iteration, mode] of (
     const scope = {
       dynamicImport,
       getRequest: () => ({
-        signal: mode === "cancelled" ? AbortSignal.abort() : new AbortController().signal,
+        signal:
+          mode === "cancelled" || mode === "v2-cancelled"
+            ? AbortSignal.abort()
+            : new AbortController().signal,
       }),
       planFootballForecasts,
+      planFootballSearchProfile,
+      footballAnalysisRequestSchema,
+      footballResearchSystemForProfile,
       footballResearchBudget,
       FOOTBALL_CONSENT_VERSION,
       FOOTBALL_MAX_PROMPT_BYTES,
@@ -450,16 +522,35 @@ for (const [iteration, mode] of (
         weekDate: kickoff.slice(0, 10),
         fixtureId: "999",
         modelId: "offline",
+        requestKey: "a1111111-1111-4111-8111-111111111111",
         withTavily: true,
-        tavilySearchDepth: "advanced",
+        tavilySearchDepth: depth,
         approvePaidRequest: true,
-        researchConsentVersion: FOOTBALL_CONSENT_VERSION,
+        researchConsentVersion: v2
+          ? FOOTBALL_SEARCH_PROFILES.v2_experimental.consentVersion
+          : FOOTBALL_CONSENT_VERSION,
+        ...(v2
+          ? {
+              searchProfileVersion: profile,
+              researchConsent: footballProfileConsent(profile, depth, "offline", "999"),
+            }
+          : {}),
       },
       context: {
         userId: "owner",
-        supabase: { rpc: async () => ({ data: mode !== "denied", error: null }) },
+        supabase: {
+          rpc: async () => ({ data: mode !== "denied" && mode !== "v2-denied", error: null }),
+        },
       },
     };
+    if (mode === "v2-forged-consent") {
+      input.data.researchConsent!.depth = depth === "basic" ? "advanced" : "basic";
+      await expect(handler(input)).rejects.toThrow("selected search profile");
+      expect(searches).toBe(0);
+      expect(calls).toBe(0);
+      expect(admissions).toBe(0);
+      return;
+    }
     if (mode === "old-consent") {
       delete (input.data as { researchConsentVersion?: string }).researchConsentVersion;
       await expect(handler(input)).rejects.toThrow("five-search");
@@ -468,21 +559,32 @@ for (const [iteration, mode] of (
       expect(admissions).toBe(0);
       return;
     }
-    if (mode === "search-timeout" || mode === "journal-failure") {
+    if (
+      mode === "search-timeout" ||
+      mode === "journal-failure" ||
+      mode === "v2-search-failure" ||
+      mode === "v2-second-failure"
+    ) {
       await expect(handler(input)).rejects.toThrow("cannot be automatically retried");
       expect(calls).toBe(0);
-      expect(searches).toBe(mode === "search-timeout" ? 1 : 0);
+      expect(searches).toBe(
+        mode === "v2-second-failure"
+          ? 2
+          : mode === "search-timeout" || mode === "v2-search-failure"
+            ? 1
+            : 0,
+      );
       expect(updates.some((u) => u["status"] === "failed" && !!u["usage"])).toBe(true);
       await expect(handler(input)).rejects.toThrow("already recorded");
       return;
     }
-    if (mode === "cancelled") {
+    if (mode === "cancelled" || mode === "v2-cancelled") {
       await expect(handler(input)).rejects.toThrow("cannot be automatically retried");
       expect(searches).toBe(0);
       expect(calls).toBe(0);
       return;
     }
-    if (mode === "denied") {
+    if (mode === "denied" || mode === "v2-denied") {
       await expect(handler(input)).rejects.toThrow("Not allowed");
       expect(searches).toBe(0);
       expect(calls).toBe(0);
@@ -503,11 +605,18 @@ for (const [iteration, mode] of (
         "combo-without-joint",
         "abstain",
         "incident-score",
+        "v2-basic",
+        "v2-advanced",
+        "v2-search-failure",
+        "v2-forged-consent",
+        "v2-denied",
+        "v2-cancelled",
+        "v1-basic",
       ].includes(mode)
     ) {
       const result = await handler(input);
       expect(result.analysis.externalPredictionConsensus.sourceCount).toBeGreaterThan(0);
-      expect(result.analysis.onlineEvidenceV2.sources).toHaveLength(25);
+      expect(result.analysis.onlineEvidenceV2.sources).toHaveLength(candidateCount);
       if (mode === "incident-score")
         expect(
           result.analysis.onlineEvidenceV2.claims.some(
@@ -517,14 +626,34 @@ for (const [iteration, mode] of (
         ).toBe(true);
       expect(result.analysis.estimates).toHaveLength(3);
       const usageAudit = updates.find((u) => u["status"] === "completed")!["usage"] as {
-        research: { searches: { returnedSources: { url: string; title: string }[] }[] };
+        research: {
+          budget: { searchCredits: number; searchCalls: number; resultsPerSearch: number };
+          sourceSummary: { retainedDocs: number; legacyProjectionOmitted: number };
+          searches: { credits: number; returnedSources: { url: string; title: string }[] }[];
+        };
       };
-      expect(usageAudit.research.searches).toHaveLength(5);
-      expect(usageAudit.research.searches.every((q) => q.returnedSources.length === 5)).toBe(true);
+      expect(usageAudit.research.searches).toHaveLength(searchCount);
+      expect(usageAudit.research.budget.searchCredits).toBe(
+        searchCount * (depth === "basic" ? 1 : 2),
+      );
+      expect(usageAudit.research.searches.reduce((sum, q) => sum + q.credits, 0)).toBe(
+        searchCount * (depth === "basic" ? 1 : 2),
+      );
+      expect(result.analysis.searchProfileVersion).toBe(profile);
+      if (v2) {
+        expect(usageAudit.research.sourceSummary).toMatchObject({
+          retainedDocs: 20,
+          legacyProjectionOmitted: 2,
+        });
+        expect(result.sources).toHaveLength(20);
+      }
+      expect(
+        usageAudit.research.searches.every((q) => q.returnedSources.length === resultsPerSearch),
+      ).toBe(true);
       expect(
         usageAudit.research.searches.flatMap((q) => q.returnedSources).map((s) => s.url),
       ).toEqual(sources.map((s) => s.url));
-      expect(result.analysis.researchBrief.matchFacts).toHaveLength(10);
+      expect(result.analysis.researchBrief.matchFacts).toHaveLength(v2 ? 0 : 10);
       if (mode === "combo")
         expect(result.analysis.onlineEvidenceV2.judgment.selection.kind).toBe("and");
       if (mode === "combo-without-joint")
@@ -571,7 +700,7 @@ for (const [iteration, mode] of (
         updates.some(
           (u) =>
             u["status"] === "failed" &&
-            (mode === "timeout"
+            (mode === "timeout" || mode === "v2-model-timeout"
               ? !!(u["usage"] as { research?: unknown })?.research &&
                 !("inputTokens" in (u["usage"] as object))
               : (u["usage"] as { inputTokens?: number })?.inputTokens === usage.inputTokens),
@@ -579,6 +708,18 @@ for (const [iteration, mode] of (
       ).toBe(true);
     }
     await expect(handler(input)).rejects.toThrow("already recorded");
-    expect(searches).toBe(5);
+    if (v2) {
+      const other = {
+        ...input,
+        data: {
+          ...input.data,
+          searchProfileVersion: "v1_current",
+          researchConsentVersion: FOOTBALL_SEARCH_PROFILES.v1_current.consentVersion,
+          researchConsent: footballProfileConsent("v1_current", depth, "offline", "999"),
+        },
+      };
+      await expect(handler(other)).rejects.toThrow("already recorded");
+    }
+    expect(searches).toBe(searchCount);
     expect(calls).toBe(1);
   });
