@@ -1,3 +1,4 @@
+import type { FootballSearchProfileVersion } from "./football-search-profiles.shared";
 import { createHash } from "node:crypto";
 import { publisherFor } from "./football-prediction-consensus.shared";
 import {
@@ -43,7 +44,12 @@ function nearDuplicate(a: string, b: string) {
 const digest = (s: string) => createHash("sha256").update(s).digest("hex");
 /** Only an explicit single-match preview envelope may scope later editorial paragraphs.
  * Unstructured/multi-fixture material retains the original strict whole-section trace. */
-function sections(text: string, f: OddsTarget, cutoff: string) {
+function sections(
+  text: string,
+  f: OddsTarget,
+  cutoff: string,
+  searchProfileVersion?: FootballSearchProfileVersion,
+) {
   const headers = [...text.matchAll(/^#{1,4}\s+.+$/gm)].map((m) => m.index!);
   const starts = [...new Set([0, ...headers])].sort((a, b) => a - b);
   let establishedMetadata: string | undefined;
@@ -62,7 +68,8 @@ function sections(text: string, f: OddsTarget, cutoff: string) {
     const eligible =
       /(?:prediction and betting tips|prediction, preview|match preview and expert tips|προγνωστικά αγώνα|прогноз на матч|прогноз и ставка на)/iu.test(
         metadata,
-      ) && traceFootballFixture(metadata, f, cutoff).status === "verified";
+      ) &&
+      traceFootballFixture(metadata, f, cutoff, { searchProfileVersion }).status === "verified";
     // H2H, related fixtures and navigation cannot lend their dates/picks to this article.
     const footer = eligible
       ? body.search(
@@ -77,7 +84,7 @@ function sections(text: string, f: OddsTarget, cutoff: string) {
         (line) =>
           line.length < 180 &&
           /\s(?:vs\.?|v\.?)\s/iu.test(line) &&
-          traceFootballFixture(line, f, cutoff).failures.some((v) =>
+          traceFootballFixture(line, f, cutoff, { searchProfileVersion }).failures.some((v) =>
             [
               "home_missing",
               "away_missing",
@@ -90,7 +97,7 @@ function sections(text: string, f: OddsTarget, cutoff: string) {
             ].includes(v),
           ),
       );
-    const standalone = traceFootballFixture(scoped, f, cutoff);
+    const standalone = traceFootballFixture(scoped, f, cutoff, { searchProfileVersion });
     const forecastSubsection =
       /^#{1,4}\s+(?:our\s+)?(?:predictions?|picks?|betting tips|προγνωστικά|πρόβλεψη|прогноз|наш выбор)(?:\s|:|$)/iu.test(
         scoped,
@@ -132,6 +139,7 @@ export function buildFootballClaimLedger(
   cutoff: string,
   queries: FootballClaimLedger["queries"] = [],
   profile: FootballClaimLedger["profile"] = "legacy-3",
+  searchProfileVersion?: FootballSearchProfileVersion,
 ): FootballClaimLedger {
   const sources: FootballClaimLedger["sources"] = [],
     claims: FootballClaimLedger["claims"] = [];
@@ -162,7 +170,7 @@ export function buildFootballClaimLedger(
     if (!Number.isFinite(Date.parse(doc.accessedAt))) continue;
     const text = canonicalFootballText(doc.text).slice(0, 24000),
       sourceIndex = sources.length;
-    const trace = traceFootballFixture(text, f, cutoff);
+    const trace = traceFootballFixture(text, f, cutoff, { searchProfileVersion });
     if (
       Date.parse(doc.accessedAt) > Date.parse(cutoff) ||
       (doc.publishedAtUtc &&
@@ -216,10 +224,12 @@ export function buildFootballClaimLedger(
     };
     addWindow(0, Math.min(text.length, 1200));
     let omittedClaims = 0;
-    for (const section of sections(text, f, cutoff)) {
-      const sectionTrace = traceFootballFixture(section.binding, f, cutoff);
+    for (const section of sections(text, f, cutoff, searchProfileVersion)) {
+      const sectionTrace = traceFootballFixture(section.binding, f, cutoff, {
+        searchProfileVersion,
+      });
       // Do not join a heading from one fixture to a pick from another.
-      const discovered = extractLiteralPicks(section.text, f);
+      const discovered = extractLiteralPicks(section.text, f, searchProfileVersion);
       omittedClaims += Math.max(0, discovered.length - 12);
       for (const pick of discovered.slice(0, 12)) {
         if (claims.length >= 300) break;
@@ -328,6 +338,7 @@ export function buildFootballClaimLedger(
     version: 2,
     fixture: f,
     profile,
+    ...(searchProfileVersion ? { searchProfileVersion } : {}),
     cutoff,
     queries,
     sources,

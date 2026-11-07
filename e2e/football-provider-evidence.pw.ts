@@ -1,3 +1,9 @@
+import { fromJSON } from "seroval";
+import { readFile } from "node:fs/promises";
+import {
+  type FootballSearchProfileVersion,
+  FOOTBALL_SEARCH_PROFILES,
+} from "../src/lib/football-search-profiles.shared";
 import { attachIndependentAssessment } from "../src/lib/football-evidence-v2.shared";
 import { providerEvidenceUrls } from "../src/lib/football-provider-evidence.shared";
 import { buildFootballClaimLedger } from "../src/lib/football-evidence-v2.server";
@@ -30,6 +36,8 @@ async function fixture(
   online = false,
   evidenceV2 = false,
   judgmentMode: "combo" | "abstain" | "unsupported" | "provider-only" = "combo",
+  holdResearch = false,
+  savedProfile?: FootballSearchProfileVersion,
 ) {
   const token =
     [
@@ -70,6 +78,11 @@ async function fixture(
               ? false
               : [],
     });
+  });
+  const requests: unknown[] = [];
+  let releaseResearch = () => {};
+  const researchGate = new Promise<void>((resolve) => {
+    releaseResearch = resolve;
   });
   let paid = 0,
     reads = 0;
@@ -154,7 +167,11 @@ async function fixture(
       /runPrivateFootballResearch|runPrivateFootballExpertReview|refreshPrivateFootball/.test(name)
     ) {
       paid++;
-      if (allowResearch) return route.fulfill({ json: { result: {}, context: {} } });
+      if (allowResearch) {
+        requests.push(route.request().postDataJSON());
+        if (holdResearch) await researchGate;
+        return route.fulfill({ json: { result: {}, context: {} } });
+      }
       return route.abort();
     }
     if (name.includes("getPrivateFootballResearchSetup")) {
@@ -212,6 +229,7 @@ async function fixture(
               error_code: null,
               expertReview: null,
               analysis: {
+                ...(savedProfile ? { searchProfileVersion: savedProfile } : {}),
                 summary: "Αποθηκευμένη ερευνητική ανάλυση χωρίς νέα κλήση παρόχου.",
                 suggestions: [],
                 estimates: [],
@@ -351,7 +369,7 @@ async function fixture(
     await route.fulfill({ json: { result, context: {} } });
   });
   await page.goto("/private/football-research");
-  return { paid: () => paid, reads: () => reads, seenProviders };
+  return { paid: () => paid, reads: () => reads, seenProviders, requests, releaseResearch };
 }
 
 test("ESPN is automatic default; all source statuses, touch/keyboard preview and no paid dispatch", async ({
@@ -738,5 +756,125 @@ test("Tavily heading stays fully inside its card above Basic/Advanced at 320 and
     ).violations,
   ).toEqual([]);
   await page.screenshot({ path: test.info().outputPath("tavily-inside.png"), fullPage: true });
+  expect(state.paid()).toBe(0);
+});
+
+for (const depth of ["basic", "advanced"] as const)
+  test(`compact profiles: defaultV1, V2 ${depth} exact POST/consent/working state`, async ({
+    page,
+  }) => {
+    const state = await fixture(
+      page,
+      true,
+      false,
+      "matched",
+      "el",
+      { home: "Arsenal", away: "Liverpool" },
+      1,
+      true,
+      false,
+      false,
+      "combo",
+      true,
+    );
+    const selector = page.getByRole("combobox", { name: "Προφίλ αναζήτησης" });
+    await expect(selector).toContainText("Version 1 — Τρέχον");
+    expect((await selector.boundingBox())!.y).toBeLessThan(
+      (await page.getByRole("heading", { name: "Ρυθμίσεις ανάλυσης" }).boundingBox())!.y,
+    );
+    await selector.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByRole("option")).toHaveCount(2);
+    await page.getByRole("option", { name: "Version 2 — Πειραματικό" }).click();
+    if (depth === "advanced")
+      await page.getByRole("radio", { name: "Advanced", exact: true }).check();
+    await page.getByRole("combobox", { name: "Μοντέλο AI" }).selectOption("offline-model");
+    let message = "";
+    page.once("dialog", async (dialog) => {
+      message = dialog.message();
+      await dialog.accept();
+    });
+    await page.getByRole("button", { name: "Όλων (1)", exact: true }).click();
+    await expect.poll(() => state.requests.length).toBe(1);
+    await expect(selector).toBeDisabled();
+    await expect(page.getByRole("radio", { name: "Basic", exact: true })).toBeDisabled();
+    expect(message).toContain("Version 2 — Πειραματικό");
+    expect(message).toContain(depth === "basic" ? "Basic" : "Advanced");
+    expect(message).toContain("2 αναζητήσεις");
+    expect(message).toContain("10 αποτελέσματα");
+    expect(message).toContain(`${depth === "basic" ? 2 : 4} credits`);
+    const payload = fromJSON(state.requests[0] as Parameters<typeof fromJSON>[0]) as {
+      data: Record<string, unknown>;
+    };
+    expect(payload.data).toMatchObject({
+      searchProfileVersion: "v2_experimental",
+      tavilySearchDepth: depth,
+      approvePaidRequest: true,
+      researchConsentVersion: "football-search-v2-consent-1",
+      researchConsent: {
+        searchProfileVersion: "v2_experimental",
+        depth,
+        modelId: "offline-model",
+        fixtureId: "999",
+        searchCalls: 2,
+        resultsPerSearch: 10,
+      },
+    });
+    state.releaseResearch();
+    await expect(selector).toBeEnabled();
+    expect(state.paid()).toBe(1);
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    }
+    const violations = (await new AxeBuilder({ page }).include("#football-predictions").analyze())
+      .violations;
+    expect(violations).toEqual([]);
+    await page.screenshot({
+      path: test.info().outputPath(`profiles-${depth}.png`),
+      fullPage: true,
+    });
+  });
+for (const profile of ["v1_current", "v2_experimental"] as const)
+  test(`saved ${profile} renders/exports without changing current default or dispatch`, async ({
+    page,
+  }) => {
+    const state = await fixture(
+      page,
+      true,
+      true,
+      "matched",
+      "el",
+      { home: "Arsenal", away: "Liverpool" },
+      1,
+      false,
+      false,
+      false,
+      "combo",
+      false,
+      profile,
+    );
+    await page.getByRole("button", { name: /^Άρσεναλ – Λίβερπουλ/ }).click();
+    await expect(
+      page.getByText(FOOTBALL_SEARCH_PROFILES[profile].label, { exact: true }).last(),
+    ).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Προφίλ αναζήτησης" })).toContainText(
+      "Version 1 — Τρέχον",
+    );
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Εξαγωγή", exact: true }).click();
+    const download = await downloadPromise;
+    const path = await download.path();
+    expect(path).not.toBeNull();
+    const exported = JSON.parse(await readFile(path!, "utf8"));
+    expect(exported.analyses[0].analysis.searchProfileVersion).toBe(profile);
+    expect(state.paid()).toBe(0);
+    expect(state.reads()).toBe(0);
+  });
+test("unauthorized users never see or execute the profile selector", async ({ page }) => {
+  const state = await fixture(page, false);
+  await expect(page.getByRole("combobox", { name: "Προφίλ αναζήτησης" })).toHaveCount(0);
   expect(state.paid()).toBe(0);
 });

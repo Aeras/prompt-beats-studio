@@ -1,8 +1,7 @@
 import { getRequest } from "@tanstack/react-start/server";
-import { planFootballForecasts } from "./football-forecast-planner.shared";
+import { planFootballSearchProfile } from "./football-forecast-planner.shared";
 import {
   footballResearchBudget,
-  FOOTBALL_CONSENT_VERSION,
   FOOTBALL_MAX_PROMPT_BYTES,
   FOOTBALL_MODEL_OUTPUT_TOKENS,
   FOOTBALL_RUN_TIMEOUT_MS,
@@ -39,7 +38,7 @@ import {
   type FootballAiDiscoveryLeagueId,
 } from "@/lib/football-research.shared";
 import {
-  FOOTBALL_COMPLETE_RESEARCH_SYSTEM as FOOTBALL_RESEARCH_SYSTEM,
+  footballResearchSystemForProfile,
   footballAiAssessmentSchema,
   footballResearchEvidenceSnapshotSchema,
   footballAnalysisRequestSchema,
@@ -60,8 +59,10 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => footballAnalysisRequestSchema.parse(input))
   .handler(async ({ data, context }) => {
     await requireFootballSuperAdmin(context.supabase);
-    if (data.researchConsentVersion !== FOOTBALL_CONSENT_VERSION)
+    if (!data.researchConsentVersion)
       throw new Error("Refresh and confirm the five-search research profile before starting.");
+    data = footballAnalysisRequestSchema.parse(data);
+    const FOOTBALL_RESEARCH_SYSTEM = footballResearchSystemForProfile(data.searchProfileVersion);
     if (process.env["PROMPTBEATS_AI_DISPATCH_DISABLED"] === "true") {
       throw new Error("AI analysis is disabled by the operator.");
     }
@@ -177,7 +178,17 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     const researchAudit: {
       budget: ReturnType<typeof footballResearchBudget> | null;
       searches: FootballSearchReceipt[];
-    } = { budget: null, searches: [] };
+      searchProfileVersion?: typeof data.searchProfileVersion;
+      sourceSummary?: {
+        retainedDocs: number;
+        legacyProjectionOmitted: number;
+        duplicateOrigins: number;
+        countablePicks: number;
+        provisionalPicks: number;
+        rejectedPicks: number;
+        reasons: Record<string, number>;
+      };
+    } = { budget: null, searches: [], searchProfileVersion: data.searchProfileVersion };
     const usageSnapshot = () => ({ ...observedUsage, research: researchAudit });
     const journalSearch = async () => {
       const { data: journaled, error } = await supabaseAdmin
@@ -206,12 +217,13 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           awayTeam: fixture.awayTeam,
           kickoffUtc: fixture.kickoffUtc,
         };
-        const plan = planFootballForecasts(identity, "P1-Preserve");
+        const plan = planFootballSearchProfile(identity, data.searchProfileVersion);
         const { getMusicInspirationPrices } =
           await import("@/lib/music-inspiration-research.server");
         researchAudit.budget = footballResearchBudget(
           data.tavilySearchDepth,
           await getMusicInspirationPrices(resolved.model, "openrouter"),
+          data.searchProfileVersion,
         );
         await journalSearch();
         const [providerEvidence, bookmakerOddsSnapshot] = await Promise.all([
@@ -239,6 +251,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             state: "unconfirmed",
             credits: null,
             requestId: null,
+            crossQueryDuplicates: 0,
           };
           researchAudit.searches.push(searchReceipt);
           await journalSearch();
@@ -250,18 +263,30 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             data.tavilySearchDepth,
             {
               includePublicationMetadata: true,
-              football: { textChars: 24000, maxResults: 5, format: "text" },
+              football: {
+                textChars: 24000,
+                maxResults: plan.resultsPerSearch as 5 | 10,
+                format: "text",
+              },
             },
           );
           searchReceipt.state = "observed";
           searchReceipt.credits = result.credits;
           searchReceipt.requestId = result.requestId;
-          searchReceipt.returnedSources = result.documents
-            .slice(0, 5)
-            .map((doc) => ({ url: doc.source.url, title: doc.source.title.slice(0, 180) }));
-          await journalSearch();
-          for (const doc of result.documents.slice(0, 5)) {
-            if (sources.some((existing) => existing.url === doc.source.url)) continue;
+          searchReceipt.returnedSources =
+            result.footballAudit?.discoveredSources.slice(0, plan.resultsPerSearch) ??
+            result.documents
+              .slice(0, plan.resultsPerSearch)
+              .map((doc) => ({ url: doc.source.url, title: doc.source.title.slice(0, 180) }));
+          if (result.footballAudit) {
+            const { discoveredSources: _, ...counts } = result.footballAudit;
+            searchReceipt.retrieval = counts;
+          }
+          for (const doc of result.documents.slice(0, plan.resultsPerSearch)) {
+            if (sources.some((existing) => existing.url === doc.source.url)) {
+              searchReceipt.crossQueryDuplicates!++;
+              continue;
+            }
             fullEvidence.push({
               title: doc.source.title,
               url: doc.source.url,
@@ -280,11 +305,16 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
               researchIntent: queryPlan.intent,
             });
           }
+          await journalSearch();
         }
         const evidenceSnapshot = buildFootballSourceSnapshot([
           ...sources.filter((s) => s.researchIntent === "match_facts"),
           ...sources.filter((s) => s.researchIntent === "external_forecasts"),
         ]);
+        const savedSourceSnapshot =
+          data.searchProfileVersion === "v2_experimental"
+            ? buildFootballSourceSnapshot(sources, 20)
+            : evidenceSnapshot;
         if (!evidenceSnapshot.length)
           throw new Error("No independently retrieved match sources were available.");
         if (Date.now() >= Date.parse(fixture.kickoffUtc)) {
@@ -296,8 +326,26 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           fullEvidence,
           evidenceCutoff,
           queries,
-          "P1-Preserve",
+          plan.ledgerProfile,
+          data.searchProfileVersion,
         );
+        const reasons: Record<string, number> = {};
+        for (const c of onlineEvidenceV2.claims)
+          for (const reason of c.reasons) reasons[reason] = (reasons[reason] ?? 0) + 1;
+        researchAudit.sourceSummary = {
+          retainedDocs: fullEvidence.length,
+          legacyProjectionOmitted: Math.max(0, fullEvidence.length - evidenceSnapshot.length),
+          duplicateOrigins: onlineEvidenceV2.sources.filter((s) => s.originStatus === "copy")
+            .length,
+          countablePicks: onlineEvidenceV2.claims.filter((c) => c.countable).length,
+          provisionalPicks: onlineEvidenceV2.claims.filter(
+            (c) => !c.countable && c.trace.status !== "rejected",
+          ).length,
+          rejectedPicks: onlineEvidenceV2.claims.filter((c) => c.trace.status === "rejected")
+            .length,
+          reasons,
+        };
+        await journalSearch();
         const predictionReferences = extractFootballPredictionReferences(
           identity,
           evidenceSnapshot,
@@ -323,6 +371,15 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             away: fixture.awayTeam,
             kickoffUtc: fixture.kickoffUtc,
           },
+          ...(data.searchProfileVersion === "v2_experimental"
+            ? {
+                searchProfileVersion: data.searchProfileVersion,
+                performedSearches: plan.queries.map((q) => ({
+                  language: q.language,
+                  intent: q.intent,
+                })),
+              }
+            : {}),
           providerEvidence,
           bookmakerOddsSnapshot,
           usableBookmakerOddsSnapshot: usableOdds(bookmakerOddsSnapshot, evidenceCutoff),
@@ -408,6 +465,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         delete wireAssessment["onlinePredictions"];
         delete wireAssessment["onlineJudgment"];
         delete wireAssessment["independentAssessment"];
+        delete wireAssessment["searchProfileVersion"];
         failureCode = "invalid_ai_schema";
         const validated = footballAiAssessmentSchema.safeParse(
           raw && typeof raw === "object" && !Array.isArray(raw)
@@ -439,7 +497,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           failureCode = "inconsistent_market_probabilities";
           throw new Error("AI market probabilities are inconsistent.");
         }
-        const savedSources = evidenceSnapshot;
+        const savedSources = savedSourceSnapshot;
         const researchBrief = footballResearchEvidenceSnapshotSchema.parse({
           collectedAtUtc: evidenceCutoff,
           matchFacts: evidenceSnapshot.filter((x) => x.researchIntent === "match_facts"),
@@ -462,6 +520,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           providerEvidence,
           bookmakerOddsSnapshot,
           tavilySearchDepth: data.tavilySearchDepth,
+          searchProfileVersion: data.searchProfileVersion,
         });
         const persisted = packFootballEvidenceV2(savedAnalysis, savedSources);
         failureCode = "persistence_failed";
@@ -660,7 +719,14 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         analysis: checked.success
           ? {
               ...checked.data,
-              ...(historyEvidenceV2 ? { onlineEvidenceV2: historyEvidenceV2 } : {}),
+              ...(historyEvidenceV2
+                ? {
+                    onlineEvidenceV2: historyEvidenceV2,
+                    ...(historyEvidenceV2.searchProfileVersion
+                      ? { searchProfileVersion: historyEvidenceV2.searchProfileVersion }
+                      : {}),
+                  }
+                : {}),
             }
           : null,
         sources: Array.isArray(row.sources)

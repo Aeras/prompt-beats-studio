@@ -14,11 +14,12 @@ export type FootballSourceSnapshot = {
 };
 export function buildFootballSourceSnapshot(
   documents: ReadonlyArray<FootballSourceSnapshot>,
+  maxSources: 18 | 20 = 18,
 ): FootballSourceSnapshot[] {
   const results: FootballSourceSnapshot[] = [];
   const seen = new Set<string>();
   for (const doc of documents) {
-    if (results.length >= 18) break;
+    if (results.length >= maxSources) break;
     try {
       const parsed = new URL(doc.url);
       if (parsed.protocol !== "https:" || parsed.username || parsed.password) continue;

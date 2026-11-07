@@ -1,3 +1,8 @@
+import {
+  footballSearchProfileSchema,
+  footballProfileConsentSchema,
+  FOOTBALL_SEARCH_PROFILES,
+} from "./football-search-profiles.shared";
 import { FOOTBALL_CONSENT_VERSION } from "./football-research-budget.shared";
 import {
   claimLedgerSchema,
@@ -84,6 +89,7 @@ export const footballAiAssessmentSchema = z
     providerEvidence: footballProviderEvidenceSchema.optional(),
     /** Server-attached metadata for transparent Basic/Advanced comparisons. */
     tavilySearchDepth: z.enum(["basic", "advanced"]).optional(),
+    searchProfileVersion: footballSearchProfileSchema.optional(),
     matchContext: footballResearchContextSchema.optional(),
     researchBrief: footballResearchEvidenceSnapshotSchema.optional(),
     estimates: z
@@ -156,23 +162,53 @@ export const footballAiAssessmentSchema = z
   })
   .strict();
 
-export const footballAnalysisRequestSchema = z.object({
-  fixtureProvider: z
-    .enum(["football-data", "api-football", "espn", "ai-search"])
-    .default("football-data"),
-  /** Legacy sources accept the six legacy leagues only (checked in the handler). */
-  leagueId: z.enum(FOOTBALL_AI_LEAGUE_IDS),
-  weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  fixtureId: z.string().regex(/^\d{1,12}$/),
-  requestKey: z.string().uuid(),
-  modelId: z.string().trim().min(1).max(240),
-  withTavily: z.boolean().default(false),
-  /** User-selected Tavily depth for the three football source searches. */
-  tavilySearchDepth: z.enum(["basic", "advanced"]).default("basic"),
-  /** Explicit user consent for this single potentially billable execution. */
-  approvePaidRequest: z.literal(true),
-  researchConsentVersion: z.literal(FOOTBALL_CONSENT_VERSION),
-});
+export const footballAnalysisRequestSchema = z
+  .object({
+    fixtureProvider: z
+      .enum(["football-data", "api-football", "espn", "ai-search"])
+      .default("football-data"),
+    /** Legacy sources accept the six legacy leagues only (checked in the handler). */
+    leagueId: z.enum(FOOTBALL_AI_LEAGUE_IDS),
+    weekDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    fixtureId: z.string().regex(/^\d{1,12}$/),
+    requestKey: z.string().uuid(),
+    modelId: z.string().trim().min(1).max(240),
+    withTavily: z.boolean().default(false),
+    /** User-selected Tavily depth; the server profile determines the search count. */
+    tavilySearchDepth: z.enum(["basic", "advanced"]).default("basic"),
+    /** Explicit user consent for this single potentially billable execution. */
+    approvePaidRequest: z.literal(true),
+    searchProfileVersion: footballSearchProfileSchema.default("v1_current"),
+    researchConsentVersion: z.enum([
+      FOOTBALL_CONSENT_VERSION,
+      "football-search-v1-consent-1",
+      "football-search-v2-consent-1",
+    ]),
+    researchConsent: footballProfileConsentSchema.optional(),
+  })
+  .superRefine((v, c) => {
+    const p = FOOTBALL_SEARCH_PROFILES[v.searchProfileVersion],
+      s = v.researchConsent;
+    const legacy =
+      v.searchProfileVersion === "v1_current" &&
+      v.researchConsentVersion === FOOTBALL_CONSENT_VERSION &&
+      !s;
+    if (legacy) return;
+    if (
+      v.researchConsentVersion !== p.consentVersion ||
+      !s ||
+      s.searchProfileVersion !== v.searchProfileVersion ||
+      s.depth !== v.tavilySearchDepth ||
+      s.modelId !== v.modelId ||
+      s.fixtureId !== v.fixtureId ||
+      s.searchCalls !== p.searchCalls ||
+      s.resultsPerSearch !== p.resultsPerSearch
+    )
+      c.addIssue({
+        code: "custom",
+        message: "Refresh and confirm the selected search profile and depth.",
+      });
+  });
 
 export const FOOTBALL_RESEARCH_SYSTEM =
   FOOTBALL_BASE_ANALYST_V2_RULES +
@@ -236,4 +272,12 @@ export function validateFootballMarketProbabilities(
     if (a !== undefined && b !== undefined && a + b !== 100) failures.push(`complement_${yes}`);
   }
   return failures;
+}
+
+export function footballResearchSystemForProfile(version: "v1_current" | "v2_experimental") {
+  if (version === "v1_current") return FOOTBALL_COMPLETE_RESEARCH_SYSTEM;
+  return FOOTBALL_COMPLETE_RESEARCH_SYSTEM.replace(
+    "Evidence should be gathered through independent English, Russian and relevant league-native-language searches; account for conflicting sources and translate conclusions into natural Greek.",
+    "This run uses exactly two forecast-only Tavily searches, English and Russian. No Greek/league-native, web-statistics or web-news search was performed. Structured provider facts/odds remain available only as actually supplied; explicitly report missing xG, injuries, lineups and other gaps. Account for conflicting sources and translate conclusions into natural Greek.",
+  );
 }

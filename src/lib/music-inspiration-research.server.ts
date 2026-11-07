@@ -169,12 +169,23 @@ export async function searchInspirationWeb(
   searchDepth: "basic" | "advanced" = "basic",
   options: {
     includePublicationMetadata?: boolean;
-    football?: { textChars?: number; format?: "text" | "markdown"; maxResults?: 3 | 5 | 7 };
+    football?: { textChars?: number; format?: "text" | "markdown"; maxResults?: 3 | 5 | 7 | 10 };
   } = {},
 ): Promise<{
   documents: RetrievedInspirationDocument[];
   credits: number | null;
   requestId: string | null;
+  footballAudit?: {
+    requestedResults: number;
+    receivedResults: number;
+    acceptedRawDocs: number;
+    droppedMissingRaw: number;
+    droppedUnsafeUrl: number;
+    droppedDuplicateUrl: number;
+    droppedExcess: number;
+    truncatedDocs: number;
+    discoveredSources: { url: string; title: string }[];
+  };
 }> {
   if (!apiKey?.trim())
     throw new InspirationFailure(
@@ -187,7 +198,7 @@ export async function searchInspirationWeb(
     (!Number.isInteger(football.textChars ?? 24000) ||
       (football.textChars ?? 24000) < 4000 ||
       (football.textChars ?? 24000) > 24000 ||
-      ![3, 5, 7].includes(football.maxResults ?? 3) ||
+      ![3, 5, 7, 10].includes(football.maxResults ?? 3) ||
       !["text", "markdown"].includes(football.format ?? "text"))
   )
     throw new Error("invalid_football_retrieval_options");
@@ -229,21 +240,48 @@ export async function searchInspirationWeb(
   const parsed = checked.data;
   const seen = new Set<string>();
   const documents: RetrievedInspirationDocument[] = [];
-  for (const result of parsed.results) {
+  const audit = {
+    requestedResults: football?.maxResults ?? 3,
+    receivedResults: parsed.results.length,
+    acceptedRawDocs: 0,
+    droppedMissingRaw: 0,
+    droppedUnsafeUrl: 0,
+    droppedDuplicateUrl: 0,
+    droppedExcess: 0,
+    truncatedDocs: 0,
+    discoveredSources: [] as { url: string; title: string }[],
+  };
+  const candidates = football?.maxResults === 10 ? parsed.results.slice(0, 10) : parsed.results;
+  audit.droppedExcess = parsed.results.length - candidates.length;
+  for (const result of candidates) {
     let url: string;
     try {
       url = publicInspirationUrl(result.url);
     } catch {
+      audit.droppedUnsafeUrl++;
       continue;
     }
     // A snippet is discovery only, never a substitute for retrieved source text.
-    if (!result.raw_content?.trim() || seen.has(url)) continue;
+    audit.discoveredSources.push({ url, title: result.title.slice(0, 180) });
+    if (!result.raw_content?.trim()) {
+      audit.droppedMissingRaw++;
+      continue;
+    }
+    if (seen.has(url)) {
+      audit.droppedDuplicateUrl++;
+      continue;
+    }
     seen.add(url);
     const cleaned = result.raw_content
       .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<[^>]+>/g, " ");
     const text = cleaned.slice(0, football?.textChars ?? (football ? 24000 : 4000));
-    if (!text.trim()) continue;
+    if (!text.trim()) {
+      audit.droppedMissingRaw++;
+      continue;
+    }
+    audit.acceptedRawDocs++;
+    if (cleaned.length > text.length) audit.truncatedDocs++;
     const id = "web-" + createHash("sha256").update(url).digest("hex").slice(0, 20);
     const accessedAt = new Date().toISOString();
     const contentSha256 = createHash("sha256").update(text).digest("hex");
@@ -294,6 +332,7 @@ export async function searchInspirationWeb(
     documents,
     credits: parsed.usage?.credits ?? null,
     requestId: parsed.request_id ?? null,
+    ...(football ? { footballAudit: audit } : {}),
   };
 }
 /** Prices are administrator-owned estimates, never admission or freshness requirements. */
