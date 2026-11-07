@@ -1,4 +1,4 @@
-import { fullEvidenceSchema } from "./football-full-evidence.shared";
+import { fullEvidenceViewSchema } from "./football-full-evidence.shared";
 import {
   footballSearchProfileSchema,
   footballProfileConsentSchema,
@@ -91,7 +91,7 @@ export const footballAiAssessmentSchema = z
     /** Server-attached metadata for transparent Basic/Advanced comparisons. */
     tavilySearchDepth: z.enum(["basic", "advanced"]).optional(),
     searchProfileVersion: footballSearchProfileSchema.optional(),
-    fullEvidenceV2: fullEvidenceSchema.optional(),
+    fullEvidenceV2: fullEvidenceViewSchema.optional(),
     matchContext: footballResearchContextSchema.optional(),
     researchBrief: footballResearchEvidenceSnapshotSchema.optional(),
     estimates: z

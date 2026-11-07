@@ -1,3 +1,4 @@
+import { createRestorationPolicy } from "./football-independent-restoration.server";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { ModelCaller, ModelResult } from "./ai-provider.server";
@@ -175,6 +176,8 @@ export function fullCoveragePlan(
   system: string,
   context: unknown,
   capacity: { context: number | null; output: number | null },
+  readingRules = FULL_READING_RULES,
+  extractionRules = EXTRACTION_SYSTEM,
 ) {
   if (
     !Number.isSafeInteger(capacity.context) ||
@@ -203,12 +206,12 @@ export function fullCoveragePlan(
         })),
     };
   const prompt = JSON.stringify(base);
-  if (utf8Bytes(system + FULL_READING_RULES + prompt) <= limit)
+  if (utf8Bytes(system + readingRules + prompt) <= limit)
     return { mode: "single_full_text" as const, prompt, limit };
   if (
     utf8Bytes(
       system +
-        FULL_READING_RULES +
+        readingRules +
         JSON.stringify({ context, sources: docs.map((d) => d.manifest), validatedCandidates: [] }),
     ) > limit
   )
@@ -217,7 +220,7 @@ export function fullCoveragePlan(
   let group: Chunk[] = [];
   const fits = (v: Chunk[]) =>
     utf8Bytes(
-      EXTRACTION_SYSTEM + extractionPrompt(v, docs, (context as { fixture?: unknown }).fixture),
+      extractionRules + extractionPrompt(v, docs, (context as { fixture?: unknown }).fixture),
     ) <= limit;
   for (const d of docs.filter((d) => d.text))
     for (let start = 0; start < d.text.length;) {
@@ -257,7 +260,21 @@ export function fullCoveragePlan(
   if (groups.length > 4) return { reason: "capacity_exceeded" as const };
   return { mode: "staged_extraction" as const, groups, limit };
 }
+export type FullEvidencePolicy = {
+  readingRules: string;
+  candidateSchema?: z.ZodType<{ sourceId: string; quote: string }>;
+  prepareDocs?: (docs: ReturnType<typeof makeFullSources>) => void;
+  verify: typeof verifyFullCandidates;
+  synthesisData?: () => unknown;
+  judge: (
+    raw: unknown,
+    docs: ReturnType<typeof makeFullSources>,
+    report: FullEvidenceReport,
+  ) => import("zod").infer<typeof fullJudgmentSchema>;
+};
 export type FullEvidenceRunInput = {
+  policy?: FullEvidencePolicy;
+  restoration?: boolean;
   fixture: OddsTarget;
   cutoff: string;
   runId: string;
@@ -279,7 +296,25 @@ export class FullCoverageError extends Error {
 export async function runFullFootballEvidence(
   input: FullEvidenceRunInput,
 ): Promise<{ receipt: ModelResult; report: FullEvidenceReport }> {
+  if (input.restoration) {
+    const { policy, decorate } = createRestorationPolicy(input);
+    try {
+      const result = await runFullFootballEvidence({
+        ...input,
+        restoration: false,
+        policy,
+        journal: (r) => input.journal(decorate(r)),
+      });
+      return { ...result, report: decorate(result.report) };
+    } catch (e) {
+      if (e instanceof FullCoverageError) throw new FullCoverageError(decorate(e.report));
+      throw e;
+    }
+  }
   const docs = makeFullSources(input.hits);
+  input.policy?.prepareDocs?.(docs);
+  const readingRules = input.policy?.readingRules ?? FULL_READING_RULES;
+  const verify = input.policy?.verify ?? verifyFullCandidates;
   const report: FullEvidenceReport = {
     version: 1,
     fixture: input.fixture,
@@ -329,7 +364,16 @@ export async function runFullFootballEvidence(
     await checkpoint();
     throw new FullCoverageError(report);
   };
-  const plan = fullCoveragePlan(docs, input.system, input.context, input.capacity);
+  const plan = fullCoveragePlan(
+    docs,
+    input.system,
+    input.context,
+    input.capacity,
+    readingRules,
+    input.policy
+      ? readingRules + " Return only {evidenceCandidates:[...]} for these chunks."
+      : EXTRACTION_SYSTEM,
+  );
   await checkpoint();
   if ("reason" in plan) return await fail(plan.reason);
   report.mode = plan.mode;
@@ -423,7 +467,7 @@ export async function runFullFootballEvidence(
   if (plan.mode === "single_full_text")
     final = await call(
       "read_and_synthesize",
-      input.system + "\n" + FULL_READING_RULES,
+      input.system + "\n" + readingRules,
       plan.prompt,
       docs
         .filter((d) => d.text)
@@ -434,11 +478,16 @@ export async function runFullFootballEvidence(
     for (const group of plan.groups) {
       const r = await call(
         "extract",
-        EXTRACTION_SYSTEM,
+        input.policy
+          ? readingRules + " Return only {evidenceCandidates:[...]} for these chunks."
+          : EXTRACTION_SYSTEM,
         extractionPrompt(group, docs, input.fixture),
         group,
       );
-      const c = z.array(fullCandidateSchema).max(80).safeParse(r.raw["evidenceCandidates"]);
+      const c = z
+        .array(input.policy?.candidateSchema ?? fullCandidateSchema)
+        .max(80)
+        .safeParse(r.raw["evidenceCandidates"]);
       if (!c.success) return await fail("invalid_extraction");
       for (const v of c.data) {
         const d = docs.find((d) => d.id === v.sourceId);
@@ -448,19 +497,24 @@ export async function runFullFootballEvidence(
       }
     }
     if (candidates.length > 80) return await fail("invalid_extraction");
-    report.candidates = verifyFullCandidates(candidates, docs, input.fixture, input.cutoff);
+    try {
+      report.candidates = verify(candidates, docs, input.fixture, input.cutoff);
+    } catch {
+      return await fail("invalid_extraction");
+    }
     await checkpoint();
     const prompt = JSON.stringify({
       context: input.context,
       readingMode: "staged_validated_extraction_not_raw",
       sources: report.sources,
       validatedCandidates: report.candidates,
+      ...(input.policy?.synthesisData ? { restoredEvidence: input.policy.synthesisData() } : {}),
     });
     final = await call(
       "synthesize",
       input.system +
         "\n" +
-        FULL_READING_RULES +
+        readingRules +
         " All source chunks were examined in prior stages. Return the main assessment and independentAssessment; do not replace server validated candidates.",
       prompt,
       [],
@@ -468,7 +522,7 @@ export async function runFullFootballEvidence(
   }
   if (plan.mode === "single_full_text") {
     try {
-      report.candidates = verifyFullCandidates(
+      report.candidates = verify(
         final.raw["evidenceCandidates"],
         docs,
         input.fixture,
@@ -478,50 +532,63 @@ export async function runFullFootballEvidence(
       return await fail("invalid_extraction");
     }
   }
-  const judgment = fullJudgmentSchema.safeParse(final.raw["independentAssessment"]);
-  if (!judgment.success) return await fail("invalid_judgment");
-  const j = judgment.data;
-  const allowed = new Set([
-    ...docs
-      .filter(
-        (d) =>
-          d.url &&
-          d.text &&
-          Date.parse(d.accessedAt) <= Date.parse(input.cutoff) &&
-          (!d.publishedAtUtc || Date.parse(d.publishedAtUtc) <= Date.parse(input.cutoff)) &&
-          traceFootballFixture(d.text, input.fixture, input.cutoff, {
-            searchProfileVersion: "v2_experimental",
-          }).status === "verified",
-      )
-      .map((d) => d.url!),
-    ...input.providerUrls,
-  ]);
-  if (
-    j.evidenceUrls.some((u) => !allowed.has(u)) ||
-    j.supportingClaimIds.length ||
-    /guaranteed|sure bet|\+ev|%|εγγυημέν|гарантир/iu.test(j.rationale + (j.jointRationale ?? "")) ||
-    (j.selection && j.selection.kind !== "other" && !coherentDescriptiveSelection(j.selection))
-  )
-    return await fail("invalid_judgment");
-  if (
-    j.selection?.kind === "and" &&
-    (!j.jointRationale ||
-      !j.evidenceUrls.some((u) => input.providerUrls.includes(u)) ||
-      !report.candidates.some(
-        (c) =>
-          c.eligibleForConsensus &&
-          descriptiveMarketKey(c.market) === descriptiveMarketKey(j.selection!) &&
-          j.evidenceUrls.includes(docs.find((d) => d.id === c.sourceId)?.url ?? ""),
-      ))
-  )
-    return await fail("invalid_judgment");
-  if (
-    report.candidates.some((c) => c.kind === "editorial" && c.quoteVerified && c.fixtureVerified) &&
-    /no (?:published )?(?:predictions?|picks?)|δεν (?:βρέθηκε|βρέθηκαν|υπάρχει|υπάρχουν).{0,35}(?:πρόβλεψη|προβλέψεις|προγνωστικ)/iu.test(
-      j.rationale,
+  let j: import("zod").infer<typeof fullJudgmentSchema>;
+  if (input.policy) {
+    try {
+      j = input.policy.judge(final.raw["independentAssessment"], docs, report);
+    } catch {
+      return await fail("invalid_judgment");
+    }
+  } else {
+    const judgment = fullJudgmentSchema.safeParse(final.raw["independentAssessment"]);
+    if (!judgment.success) return await fail("invalid_judgment");
+    j = judgment.data;
+    const allowed = new Set([
+      ...docs
+        .filter(
+          (d) =>
+            d.url &&
+            d.text &&
+            Date.parse(d.accessedAt) <= Date.parse(input.cutoff) &&
+            (!d.publishedAtUtc || Date.parse(d.publishedAtUtc) <= Date.parse(input.cutoff)) &&
+            traceFootballFixture(d.text, input.fixture, input.cutoff, {
+              searchProfileVersion: "v2_experimental",
+            }).status === "verified",
+        )
+        .map((d) => d.url!),
+      ...input.providerUrls,
+    ]);
+    if (
+      j.evidenceUrls.some((u) => !allowed.has(u)) ||
+      j.supportingClaimIds.length ||
+      /guaranteed|sure bet|\+ev|%|εγγυημέν|гарантир/iu.test(
+        j.rationale + (j.jointRationale ?? ""),
+      ) ||
+      (j.selection && j.selection.kind !== "other" && !coherentDescriptiveSelection(j.selection))
     )
-  )
-    return await fail("invalid_judgment");
+      return await fail("invalid_judgment");
+    if (
+      j.selection?.kind === "and" &&
+      (!j.jointRationale ||
+        !j.evidenceUrls.some((u) => input.providerUrls.includes(u)) ||
+        !report.candidates.some(
+          (c) =>
+            c.eligibleForConsensus &&
+            descriptiveMarketKey(c.market) === descriptiveMarketKey(j.selection!) &&
+            j.evidenceUrls.includes(docs.find((d) => d.id === c.sourceId)?.url ?? ""),
+        ))
+    )
+      return await fail("invalid_judgment");
+    if (
+      report.candidates.some(
+        (c) => c.kind === "editorial" && c.quoteVerified && c.fixtureVerified,
+      ) &&
+      /no (?:published )?(?:predictions?|picks?)|δεν (?:βρέθηκε|βρέθηκαν|υπάρχει|υπάρχουν).{0,35}(?:πρόβλεψη|προβλέψεις|προγνωστικ)/iu.test(
+        j.rationale,
+      )
+    )
+      return await fail("invalid_judgment");
+  }
   const citedDocs = docs.filter((d) => d.url && d.text && j.evidenceUrls.includes(d.url));
   for (const url of new Set(citedDocs.map((d) => d.url))) {
     const versions = citedDocs.filter((d) => d.url === url);

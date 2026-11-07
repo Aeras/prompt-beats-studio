@@ -419,12 +419,34 @@ for (const [iteration, mode] of (
                 1,
               );
               expect(prompt.context.providerEvidence.providers[0].home.injuries).toHaveLength(1);
-              expect(input.system).toContain("Read every supplied source text");
+              expect(input.system).toContain("Read every supplied article");
+              expect(input.system).toContain("Use EXACT market ASTs");
               return {
                 text: JSON.stringify({
                   ...raw,
-                  evidenceCandidates: [],
-                  independentAssessment: { ...raw.independentAssessment, supportingClaimIds: [] },
+                  evidenceCandidates: prompt.readingMode
+                    ? []
+                    : prompt.sources
+                        .filter((s: { text: string }) => s.text.includes("Our pick: Over 2.5"))
+                        .map((s: { sourceId: string }) => ({
+                          sourceId: s.sourceId,
+                          quote: "Our pick: Over 2.5",
+                          market: { kind: "other", label: "goals prediction" },
+                          kind: "editorial",
+                          rationale: "Literal synthetic source recommendation",
+                        })),
+                  independentAssessment: {
+                    decision: "lean",
+                    rationale:
+                      "Independent reading of supplied provider evidence and source uncertainty.",
+                    primary: {
+                      market: { kind: "total", period: "FT", selection: "over", line: 2.5 },
+                      rationale:
+                        "Form and the source-grounded goals selections support this qualitative lean.",
+                      risk: "Finishing variance may produce a low-scoring game.",
+                      evidenceUrls: [providerEvidence.providers[0]!.resources[0]!.url],
+                    },
+                  },
                 }),
                 usage,
                 stopReason: "end_turn",

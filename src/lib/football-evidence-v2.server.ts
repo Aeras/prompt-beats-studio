@@ -49,6 +49,7 @@ function sections(
   f: OddsTarget,
   cutoff: string,
   searchProfileVersion?: FootballSearchProfileVersion,
+  allowGenericPreview = false,
 ) {
   const headers = [...text.matchAll(/^#{1,4}\s+.+$/gm)].map((m) => m.index!);
   const starts = [...new Set([0, ...headers])].sort((a, b) => a - b);
@@ -66,9 +67,10 @@ function sections(
     }
     const metadata = body.slice(0, Math.min(boundary, 2000));
     const eligible =
-      /(?:prediction and betting tips|prediction, preview|match preview and expert tips|προγνωστικά αγώνα|прогноз на матч|прогноз и ставка на)/iu.test(
+      (/(?:prediction and betting tips|prediction, preview|match preview and expert tips|προγνωστικά αγώνα|прогноз на матч|прогноз и ставка на)/iu.test(
         metadata,
-      ) &&
+      ) ||
+        (allowGenericPreview && /prediction|preview|προγνωστικ|прогноз/iu.test(metadata))) &&
       traceFootballFixture(metadata, f, cutoff, { searchProfileVersion }).status === "verified";
     // H2H, related fixtures and navigation cannot lend their dates/picks to this article.
     const footer = eligible
@@ -349,3 +351,5 @@ export function buildFootballClaimLedger(
     ).size,
   });
 }
+
+export { sections as footballPredictionSections };

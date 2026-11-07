@@ -1,4 +1,9 @@
 import { z } from "zod";
+import { legacyMarket } from "./football-independent-markets.shared";
+import {
+  restorationSchema,
+  type FootballRestoration,
+} from "./football-independent-restoration.shared";
 import {
   descriptiveMarketSchema,
   independentAssessmentSchema,
@@ -251,7 +256,12 @@ export const validateFullReport = (r: z.infer<typeof fullEvidenceSchema>) => {
     return false;
   return true;
 };
-export type FullEvidenceReport = z.infer<typeof fullEvidenceSchema>;
+export type FullEvidenceReport = z.infer<typeof fullEvidenceSchema> & {
+  restoration?: FootballRestoration | undefined;
+};
+export const fullEvidenceViewSchema = fullEvidenceSchema.extend({
+  restoration: restorationSchema.optional(),
+});
 export type FullCandidate = z.infer<typeof validatedFullCandidateSchema>;
 export type FullSource = z.infer<typeof fullSourceSchema>;
 export const fullSidecarSchema = z
@@ -261,6 +271,39 @@ export const fullSidecarSchema = z
     payload: fullEvidenceSchema.refine(
       validateFullReport,
       "Invalid full-evidence provenance or counters",
+    ),
+  })
+  .strict();
+export const restoredSidecarSchema = z
+  .object({
+    kind: z.literal("football-full-evidence"),
+    version: z.literal(2),
+    payload: fullEvidenceViewSchema.refine(
+      (r) =>
+        validateFullReport(fullEvidenceSchema.parse((({ restoration: _, ...base }) => base)(r))) &&
+        !!r.restoration &&
+        r.restoration.candidates.length === r.candidates.length &&
+        r.restoration.candidates.every((c) => {
+          const base = r.candidates[c.id];
+          const source = r.sources.find((s) => s.id === c.sourceId);
+          return (
+            !!base &&
+            !!source &&
+            c.sourceDigest === source.digest &&
+            c.publisherFamily === source.publisherFamily &&
+            c.quote === base.quote &&
+            c.sourceId === base.sourceId &&
+            c.quoteVerified === base.quoteVerified &&
+            c.fixtureVerified === base.fixtureVerified &&
+            c.eligibleForConsensus === base.eligibleForConsensus &&
+            JSON.stringify(legacyMarket(c.market)) === JSON.stringify(base.market) &&
+            (!c.quoteVerified || c.quoteStartUtf16 >= 0)
+          );
+        }) &&
+        [r.restoration.assessment?.primary, r.restoration.assessment?.alternative]
+          .filter(Boolean)
+          .every((c) => c!.evidenceUrls.every((u) => r.judgment?.evidenceUrls.includes(u))),
+      "Invalid restored provenance",
     ),
   })
   .strict();
@@ -274,7 +317,7 @@ export function readFullEvidence(
     (x) => x && typeof x === "object" && x.kind === "football-full-evidence",
   );
   if (hits.length !== 1) return;
-  const p = fullSidecarSchema.safeParse(hits[0]);
+  const p = z.union([fullSidecarSchema, restoredSidecarSchema]).safeParse(hits[0]);
   const f = oddsTargetSchema.safeParse(fixture);
   if (!p.success || !f.success) return;
   const r = p.data.payload;
@@ -296,7 +339,13 @@ export function packFullEvidence(
     analysis: legacy,
     sources: [
       ...sources,
-      fullSidecarSchema.parse({ kind: "football-full-evidence", version: 1, payload: report }),
+      report.restoration
+        ? restoredSidecarSchema.parse({
+            kind: "football-full-evidence",
+            version: 2,
+            payload: report,
+          })
+        : fullSidecarSchema.parse({ kind: "football-full-evidence", version: 1, payload: report }),
     ],
   };
 }
