@@ -83,6 +83,7 @@ const EVIDENCE: Record<string, string> = {
 };
 const FAILURE_REASON: Record<string, string> = {
   ...FOOTBALL_V2_PLANNING_FAILURES,
+  incomplete_coverage: "Η κάλυψη των πηγών δεν ολοκληρώθηκε. Δες τα διαθέσιμα στοιχεία παρακάτω.",
   output_token_limit: "Η απάντηση της AI ξεπέρασε το διαθέσιμο όριο tokens.",
   incomplete_ai_output: "Η AI δεν ολοκλήρωσε την απάντησή της.",
   invalid_ai_json: "Η AI επέστρεψε μη έγκυρη μορφή JSON.",
@@ -797,6 +798,9 @@ function PrivateFootballResearchPage() {
                     </div>
                     {open && (
                       <div className="space-y-4 border-t border-white/10 p-4">
+                        {!entry.analysis && entry.fullEvidenceV2 && (
+                          <OnlinePredictionsPanel fullEvidence={entry.fullEvidenceV2} />
+                        )}
                         {entry.analysis ? (
                           <>
                             {entry.analysis.bookmakerOddsSnapshot && (
@@ -896,6 +900,7 @@ function PrivateFootballResearchPage() {
                               </details>
                             )}
                             <OnlinePredictionsPanel
+                              fullEvidence={entry.fullEvidenceV2 ?? entry.analysis.fullEvidenceV2}
                               data={entry.analysis.externalPredictionConsensus}
                               evidenceV2={entry.analysis.onlineEvidenceV2}
                               estimates={entry.analysis.estimates}

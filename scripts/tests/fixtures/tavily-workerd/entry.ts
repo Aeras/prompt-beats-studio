@@ -117,8 +117,22 @@ export default {
       }
       check(docs === 20 && credits === (depth === "basic" ? 2 : 4), "V2 counts/credits mismatch");
     }
+    const full = await searchInspirationWeb(
+      "football-full-content",
+      new AbortController().signal,
+      fetch,
+      "offline-fixture-key",
+      "basic",
+      { football: { maxResults: 10, fullEvidence: true } },
+    );
+    check(
+      full.documents[0]!.text.endsWith("Our pick: Over 2.5") &&
+        full.documents[0]!.text.length > 24000 &&
+        full.footballFullHits?.[1]?.status === "snippet_only",
+      "Full V2 transport lost raw tail or snippet",
+    );
     console.log(
-      "PASS: 23 real-adapter workerd cases; native fetch; all outbound requests bound to local fixture; zero external requests",
+      "PASS: 24 real-adapter workerd cases; native fetch; all outbound requests bound to local fixture; zero external requests",
     );
   },
 };

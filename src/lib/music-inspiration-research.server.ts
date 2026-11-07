@@ -1,3 +1,4 @@
+import type { FullEvidenceHit } from "./football-full-evidence.shared";
 import type { InspirationPlan } from "./music-inspiration-planner.shared";
 import { InspirationFailure, inspirationDiagnostic } from "./music-inspiration-diagnostics.shared";
 /** Real fixed-origin search/retrieval adapter. No live calls occur during tests. */
@@ -169,12 +170,18 @@ export async function searchInspirationWeb(
   searchDepth: "basic" | "advanced" = "basic",
   options: {
     includePublicationMetadata?: boolean;
-    football?: { textChars?: number; format?: "text" | "markdown"; maxResults?: 3 | 5 | 7 | 10 };
+    football?: {
+      textChars?: number;
+      format?: "text" | "markdown";
+      maxResults?: 3 | 5 | 7 | 10;
+      fullEvidence?: true;
+    };
   } = {},
 ): Promise<{
   documents: RetrievedInspirationDocument[];
   credits: number | null;
   requestId: string | null;
+  footballFullHits?: FullEvidenceHit[];
   footballAudit?: {
     requestedResults: number;
     receivedResults: number;
@@ -199,6 +206,7 @@ export async function searchInspirationWeb(
       (football.textChars ?? 24000) < 4000 ||
       (football.textChars ?? 24000) > 24000 ||
       ![3, 5, 7, 10].includes(football.maxResults ?? 3) ||
+      (football.fullEvidence && football.maxResults !== 10) ||
       !["text", "markdown"].includes(football.format ?? "text"))
   )
     throw new Error("invalid_football_retrieval_options");
@@ -251,9 +259,31 @@ export async function searchInspirationWeb(
     truncatedDocs: 0,
     discoveredSources: [] as { url: string; title: string }[],
   };
+  const fullHits: FullEvidenceHit[] = [];
   const candidates = football?.maxResults === 10 ? parsed.results.slice(0, 10) : parsed.results;
   audit.droppedExcess = parsed.results.length - candidates.length;
   for (const result of candidates) {
+    const accessed = new Date().toISOString();
+    const clean = (v: string) =>
+      v
+        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\r\n?/g, "\n")
+        .split(String.fromCharCode(0))
+        .join("");
+    const raw = clean(result.raw_content ?? ""),
+      snippet = clean(result.content ?? "");
+    const hit: FullEvidenceHit = {
+      url: null,
+      title: result.title.slice(0, 180),
+      accessedAt: accessed,
+      status: "invalid_or_unsafe_url",
+      text: "",
+      rawChars: result.raw_content?.length ?? 0,
+      cleanedChars: raw.length,
+      snippetChars: snippet.length,
+    };
+    if (football?.fullEvidence) fullHits.push(hit);
     let url: string;
     try {
       url = publicInspirationUrl(result.url);
@@ -261,6 +291,15 @@ export async function searchInspirationWeb(
       audit.droppedUnsafeUrl++;
       continue;
     }
+    hit.url = url;
+    hit.status = raw.trim() ? "full_or_partial_raw_text" : "snippet_only";
+    hit.text = raw.trim() ? raw : snippet;
+    if (
+      typeof result.published_date === "string" &&
+      /^\d{4}-\d{2}-\d{2}T/.test(result.published_date) &&
+      z.string().datetime({ offset: true }).safeParse(result.published_date).success
+    )
+      hit.publishedAtUtc = new Date(result.published_date).toISOString();
     // A snippet is discovery only, never a substitute for retrieved source text.
     audit.discoveredSources.push({ url, title: result.title.slice(0, 180) });
     if (!result.raw_content?.trim()) {
@@ -275,7 +314,9 @@ export async function searchInspirationWeb(
     const cleaned = result.raw_content
       .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<[^>]+>/g, " ");
-    const text = cleaned.slice(0, football?.textChars ?? (football ? 24000 : 4000));
+    const text = football?.fullEvidence
+      ? raw
+      : cleaned.slice(0, football?.textChars ?? (football ? 24000 : 4000));
     if (!text.trim()) {
       audit.droppedMissingRaw++;
       continue;
@@ -333,6 +374,7 @@ export async function searchInspirationWeb(
     credits: parsed.usage?.credits ?? null,
     requestId: parsed.request_id ?? null,
     ...(football ? { footballAudit: audit } : {}),
+    ...(football?.fullEvidence ? { footballFullHits: fullHits } : {}),
   };
 }
 /** Prices are administrator-owned estimates, never admission or freshness requirements. */

@@ -14,7 +14,7 @@ export const FOOTBALL_SEARCH_PROFILES = {
     searchCalls: 2,
     resultsPerSearch: 10,
     maxCandidates: 20,
-    consentVersion: "football-search-v2-consent-1",
+    consentVersion: "football-v2-full-evidence-1",
   },
 } as const;
 export const footballProfileConsentSchema = z
@@ -23,6 +23,8 @@ export const footballProfileConsentSchema = z
     depth: z.enum(["basic", "advanced"]),
     modelId: z.string().min(1).max(240),
     fixtureId: z.string().regex(/^\d{1,12}$/),
+    evidenceVersion: z.literal("full-v2-1").optional(),
+    maxModelCalls: z.literal(5).optional(),
     searchCalls: z.number().int(),
     resultsPerSearch: z.number().int(),
   })
@@ -41,6 +43,9 @@ export function footballProfileConsent(
     fixtureId,
     searchCalls: p.searchCalls,
     resultsPerSearch: p.resultsPerSearch,
+    ...(profile === "v2_experimental"
+      ? { evidenceVersion: "full-v2-1" as const, maxModelCalls: 5 as const }
+      : {}),
   };
 }
 

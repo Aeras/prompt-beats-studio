@@ -41,6 +41,18 @@ export default {
         })),
       });
     }
+    if (body.query === "football-full-content")
+      return Response.json({
+        usage: { credits: 1 },
+        results: [
+          {
+            title: "Long",
+            url: "https://example.org/long",
+            raw_content: "x".repeat(30000) + "Our pick: Over 2.5",
+          },
+          { title: "Snippet", url: "https://example.org/snippet", content: "Our pick: X2" },
+        ],
+      });
     if (body.query.startsWith("status-"))
       return new Response("sensitive-marker", {
         status: Number(body.query.slice(7)),

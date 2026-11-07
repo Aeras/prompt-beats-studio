@@ -1,3 +1,10 @@
+import {
+  fullEvidenceSchema,
+  packFullEvidence,
+  readFullEvidence,
+  type FullEvidenceHit,
+  type FullEvidenceReport,
+} from "./football-full-evidence.shared";
 import { footballV2PlanningMessage } from "./football-search-profiles.shared";
 import { getRequest } from "@tanstack/react-start/server";
 import { planFootballSearchProfile } from "./football-forecast-planner.shared";
@@ -179,6 +186,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     const researchAudit: {
       budget: ReturnType<typeof footballResearchBudget> | null;
       searches: FootballSearchReceipt[];
+      fullEvidenceV2?: FullEvidenceReport;
       searchProfileVersion?: typeof data.searchProfileVersion;
       sourceSummary?: {
         retainedDocs: number;
@@ -241,6 +249,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         )
           throw new Error("Provider evidence exceeds the pre-dispatch input allowance.");
         const { buildFootballClaimLedger } = await import("@/lib/football-evidence-v2.server");
+        const fullHits: FullEvidenceHit[] = [];
         const fullEvidence: import("./football-evidence-v2.server").FootballEvidenceDocument[] = [];
         const sources: FootballSourceSnapshot[] = [];
         for (const queryPlan of queries) {
@@ -265,12 +274,32 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
             {
               includePublicationMetadata: true,
               football: {
+                ...(data.searchProfileVersion === "v2_experimental"
+                  ? { fullEvidence: true as const }
+                  : {}),
                 textChars: 24000,
                 maxResults: plan.resultsPerSearch as 5 | 10,
                 format: "text",
               },
             },
           );
+          if (data.searchProfileVersion === "v2_experimental")
+            fullHits.push(
+              ...(
+                result.footballFullHits ??
+                result.documents.map((doc) => ({
+                  url: doc.source.url,
+                  title: doc.source.title,
+                  accessedAt: doc.source.accessedAt,
+                  ...(doc.publishedAtUtc ? { publishedAtUtc: doc.publishedAtUtc } : {}),
+                  status: "full_or_partial_raw_text" as const,
+                  text: doc.text,
+                  rawChars: doc.text.length,
+                  cleanedChars: doc.text.length,
+                  snippetChars: 0,
+                }))
+              ).map((h) => ({ ...h, language: queryPlan.language as "en" | "ru" })),
+            );
           searchReceipt.state = "observed";
           searchReceipt.credits = result.credits;
           searchReceipt.requestId = result.requestId;
@@ -316,7 +345,10 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           data.searchProfileVersion === "v2_experimental"
             ? buildFootballSourceSnapshot(sources, 20)
             : evidenceSnapshot;
-        if (!evidenceSnapshot.length)
+        if (
+          !evidenceSnapshot.length &&
+          !(data.searchProfileVersion === "v2_experimental" && fullHits.length)
+        )
           throw new Error("No independently retrieved match sources were available.");
         if (Date.now() >= Date.parse(fixture.kickoffUtc)) {
           throw new Error("Match kickoff passed before research completed.");
@@ -402,8 +434,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           })),
         });
         if (
+          data.searchProfileVersion !== "v2_experimental" &&
           new TextEncoder().encode(FOOTBALL_RESEARCH_SYSTEM + synthesisPrompt).length >
-          FOOTBALL_MAX_PROMPT_BYTES
+            FOOTBALL_MAX_PROMPT_BYTES
         )
           throw new Error("Research input exceeds the pre-dispatch allowance.");
         if (runSignal.aborted) throw new Error("Research deadline reached before synthesis.");
@@ -424,15 +457,74 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         if (runSignal.aborted) throw new Error("Research cancelled before synthesis.");
         providerCalled = true;
         failureCode = "provider_failed";
-        const receipt = await caller({
-          system: FOOTBALL_RESEARCH_SYSTEM,
-          prompt: synthesisPrompt,
-          maxTokens: FOOTBALL_MODEL_OUTPUT_TOKENS,
-          abortSignal: runSignal,
-          requestTimeoutMs: FOOTBALL_MODEL_TIMEOUT_MS,
-          jsonObjectOutput: true,
-          ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
-        });
+        let fullReport: FullEvidenceReport | undefined;
+        let receipt: Awaited<ReturnType<typeof caller>>;
+        if (data.searchProfileVersion === "v2_experimental") {
+          failureCode = "incomplete_coverage";
+          const { runFullFootballEvidence, footballFullModelCapacity } =
+            await import("./football-full-evidence.server");
+          const result = await runFullFootballEvidence({
+            fixture: identity,
+            cutoff: evidenceCutoff,
+            runId,
+            hits: fullHits,
+            context: {
+              fixture: identity,
+              providerEvidence,
+              bookmakerOddsSnapshot,
+              usableBookmakerOddsSnapshot: usableOdds(bookmakerOddsSnapshot, evidenceCutoff),
+            },
+            system: FOOTBALL_RESEARCH_SYSTEM,
+            providerUrls: providerEvidenceUrls(providerEvidence),
+            capacity: await footballFullModelCapacity(resolved.model, runSignal),
+            signal: runSignal,
+            authorize: async () => {
+              await requireFootballSuperAdmin(context.supabase);
+              const current = await resolveAiModelForUser(context.userId, "ai_tools", data.modelId);
+              if (current.provider !== resolved.provider || current.model !== resolved.model)
+                throw Error("Model authorization changed");
+            },
+            caller: (executionId) => {
+              const stageCaller = modelCaller(resolved.model, "openrouter", {
+                userId: context.userId,
+                operation: "football_research",
+                executionId,
+              });
+              return (call) =>
+                stageCaller({
+                  ...call,
+                  ...(resolved.reasoningEffort
+                    ? { reasoningEffort: resolved.reasoningEffort }
+                    : {}),
+                });
+            },
+            journal: async (report) => {
+              researchAudit.fullEvidenceV2 = report;
+              const aggregate = (key: "inputTokens" | "outputTokens" | "totalTokens") =>
+                report.calls.some((c) => c.usage?.[key] == null)
+                  ? null
+                  : report.calls.reduce((sum, c) => sum + (c.usage?.[key] ?? 0), 0);
+              observedUsage = {
+                inputTokens: aggregate("inputTokens"),
+                outputTokens: aggregate("outputTokens"),
+                totalTokens: aggregate("totalTokens"),
+              };
+              await journalSearch();
+            },
+          });
+          receipt = result.receipt;
+          fullReport = result.report;
+        } else {
+          receipt = await caller({
+            system: FOOTBALL_RESEARCH_SYSTEM,
+            prompt: synthesisPrompt,
+            maxTokens: FOOTBALL_MODEL_OUTPUT_TOKENS,
+            abortSignal: runSignal,
+            requestTimeoutMs: FOOTBALL_MODEL_TIMEOUT_MS,
+            jsonObjectOutput: true,
+            ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
+          });
+        }
         observedUsage = receipt.usage;
         if (receipt.stopReason !== "end_turn") {
           failureCode =
@@ -467,6 +559,8 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         delete wireAssessment["onlineJudgment"];
         delete wireAssessment["independentAssessment"];
         delete wireAssessment["searchProfileVersion"];
+        delete wireAssessment["fullEvidenceV2"];
+        delete wireAssessment["evidenceCandidates"];
         failureCode = "invalid_ai_schema";
         const validated = footballAiAssessmentSchema.safeParse(
           raw && typeof raw === "object" && !Array.isArray(raw)
@@ -522,8 +616,12 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           bookmakerOddsSnapshot,
           tavilySearchDepth: data.tavilySearchDepth,
           searchProfileVersion: data.searchProfileVersion,
+          ...(fullReport ? { fullEvidenceV2: fullReport } : {}),
         });
-        const persisted = packFootballEvidenceV2(savedAnalysis, savedSources);
+        const legacyPacked = packFootballEvidenceV2(savedAnalysis, savedSources);
+        const persisted = fullReport
+          ? packFullEvidence(legacyPacked.analysis, legacyPacked.sources, fullReport)
+          : legacyPacked;
         failureCode = "persistence_failed";
         const completedAt = new Date().toISOString();
         const { error: saveError } = await supabaseAdmin
@@ -550,6 +648,15 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         };
       });
     } catch (error) {
+      if (researchAudit.fullEvidenceV2?.coverage === "complete") {
+        const failed = researchAudit.fullEvidenceV2;
+        failed.coverage = "incomplete_coverage";
+        failed.reason = "invalid_judgment";
+        delete failed.judgment;
+        failed.citedSourceIds = [];
+        failed.providerCitations = [];
+        failed.counts.cited = 0;
+      }
       const planningCode =
         data.searchProfileVersion === "v2_experimental" &&
         researchAudit.budget === null &&
@@ -739,6 +846,31 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
                 : {}),
             }
           : null,
+        fullEvidenceV2:
+          readFullEvidence(
+            row.sources,
+            {
+              leagueId: row.league_id,
+              homeTeam: row.home_team,
+              awayTeam: row.away_team,
+              kickoffUtc: row.kickoff_utc,
+            },
+            row.evidence_cutoff_at,
+          ) ??
+          (() => {
+            const value = (row.usage as { research?: { fullEvidenceV2?: unknown } } | null)
+              ?.research?.fullEvidenceV2;
+            return readFullEvidence(
+              [{ kind: "football-full-evidence", version: 1, payload: value }],
+              {
+                leagueId: row.league_id,
+                homeTeam: row.home_team,
+                awayTeam: row.away_team,
+                kickoffUtc: row.kickoff_utc,
+              },
+              row.evidence_cutoff_at,
+            );
+          })(),
         sources: Array.isArray(row.sources)
           ? row.sources
               .filter(

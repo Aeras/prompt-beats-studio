@@ -1,3 +1,4 @@
+import { fullEvidenceSchema } from "./football-full-evidence.shared";
 import {
   footballSearchProfileSchema,
   footballProfileConsentSchema,
@@ -90,6 +91,7 @@ export const footballAiAssessmentSchema = z
     /** Server-attached metadata for transparent Basic/Advanced comparisons. */
     tavilySearchDepth: z.enum(["basic", "advanced"]).optional(),
     searchProfileVersion: footballSearchProfileSchema.optional(),
+    fullEvidenceV2: fullEvidenceSchema.optional(),
     matchContext: footballResearchContextSchema.optional(),
     researchBrief: footballResearchEvidenceSnapshotSchema.optional(),
     estimates: z
@@ -183,6 +185,7 @@ export const footballAnalysisRequestSchema = z
       FOOTBALL_CONSENT_VERSION,
       "football-search-v1-consent-1",
       "football-search-v2-consent-1",
+      "football-v2-full-evidence-1",
     ]),
     researchConsent: footballProfileConsentSchema.optional(),
   })
@@ -202,7 +205,9 @@ export const footballAnalysisRequestSchema = z
       s.modelId !== v.modelId ||
       s.fixtureId !== v.fixtureId ||
       s.searchCalls !== p.searchCalls ||
-      s.resultsPerSearch !== p.resultsPerSearch
+      s.resultsPerSearch !== p.resultsPerSearch ||
+      (v.searchProfileVersion === "v2_experimental" &&
+        (s.evidenceVersion !== "full-v2-1" || s.maxModelCalls !== 5))
     )
       c.addIssue({
         code: "custom",
