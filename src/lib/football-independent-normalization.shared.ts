@@ -116,15 +116,18 @@ export function normalizeAuthoredMarkets(
         period,
         selection: /^(?:no|нет)$/iu.test(btts[1] ?? "") || /^NG$/iu.test(btts[0]) ? "no" : "yes",
       });
-    const dc = clause.match(/(?:^|[^\p{L}\p{N}])(?:1[XΧХ]|[XΧХ]2|12)(?=$|[^\p{L}\p{N}])/iu);
-    if (dc)
+    const dc = clause.match(/(?:^|[^\p{L}\p{N}])(1[XΧХ]|[XΧХ]2|12)(?=$|[^\p{L}\p{N}])/iu);
+    const ambiguous12 =
+      dc?.[1] === "12" &&
+      !(
+        /double chance|διπλή ευκαιρία|двойной шанс/iu.test(clause) ||
+        /(?:pick|tip|выбор|прогноз|επιλογή)\s*:\s*12(?:\s*[.;]?\s*$)/iu.test(clause)
+      );
+    if (dc && !ambiguous12)
       found.push({
         kind: "dc",
         period,
-        selection: dc[0]
-          .trim()
-          .replace(/^[^1XΧХ]+/u, "")
-          .replace(/[ΧХ]/gu, "X") as "1X" | "X2" | "12",
+        selection: dc[1]!.replace(/[xхχ]/giu, "X").toUpperCase() as "1X" | "X2" | "12",
       });
     const handicap = clause.match(
       /(asian|european|азиатск\p{L}*|европейск\p{L}*)\s+(?:handicap|фора)\s*(?:[(:]\s*)?([12])\s*[:(]?\s*([+-]?\d+(?:[.,]5)?)\s*\)?/iu,
@@ -165,13 +168,13 @@ export function normalizeAuthoredMarkets(
       )
         found.push({ kind: "dc", period, selection });
     const result = clause.match(
-      /(?:pick|result|исход|ставка)\s*[:—-]?\s*(?:П\s*)?([12XХΧ])(?![\p{L}\p{N}/])/iu,
+      /(?:pick|result|исход|ставка)\s*[:—-]?\s*(?:П\s*)?([12XХΧ])(?!(?:[\p{L}\p{N}/—–:-]|[.,]\d))/iu,
     );
     if (result && !handicap)
       found.push({
         kind: "1x2",
         period,
-        selection: result[1]!.replace(/[ХΧ]/gu, "X") as "1" | "X" | "2",
+        selection: result[1]!.replace(/[xхχ]/giu, "X").toUpperCase() as "1" | "X" | "2",
       });
     const score = clause.match(
       /(?:correct score|score prediction|точный сч[её]т|ακριβές σκορ|prediction for this match)[^\n]{0,80}?\b(\d{1,2})\s*[-–:]\s*(\d{1,2})\b/iu,
@@ -181,6 +184,7 @@ export function normalizeAuthoredMarkets(
     // Existing reviewed parser supplies team-name picks and further legacy expressions.
     for (const p of extractLiteralPicks(clause, fixture, "v2_experimental"))
       if (
+        !ambiguous12 &&
         !found.length &&
         p.stance === "authored" &&
         p.market.kind !== "other" &&

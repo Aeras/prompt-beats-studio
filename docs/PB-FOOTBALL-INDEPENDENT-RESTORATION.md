@@ -57,20 +57,20 @@ Frozen legally bounded incident excerpts with explicit analyst annotations and t
 
 ### Αποδεικτικά ολοκλήρωσης τοπικής υλοποίησης
 
-| Έλεγχος                                                  | Αποτέλεσμα                                                                                                           |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Focused: engine, restoration, πραγματικός mocked handler | 126 PASS,0 FAIL,2.261 assertions                                                                                     |
-| Full Bun,LF-equivalent snapshot                          | 2.061 PASS,0 FAIL,1 προϋπάρχον PHP parity skip,34.449 assertions,236 αρχεία                                          |
-| Αυστηρό TypeScript                                       | PASS                                                                                                                 |
-| ESLint αλλαγμένων αρχείων                                | PASS,χωρίς ισχυρισμό καθαρού global lint                                                                             |
-| Prettier / diff check                                    | PASS                                                                                                                 |
-| Production build τελικού κώδικα                          | PASS,χωρίς deploy                                                                                                    |
-| Πλήρες σχετικό Playwright                                | 117/117 PASS στην ίδια εργασία·οι μεταγενέστερες αλλαγές της νέας διαδρομής επανελέγχονται με6 ειδικές EL/EN δοκιμές |
-| Native workerd adapter                                   | 24 PASS,όλα τα outbound δεμένα στο τοπικό fixture                                                                    |
-| Υφιστάμενα local SQL/ACL/RLS                             | 3 suites PASS,καμία παραγωγική σύνδεση                                                                               |
-| Shared-feed concurrency                                  | 12 ανεξάρτητες συνδέσεις:μία reservation,12 recovery reads χωρίς spend,κοινό τελευταίο quota slot PASS               |
-| GitHub Regression/Browser Quality/Database Replay        | NOT RUN για τη νέα αλλαγή:δεν εγκρίθηκε remote update                                                                |
-| Live Tavily/AI/production acceptance                     | NOT RUN,χρειάζεται ξεχωριστή έγκριση                                                                                 |
+| Έλεγχος                                                  | Αποτέλεσμα                                                                                             |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Focused: engine, restoration, πραγματικός mocked handler | 139 PASS,0 FAIL,2.279 assertions                                                                       |
+| Full Bun,LF-equivalent snapshot                          | 2.074 PASS,0 FAIL,1 προϋπάρχον PHP parity skip,34.467 assertions,236 αρχεία                            |
+| Αυστηρό TypeScript                                       | PASS                                                                                                   |
+| ESLint αλλαγμένων αρχείων                                | PASS,χωρίς ισχυρισμό καθαρού global lint                                                               |
+| Prettier / diff check                                    | PASS                                                                                                   |
+| Production build τελικού κώδικα                          | PASS,χωρίς deploy                                                                                      |
+| Πλήρες σχετικό Playwright                                | 117/117 PASS στην τελική επαλήθευση (3 workers όπως CI), EL/EN,320/390px,keyboard/axe                  |
+| Native workerd adapter                                   | 24 PASS,όλα τα outbound δεμένα στο τοπικό fixture                                                      |
+| Υφιστάμενα local SQL/ACL/RLS                             | 3 suites PASS,καμία παραγωγική σύνδεση                                                                 |
+| Shared-feed concurrency                                  | 12 ανεξάρτητες συνδέσεις:μία reservation,12 recovery reads χωρίς spend,κοινό τελευταίο quota slot PASS |
+| GitHub Regression/Browser Quality/Database Replay        | NOT RUN για τη νέα αλλαγή:δεν εγκρίθηκε remote update                                                  |
+| Live Tavily/AI/production acceptance                     | NOT RUN,χρειάζεται ξεχωριστή έγκριση                                                                   |
 
 Το LF snapshot συγκρίνει1.261 source/fixture/docs αρχεία και διατηρεί αυτούσια τα10 δηλωμένα -text assets. Η αρχική αποτυχία στο αμετάβλητο supabase-cutover test ήταν CRLF στο προσωρινό .gitignore·διορθώθηκε μόνο το προσωρινό περιβάλλον,όχι test/assertion/εφαρμογή. Η τελική πλήρης εκτέλεση έγινε χωρίς άλλη CPU-heavy δοκιμή. Τα τοπικά SQL χρησιμοποιούν ήδη υπάρχον synthetic bootstrap σε container χωρίς δίκτυο ή host mounts,με rollback και τερματισμό container·δεν βαφτίζονται πλήρες managed Supabase replay ή remote Database Replay gate.
 
@@ -91,7 +91,14 @@ Frozen legally bounded incident excerpts with explicit analyst annotations and t
 - `src/components/football/FullEvidencePanel.tsx`
 - `src/lib/football-ai-research.functions.ts`
 - `src/lib/football-ai-research.shared.ts`
-- `src/lib/football-evidence-v2.server.ts`
 - `src/lib/football-full-evidence.server.ts`
 - `src/lib/football-full-evidence.shared.ts`
 - `src/lib/football-online-research.integration.test.ts`
+
+### Πρόσθετο εύρημα πριν από οποιοδήποτε push
+
+Η τελική επανεξέταση αναπαρήγαγε ακόμη απόρριψη plain-text άρθρου με μεγάλη πλοήγηση πριν από τον τίτλο,αλλά και λανθασμένη δανειοδότηση metadata σε γειτονικό τίτλο με παύλα. Η αρχική reuse του legacy Markdown sectioner αντικαταστάθηκε από ένα authoritative V2 envelope:ρητό directed pair μέσα στο body,ακριβής διοργάνωση/ημερομηνία σε bounded επόμενα metadata,όριο πριν από διαφορετικό fixture ή H2H/comments,χωρίς title/URL-only απόδειξη και χωρίς ασθενέστερο legacy fallback. Ισχύει και για Markdown και για plain text. Ρωσικά/ελληνικά footer boundaries είναι Unicode-aware. Η παλιά football-evidence-v2.server.ts επανήλθε byte-equivalent στο main·η V1 δεν τροποποιείται. Προστέθηκαν επτά αναπαραγώγιμα θετικά/αρνητικά cases. Τα αποτελέσματα παραπάνω ενημερώθηκαν μετά την τελική συγκεντρωτική επαλήθευση.
+
+Πρόσθετη διασταύρωση ήδη αποθηκευμένων στοιχείων,χωρίς νέα παραγωγική κλήση:στο ίδιο cutoff15:48:30.943Z το SportsGambler είχε legacy competition_conflict,legacy prefix24.000 χαρακτήρων και μόνο πρώτο παράθυρο1.200 χαρακτήρων πλοήγησης,ενώ το Full Evidence manifest κατέγραφε44.868 cleaned χαρακτήρες. Τα διαφορετικά digests αυτών των representations δεν είναι από μόνα τους data conflict. Το FreeSuperTips είχε date_missing/competition_conflict/multi_fixture και σχετικό Tomorrow,οπότε το publisher review δεν αρκεί για να γίνει αυθαίρετα countable. Δεν επανασυστάθηκε δήθεν ολόκληρο raw article από αυτά τα παράθυρα.
+
+Οι έλεγχοι Unicode κανονικοποιούν μόνο tokens αγοράς X/Χ/Х (και πεζά),χωρίς αλλαγή ταυτότητας ομάδων. Αριθμός total12 δεν γίνεται ψήφος DC12·δεκαδικός ή μη αποσαφηνισμένο σκορ δεν γίνεται αυθαίρετα 1X2. Στη restored staged σύνθεση αφαιρέθηκε η διπλή legacy validatedCandidates προβολή:παρέχεται μόνο το authoritative restoredEvidence με την canonical αγορά και διακριτό originalMarket. Η V1/default engine κρατά το προηγούμενο payload. Δεν αλλάζει αριθμός/κόστος κλήσεων.

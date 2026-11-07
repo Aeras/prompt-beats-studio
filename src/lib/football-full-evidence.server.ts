@@ -507,7 +507,7 @@ export async function runFullFootballEvidence(
       context: input.context,
       readingMode: "staged_validated_extraction_not_raw",
       sources: report.sources,
-      validatedCandidates: report.candidates,
+      ...(input.policy?.synthesisData ? {} : { validatedCandidates: report.candidates }),
       ...(input.policy?.synthesisData ? { restoredEvidence: input.policy.synthesisData() } : {}),
     });
     final = await call(

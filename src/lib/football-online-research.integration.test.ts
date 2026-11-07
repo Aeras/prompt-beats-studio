@@ -410,7 +410,8 @@ for (const [iteration, mode] of (
               expect(input).toHaveProperty("maxTokens", FOOTBALL_MODEL_OUTPUT_TOKENS);
               if (prompt.readingMode) {
                 expect(prompt.sources).toHaveLength(candidateCount);
-                expect(prompt.validatedCandidates.length).toBeGreaterThan(0);
+                expect(prompt.validatedCandidates).toBeUndefined();
+                expect(prompt.restoredEvidence.candidates.length).toBeGreaterThan(0);
               } else {
                 expect(prompt.sources).toHaveLength(candidateCount);
                 expect(prompt.sources[19].text).toBe(sources[19]!.excerpt);

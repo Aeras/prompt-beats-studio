@@ -115,6 +115,11 @@ test.each([
   ["Our pick: X2", "FT:dc:X2"],
   ["Our pick: X/2", "HTFT:X/2"],
   ["Наш прогноз: ТБ 2,5", "FT:total:2.5:over"],
+  ["Our pick: x2", "FT:dc:X2"],
+  ["Our pick: χ2", "FT:dc:X2"],
+  ["Наш прогноз: х2", "FT:dc:X2"],
+  ["Our pick: 1х", "FT:dc:1X"],
+  ["Our pick: x", "FT:1x2:X"],
 ])("normalizes literal authored clause %s", (quote: string, key: string) => {
   expect(normalizeAuthoredMarkets(quote, fixture).map(researchMarketKey)).toContain(key);
 });
@@ -199,6 +204,76 @@ test("scoped preview ignores navigation but preserves real weekday/year/venue co
     );
     expect(candidates[0]?.eligibleForConsensus).toBe(expected);
   }
+});
+
+test("plain-text preview after a long navigation menu has its own verified envelope", () => {
+  const s = setup();
+  const { policy } = createRestorationPolicy(s.input);
+  const quote = "Our pick: Over 2.5";
+  const navigation = "Premier League\nLa Liga\nBundesliga\n".repeat(100);
+  const text =
+    navigation +
+    "Fiorentina vs Juventus Prediction & Betting Tips\nSerie A\n8 November 2026 19:45 UTC\n" +
+    quote +
+    "\nHead to Head\nFiorentina vs Juventus 1 January 2020";
+  const docs = makeFullSources([hit(text)]);
+  policy.prepareDocs?.(docs);
+  expect(
+    policy.verify(
+      [{ sourceId: docs[0]!.id, quote, kind: "editorial", market: over, rationale: "test" }],
+      docs,
+      fixture,
+      cutoff,
+    )[0]?.eligibleForConsensus,
+  ).toBe(true);
+});
+
+test.each([
+  "Napoli vs Lazio Prediction",
+  "Napoli - Lazio Prediction",
+  "Napoli–Lazio Prediction",
+  "Juventus vs Fiorentina Prediction",
+  "Fiorentina Women vs Juventus Prediction",
+])("plain-text neighboring preview cannot borrow target metadata: %s", (foreign: string) => {
+  const s = setup();
+  const { policy } = createRestorationPolicy(s.input);
+  const quote = "Our pick: Over 2.5";
+  const text =
+    "Fiorentina vs Juventus Prediction & Betting Tips\nSerie A\n8 November 2026 19:45 UTC\nPreview context only.\n" +
+    foreign +
+    "\nSerie A 8 November 2026\n" +
+    quote;
+  const docs = makeFullSources([hit(text)]);
+  policy.prepareDocs?.(docs);
+  expect(
+    policy.verify(
+      [{ sourceId: docs[0]!.id, quote, kind: "editorial", market: over, rationale: "test" }],
+      docs,
+      fixture,
+      cutoff,
+    )[0]?.eligibleForConsensus,
+  ).toBe(false);
+});
+
+test("Russian plain-text preview ends before a native H2H footer", () => {
+  const s = setup();
+  const { policy } = createRestorationPolicy(s.input);
+  const quote = "Наш прогноз: ТБ 2,5";
+  const text =
+    "Premier League\n".repeat(200) +
+    "Фиорентина vs Ювентус прогноз на матч\nСерия А\n8 ноября 2026 19:45 UTC\n" +
+    quote +
+    "\nЛичные встречи\n1 января 2020";
+  const docs = makeFullSources([hit(text)]);
+  policy.prepareDocs?.(docs);
+  expect(
+    policy.verify(
+      [{ sourceId: docs[0]!.id, quote, kind: "editorial", market: over, rationale: "test" }],
+      docs,
+      fixture,
+      cutoff,
+    )[0]?.eligibleForConsensus,
+  ).toBe(true);
 });
 test("reviewed Cyrillic identity binds only the actual two clubs", () => {
   const s = setup();
@@ -438,6 +513,7 @@ test("restored staged engine covers all articles and journals normalized candida
   expect(result.report.sources[0]?.readBytes).toBe(result.report.sources[0]?.availableBytes);
   expect(result.report.restoration?.candidates[0]?.market).toEqual(over);
   expect(s.calls.at(-1)?.prompt).toContain("restoredEvidence");
+  expect(JSON.parse(s.calls.at(-1)!.prompt).validatedCandidates).toBeUndefined();
   expect(s.calls.length).toBeLessThanOrEqual(5);
   expect(
     s.states.some((r) => r.restoration?.candidates.length === 1 && r.coverage !== "complete"),
@@ -522,3 +598,11 @@ test.each(["Monday 8 November 2026", "понедельник 8 ноября 2026
     ).toBe(false);
   },
 );
+
+test("numeric totals and unqualified scorelines do not become DC or result", () => {
+  const total = normalizeAuthoredMarkets("Our pick: Over 12 corners", fixture);
+  expect(total).toHaveLength(1);
+  expect(total[0]?.kind).toBe("stat_total");
+  expect(normalizeAuthoredMarkets("Our pick: 1.5 goals", fixture)).toHaveLength(0);
+  expect(normalizeAuthoredMarkets("Our pick: 1-2", fixture)).toHaveLength(0);
+});
