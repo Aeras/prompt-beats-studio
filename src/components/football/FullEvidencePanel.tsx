@@ -113,7 +113,13 @@ export function FullEvidencePanel({ report }: { report: FullEvidenceReport }) {
         <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">
           {t("Πηγές αναζήτησης", "Search sources")} ({report.sources.length})
         </summary>
-        <ul className={rows}>
+        <ul
+          tabIndex={0}
+          aria-label={t("Πηγές αναζήτησης", "Search sources")}
+          className={
+            rows + " focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          }
+        >
           {report.sources.map((s, i) => (
             <li key={s.id} className="break-words [overflow-wrap:anywhere]">
               {s.url
@@ -158,7 +164,16 @@ export function FullEvidencePanel({ report }: { report: FullEvidenceReport }) {
             )}
           </p>
         ) : (
-          <ul className={rows}>
+          <ul
+            tabIndex={0}
+            aria-label={t(
+              "Δημοσιευμένες προβλέψεις που εντοπίστηκαν",
+              "Published prediction candidates",
+            )}
+            className={
+              rows + " focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            }
+          >
             {report.candidates.map((c) => (
               <li key={c.id} className="space-y-1 break-words [overflow-wrap:anywhere]">
                 <p className="font-semibold">

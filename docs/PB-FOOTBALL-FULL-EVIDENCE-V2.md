@@ -53,3 +53,11 @@ Acceptance:source coverage manifests;late picks and unknown publishers;snippet/d
 | Production/live model/article benchmark           | NOT RUN· απαιτείται χωριστή έγκριση                                                                   |
 
 Το full Bun εκτελέστηκε σε LF-equivalent αντίγραφο με σύγκριση1.253 source files και διατήρηση10 `-text` immutable assets. Δεν άλλαξαν tests/timeouts για να επιτευχθεί PASS. Τα υπάρχοντα managed Supabase/production περιβάλλοντα δεν προσεγγίστηκαν. Η τοπική SQL εκτέλεση χρησιμοποιεί τον υπάρχοντα ελάχιστο synthetic auth/bootstrap, όχι πλήρη αναπαραγωγή managed Supabase.
+
+## PR #520 — Accessibility correction after CI
+
+Browser run42382046857:498 passed,3 failed (the same EL full-coverage panel on all three viewports). Axe identified `scrollable-region-focusable`: the prediction list had overflow but no focusable content. Earlier Windows runs did not expose the same overflow. Font/layout differences are a possible explanation,not independently measured;the missing keyboard access was verified and the assertion remains strict.
+
+Fix: focusable named lists with visible focus outline. Deterministic browser regression forces overflow independent of fonts,focuses the actual list and verifies ArrowDown changes scrollTop. Original component reproduces the failure. No timing increase,axe disable,automatic paid call,server/schema/SQL/consent or quota change. Local verification:111/111 Football browser cases PASS,then12/12 full-evidence cases rerun with actual Tab navigation,ArrowDown scrolling and unchanged axe checks PASS. Full Bun2,020 PASS/0 FAIL/1 existing PHP skip/34,319 assertions;TypeScript,changed-file ESLint and format PASS. Remote green gates on the prior HEAD do not constitute acceptance of this new commit. No remote rerun/push was performed during the correction.
+
+Follow-up production build:PASS,without publish. Native transport and SQL were not rerun for this UI-only correction;their prior results remain tied to the earlier HEAD.

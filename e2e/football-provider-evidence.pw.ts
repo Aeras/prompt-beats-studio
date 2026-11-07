@@ -1084,7 +1084,20 @@ for (const locale of ["el", "en"] as const)
           lists.nth(2).locator('a[href="https://sportsmole.co.uk/synthetic-full"]'),
         ).toHaveCount(0);
         await expect(panel).not.toContainText("RAW_BODY_SENTINEL");
+        const predictions = lists.nth(1).locator("ul");
+        await expect(predictions).toHaveAttribute("tabindex", "0");
+        // Force overflow regardless of operating-system fonts or article length.
+        await predictions.evaluate((el) => {
+          el.style.maxHeight = "80px";
+        });
+        expect(await predictions.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+        await summaries.nth(1).focus();
+        await page.keyboard.press("Tab");
+        await expect(predictions).toBeFocused();
+        await page.keyboard.press("ArrowDown");
+        await expect.poll(() => predictions.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
       }
+      await expect(lists.nth(0).locator("ul")).toHaveAttribute("tabindex", "0");
       await expect(panel).not.toContainText("sourceId");
       await expect(panel).not.toContainText("claimId");
       expect(
