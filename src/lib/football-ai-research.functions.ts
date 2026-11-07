@@ -256,6 +256,9 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           searchReceipt.state = "observed";
           searchReceipt.credits = result.credits;
           searchReceipt.requestId = result.requestId;
+          searchReceipt.returnedSources = result.documents
+            .slice(0, 5)
+            .map((doc) => ({ url: doc.source.url, title: doc.source.title.slice(0, 180) }));
           await journalSearch();
           for (const doc of result.documents.slice(0, 5)) {
             if (sources.some((existing) => existing.url === doc.source.url)) continue;

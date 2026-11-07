@@ -479,12 +479,13 @@ function PrivateFootballResearchPage() {
         </section>
 
         <fieldset
+          aria-labelledby="football-tavily-title"
           disabled={working}
           className="rounded-2xl border border-cyan-300/20 bg-[#152137] p-4"
         >
-          <legend className="px-1 text-sm font-semibold text-cyan-100">
+          <h3 id="football-tavily-title" className="text-sm font-semibold text-cyan-100">
             Αναζήτηση Tavily για την ανάλυση
-          </legend>
+          </h3>
           <div className="mt-1 flex flex-wrap gap-5 text-sm text-slate-100">
             <label className="flex cursor-pointer items-center gap-2">
               <input
