@@ -1,3 +1,4 @@
+import { footballV2PlanningMessage } from "./football-search-profiles.shared";
 import { getRequest } from "@tanstack/react-start/server";
 import { planFootballSearchProfile } from "./football-forecast-planner.shared";
 import {
@@ -548,12 +549,20 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           completedAt,
         };
       });
-    } catch {
+    } catch (error) {
+      const planningCode =
+        data.searchProfileVersion === "v2_experimental" &&
+        researchAudit.budget === null &&
+        error instanceof Error &&
+        footballV2PlanningMessage(error.message)
+          ? error.message
+          : undefined;
+      const planningMessage = footballV2PlanningMessage(planningCode);
       await supabaseAdmin
         .from("private_football_research_runs" as never)
         .update({
           status: "failed",
-          error_code: providerCalled ? failureCode : "research_unavailable",
+          error_code: planningCode ?? (providerCalled ? failureCode : "research_unavailable"),
           usage: usageSnapshot(),
           completed_at: new Date().toISOString(),
         } as never)
@@ -562,7 +571,8 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         .eq("status", "processing")
         .abortSignal(AbortSignal.timeout(5000));
       throw new Error(
-        "Football research failed. The request was recorded and cannot be automatically retried.",
+        planningMessage ??
+          "Football research failed. The request was recorded and cannot be automatically retried.",
       );
     }
   });

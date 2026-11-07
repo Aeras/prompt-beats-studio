@@ -1,5 +1,6 @@
 import { searchInspirationWeb } from "./music-inspiration-research.server";
 import {
+  footballV2PlanningMessage,
   footballProfileConsent,
   FOOTBALL_SEARCH_PROFILES,
 } from "./football-search-profiles.shared";
@@ -126,6 +127,11 @@ for (const [iteration, mode] of (
     "v2-second-failure",
     "v2-model-timeout",
     "v1-basic",
+    "v2-fiorentina",
+    "v2-manchester",
+    "v2-unknown-team",
+    "v2-league-mismatch",
+    "v2-invalid-date",
   ] as const
 ).entries())
   test(`actual research handler ${iteration}: ${mode}, profile-derived searches, one paid attempt, authoritative provenance and retained usage`, async () => {
@@ -155,10 +161,19 @@ for (const [iteration, mode] of (
     const { time, kickoff } = offlineFixtureTimes(Date.now());
     const identity = {
       leagueId: "IT-SA",
-      homeTeam: "Inter",
-      awayTeam: "Como",
-      kickoffUtc: kickoff,
+      homeTeam:
+        mode === "v2-fiorentina"
+          ? "Fiorentina"
+          : mode === "v2-manchester"
+            ? "Manchester United"
+            : mode === "v2-unknown-team"
+              ? "Inter Women"
+              : "Inter",
+      awayTeam:
+        mode === "v2-fiorentina" ? "Juventus" : mode === "v2-manchester" ? "Liverpool" : "Como",
+      kickoffUtc: mode === "v2-invalid-date" ? "invalid-date" : kickoff,
     };
+    if (mode === "v2-manchester" || mode === "v2-league-mismatch") identity.leagueId = "EN-PL";
     const providerEvidence = {
       version: 1,
       collectedAtUtc: time,
@@ -232,7 +247,7 @@ for (const [iteration, mode] of (
       title: `Synthetic editorial ${i}`,
       url: `https://${hosts[i % hosts.length]}/offline-${i}`,
       accessedAt: time,
-      excerpt: `Inter vs Como Serie A ${kickoff.slice(0, 10)} ${kickoff.slice(11, 16)} UTC.\n${i < 5 ? "Επιλογή" : i < 10 ? "Our pick" : "Прогноз"}: ${i === 0 && mode === "combo" ? "GG & Over 2.5" : i >= 10 && i < 15 ? "ТБ 2,5" : "Over 2.5"}; ${i < 5 ? "Συνθετικό ελληνικό κείμενο για τα αγωνιστικά στοιχεία και τις εκτιμήσεις του συγκεκριμένου αγώνα" : i >= 10 && i < 15 ? "Синтетический русский текст о матче, только для проверки языка и подтверждения формы прогноза" : "Distinct synthetic English report"} ${i}.`,
+      excerpt: `${identity.homeTeam} vs ${identity.awayTeam} ${identity.leagueId === "EN-PL" ? "Premier League" : "Serie A"} ${kickoff.slice(0, 10)} ${kickoff.slice(11, 16)} UTC.\n${i < 5 ? "Επιλογή" : i < 10 ? "Our pick" : "Прогноз"}: ${i === 0 && mode === "combo" ? "GG & Over 2.5" : i >= 10 && i < 15 ? "ТБ 2,5" : "Over 2.5"}; ${i < 5 ? "Συνθετικό ελληνικό κείμενο για τα αγωνιστικά στοιχεία και τις εκτιμήσεις του συγκεκριμένου αγώνα" : i >= 10 && i < 15 ? "Синтетический русский текст о матче, только для проверки языка и подтверждения формы прогноза" : "Distinct synthetic English report"} ${i}.`,
       researchIntent: "external_forecasts" as const,
     }));
     if (mode === "incident-score")
@@ -476,6 +491,7 @@ for (const [iteration, mode] of (
       }),
       planFootballForecasts,
       planFootballSearchProfile,
+      footballV2PlanningMessage,
       footballAnalysisRequestSchema,
       footballResearchSystemForProfile,
       footballResearchBudget,
@@ -518,7 +534,7 @@ for (const [iteration, mode] of (
     const input = {
       data: {
         fixtureProvider: "espn",
-        leagueId: "IT-SA",
+        leagueId: identity.leagueId,
         weekDate: kickoff.slice(0, 10),
         fixtureId: "999",
         modelId: "offline",
@@ -543,6 +559,25 @@ for (const [iteration, mode] of (
         },
       },
     };
+    if (["v2-unknown-team", "v2-league-mismatch", "v2-invalid-date"].includes(mode)) {
+      const code =
+        mode === "v2-unknown-team"
+          ? "football_v2_team_identity_unverified"
+          : mode === "v2-league-mismatch"
+            ? "football_v2_competition_mismatch"
+            : "football_v2_venue_date_unverified";
+      await expect(handler(input)).rejects.toThrow(footballV2PlanningMessage(code));
+      expect(searches).toBe(0);
+      expect(calls).toBe(0);
+      const failed = updates.find((u) => u["status"] === "failed");
+      expect(failed?.["error_code"]).toBe(code);
+      expect(
+        (failed?.["usage"] as { research: { searches: unknown[] } }).research.searches,
+      ).toEqual([]);
+      await expect(handler(input)).rejects.toThrow("already recorded");
+      expect(searches).toBe(0);
+      return;
+    }
     if (mode === "v2-forged-consent") {
       input.data.researchConsent!.depth = depth === "basic" ? "advanced" : "basic";
       await expect(handler(input)).rejects.toThrow("selected search profile");
@@ -607,6 +642,8 @@ for (const [iteration, mode] of (
         "incident-score",
         "v2-basic",
         "v2-advanced",
+        "v2-fiorentina",
+        "v2-manchester",
         "v2-search-failure",
         "v2-forged-consent",
         "v2-denied",

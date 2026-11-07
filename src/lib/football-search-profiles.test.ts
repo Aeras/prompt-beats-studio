@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
+import { createFootballTeamRegistry, footballTeamRegistry } from "./football-team-registry.shared";
+import { fixtureLocalDate } from "./football-evidence-v2.shared";
 import { expect, test } from "bun:test";
 import {
+  FOOTBALL_V2_EN_SUFFIX,
+  FOOTBALL_V2_RU_SUFFIX,
   planFootballForecasts,
   planFootballSearchProfile,
 } from "./football-forecast-planner.shared";
@@ -12,6 +17,7 @@ import {
 import {
   FOOTBALL_SEARCH_PROFILES,
   footballProfileConsent,
+  footballV2PlanningMessage,
 } from "./football-search-profiles.shared";
 import {
   footballResearchBudget,
@@ -32,15 +38,21 @@ const f = {
   awayTeam: "Lazio",
   kickoffUtc: "2026-11-08T17:00:00Z",
 };
-const en =
-  "Napoli vs Lazio, 8 November 2026. Find independent published predictions and betting recommendations from distinct publishers for this exact match. Look for an explicit author's pick and reasoning—e.g. 1X2, double chance, totals, BTTS, score, handicap, player or corner bets, or any other bettable market. These are examples, not limits. Exclude odds-only pages, news and statistics without a pick.";
-const ru =
-  "Наполи — Лацио, 8 ноября 2026. Найди независимые опубликованные прогнозы и рекомендации по ставкам от разных авторов на этот матч. Нужен конкретный выбор с обоснованием: например, исход, двойной шанс, тотал, обе забьют, счёт, фора, ставки на игроков, угловые или любой другой рынок. Это примеры, не ограничения. Исключи страницы только с коэффициентами, новостями и статистикой без прогноза.";
-test("exact owner goldens: EN398 RU391 Unicode characters, unchanged examples-not-limits", () => {
+const enSuffix =
+  "Find published, independent expert predictions from different sites for this exact match. Require a clear recommended bet with reasoning, e.g. result, totals, BTTS, handicap, score, player or corner markets, or any other market; examples, not limits. Exclude odds-only, news and stats pages without a pick.";
+const ruSuffix =
+  "Найди независимые опубликованные прогнозы разных сайтов именно на этот матч. Нужны конкретные ставки с обоснованием: например, исход, тотал, обе забьют, фора, счёт, игроки, угловые или любой другой рынок. Это примеры, не ограничения. Исключи страницы лишь с коэффициентами, новостями или статистикой без прогноза.";
+const en = `Napoli vs Lazio, 8 November 2026. ${enSuffix}`;
+const ru = `Наполи — Лацио, 8 ноября 2026. ${ruSuffix}`;
+test("exact revised owner goldens: EN306 RU313 suffix code points, unchanged examples-not-limits", () => {
   const p = planFootballSearchProfile(f, "v2_experimental");
   expect(p.queries.map((q) => q.query)).toEqual([en, ru]);
-  expect(Array.from(en)).toHaveLength(398);
-  expect(Array.from(ru)).toHaveLength(391);
+  expect(FOOTBALL_V2_EN_SUFFIX).toBe(enSuffix);
+  expect(FOOTBALL_V2_RU_SUFFIX).toBe(ruSuffix);
+  expect(Array.from(enSuffix)).toHaveLength(306);
+  expect(Array.from(ruSuffix)).toHaveLength(313);
+  expect(Array.from(en)).toHaveLength(340);
+  expect(Array.from(ru)).toHaveLength(344);
   expect(p.searchCalls).toBe(2);
   expect(p.resultsPerSearch).toBe(10);
   expect(p.queries.map((q) => q.language)).toEqual(["en", "ru"]);
@@ -79,12 +91,12 @@ test("date swap and reviewed alias fallback preserve fixture identity within400;
     "v2_experimental",
   );
   expect(reverse.queries[1]!.query).toStartWith("Лацио — Наполи");
-  expect(() =>
-    planFootballSearchProfile(
-      { ...f, homeTeam: "Manchester United", awayTeam: "Liverpool", leagueId: "EN-PL" },
-      "v2_experimental",
-    ),
-  ).toThrow("400");
+  const longer = planFootballSearchProfile(
+    { ...f, homeTeam: "Manchester United", awayTeam: "Liverpool", leagueId: "EN-PL" },
+    "v2_experimental",
+  );
+  expect(longer.queries[0]!.query).toStartWith("Manchester United vs Liverpool,");
+  expect(longer.queries.every((q) => Array.from(q.query).length <= 400)).toBe(true);
 });
 for (const patch of [
   { homeTeam: "Unreviewed " + "long".repeat(100) },
@@ -381,4 +393,107 @@ test("native Cyrillic article aliases are shared with V2 queries without changin
         "v2_experimental",
       ).sourceCount,
     ).toBe(0);
+});
+
+test("all six registry leagues retain verified ordered teams and local dates within400", () => {
+  for (const [leagueId, homeTeam, awayTeam] of [
+    ["GR-SL", "Olympiacos", "Panathinaikos"],
+    ["EN-PL", "Manchester United", "Liverpool"],
+    ["FR-L1", "Paris Saint-Germain", "Marseille"],
+    ["ES-LL", "Real Madrid", "Barcelona"],
+    ["DE-BL", "Bayern Munich", "Borussia Dortmund"],
+    ["IT-SA", "AC Fiorentina", "Juventus FC"],
+  ]) {
+    const plan = planFootballSearchProfile(
+      { ...f, leagueId: leagueId!, homeTeam: homeTeam!, awayTeam: awayTeam! },
+      "v2_experimental",
+    );
+    expect(plan.localDate).toBe("2026-11-08");
+    expect(plan.queries.map((q) => q.language)).toEqual(["en", "ru"]);
+    for (const [i, q] of plan.queries.entries()) {
+      expect(Array.from(q.query).length).toBeLessThanOrEqual(400);
+      expect(q.query).toEndWith(i === 0 ? enSuffix : ruSuffix);
+    }
+  }
+});
+
+test("Fiorentina–Juventus now fits without arbitrary shortening; large unknown labels fail", () => {
+  const p = planFootballSearchProfile(
+    { ...f, homeTeam: "Fiorentina", awayTeam: "Juventus" },
+    "v2_experimental",
+  );
+  expect(p.queries[0]!.query).toBe(`Fiorentina vs Juventus, 8 November 2026. ${enSuffix}`);
+  expect(p.queries[1]!.query).toBe(`Fiorentina — Juventus, 8 ноября 2026. ${ruSuffix}`);
+  expect(() =>
+    planFootballSearchProfile(
+      { ...f, homeTeam: "Fiorentina" + "x".repeat(300) },
+      "v2_experimental",
+    ),
+  ).toThrow("football_v2_team_identity_unverified");
+});
+
+test("V2 local calendar is correct across Rome DST transition and midnight", () => {
+  for (const [kickoffUtc, date] of [
+    ["2026-03-28T23:30:00Z", "2026-03-29"],
+    ["2026-03-29T22:30:00Z", "2026-03-30"],
+    ["2026-10-25T23:30:00Z", "2026-10-26"],
+  ])
+    expect(
+      planFootballSearchProfile({ ...f, kickoffUtc: kickoffUtc! }, "v2_experimental").localDate,
+    ).toBe(date);
+});
+
+test("diagnostics are static safe messages, never arbitrary exception content", () => {
+  const message = footballV2PlanningMessage("football_v2_query_too_long");
+  expect(message).toContain("400");
+  expect(footballV2PlanningMessage(message)).toBe(message);
+  expect(footballV2PlanningMessage("<script>untrusted token secret</script>")).toBeUndefined();
+  expect(footballV2PlanningMessage("constructor")).toBeUndefined();
+});
+
+test("ambiguous reviewed alias cannot enter the real V2 planner", () => {
+  const teams = footballTeamRegistry.teams.filter((t) => ["Napoli", "Lazio"].includes(t.name));
+  const registry = createFootballTeamRegistry(
+    teams.map((t) => ({ ...t, aliases: [...t.aliases, "Synthetic shared alias"] })),
+  );
+  expect(registry.resolve("Synthetic shared alias").status).toBe("ambiguous");
+  const source = readFileSync(
+    new URL("./football-forecast-planner.shared.ts", import.meta.url),
+    "utf8",
+  );
+  const compiled = new (
+    Bun as unknown as {
+      Transpiler: new (options: { loader: string }) => { transformSync(source: string): string };
+    }
+  ).Transpiler({ loader: "ts" }).transformSync(source);
+  const fn = compiled.slice(compiled.indexOf("function planFootballSearchProfile("));
+  const planner = new Function(
+    "footballTeamRegistry",
+    "fixtureLocalDate",
+    fn + ";return planFootballSearchProfile;",
+  )(registry, fixtureLocalDate);
+  expect(() => planner({ ...f, homeTeam: "Synthetic shared alias" }, "v2_experimental")).toThrow(
+    "football_v2_team_identity_unverified",
+  );
+});
+
+test("every registered same-league ordered pairing fits the new queries without changing identity", () => {
+  let pairs = 0;
+  for (const h of footballTeamRegistry.teams)
+    for (const a of footballTeamRegistry.teams) {
+      if (h.id === a.id || h.domesticLeague !== a.domesticLeague) continue;
+      const p = planFootballSearchProfile(
+        {
+          leagueId: h.domesticLeague,
+          homeTeam: h.name,
+          awayTeam: a.name,
+          kickoffUtc: "2026-09-30T23:30:00Z",
+        },
+        "v2_experimental",
+      );
+      expect(p.queries).toHaveLength(2);
+      expect(p.queries.every((q) => Array.from(q.query).length <= 400)).toBe(true);
+      pairs++;
+    }
+  expect(pairs).toBeGreaterThan(1900);
 });
