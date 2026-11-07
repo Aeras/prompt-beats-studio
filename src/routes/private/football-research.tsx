@@ -1,6 +1,8 @@
 import { independentMessages } from "@/i18n/football-independent-assessment";
 import {
   FOOTBALL_SEARCH_PROFILES,
+  FOOTBALL_V2_PLANNING_FAILURES,
+  footballV2PlanningMessage,
   footballProfileConsent,
   type FootballSearchProfileVersion,
 } from "@/lib/football-search-profiles.shared";
@@ -80,6 +82,7 @@ const EVIDENCE: Record<string, string> = {
   insufficient: "Ανεπαρκή στοιχεία",
 };
 const FAILURE_REASON: Record<string, string> = {
+  ...FOOTBALL_V2_PLANNING_FAILURES,
   output_token_limit: "Η απάντηση της AI ξεπέρασε το διαθέσιμο όριο tokens.",
   incomplete_ai_output: "Η AI δεν ολοκλήρωσε την απάντησή της.",
   invalid_ai_json: "Η AI επέστρεψε μη έγκυρη μορφή JSON.",
@@ -321,9 +324,14 @@ function PrivateFootballResearchPage() {
               approvePaidRequest: true,
             },
           });
-        } catch {
+        } catch (error) {
+          const planningMessage =
+            approved.profile === "v2_experimental" && error instanceof Error
+              ? footballV2PlanningMessage(error.message)
+              : undefined;
           setBatchError(
-            "Κάποια ανάλυση απέτυχε ή απορρίφθηκε. Η συγκεκριμένη προσπάθεια καταχωρίστηκε και δεν επαναλαμβάνεται αυτόματα.",
+            planningMessage ??
+              "Κάποια ανάλυση απέτυχε ή απορρίφθηκε. Η συγκεκριμένη προσπάθεια καταχωρίστηκε και δεν επαναλαμβάνεται αυτόματα.",
           );
           break;
         } finally {

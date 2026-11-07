@@ -51,3 +51,21 @@ export const FOOTBALL_V2_RU_LABELS: Readonly<Record<string, string>> = {
   "it-internazionale": "Интер",
   "it-como": "Комо",
 };
+
+/** Static, safe pre-dispatch diagnostics; never display arbitrary provider exceptions. */
+export const FOOTBALL_V2_PLANNING_FAILURES: Readonly<Record<string, string>> = {
+  football_v2_team_identity_unverified:
+    "Δεν επιβεβαιώθηκε με ασφάλεια η ταυτότητα των δύο ομάδων. Η αναζήτηση δεν ξεκίνησε.",
+  football_v2_competition_mismatch:
+    "Οι ομάδες δεν αντιστοιχούν στην επιλεγμένη διοργάνωση για τη Version 2. Η αναζήτηση δεν ξεκίνησε.",
+  football_v2_venue_date_unverified:
+    "Δεν επιβεβαιώθηκε η τοπική ημερομηνία του αγώνα. Η αναζήτηση δεν ξεκίνησε.",
+  football_v2_query_too_long:
+    "Τα επαληθευμένα ονόματα του αγώνα δεν χωρούν στην αναζήτηση των 400 χαρακτήρων. Η αναζήτηση δεν ξεκίνησε· μπορείς να επιλέξεις Version 1.",
+};
+export function footballV2PlanningMessage(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  if (Object.hasOwn(FOOTBALL_V2_PLANNING_FAILURES, value))
+    return FOOTBALL_V2_PLANNING_FAILURES[value];
+  return Object.values(FOOTBALL_V2_PLANNING_FAILURES).find((message) => message === value);
+}

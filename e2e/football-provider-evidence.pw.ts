@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   type FootballSearchProfileVersion,
   FOOTBALL_SEARCH_PROFILES,
+  FOOTBALL_V2_PLANNING_FAILURES,
 } from "../src/lib/football-search-profiles.shared";
 import { attachIndependentAssessment } from "../src/lib/football-evidence-v2.shared";
 import { providerEvidenceUrls } from "../src/lib/football-provider-evidence.shared";
@@ -38,6 +39,7 @@ async function fixture(
   judgmentMode: "combo" | "abstain" | "unsupported" | "provider-only" = "combo",
   holdResearch = false,
   savedProfile?: FootballSearchProfileVersion,
+  failedPlanningCode?: string,
 ) {
   const token =
     [
@@ -366,6 +368,14 @@ async function fixture(
           ]
         : [];
     else if (name.includes("getMyModeration")) result = { role: "super_admin", status: "active" };
+    if (failedPlanningCode && name.includes("getPrivateFootballResearchHistory")) {
+      result = (result as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        status: "failed",
+        analysis: null,
+        error_code: failedPlanningCode,
+      }));
+    }
     await route.fulfill({ json: { result, context: {} } });
   });
   await page.goto("/private/football-research");
@@ -878,3 +888,37 @@ test("unauthorized users never see or execute the profile selector", async ({ pa
   await expect(page.getByRole("combobox", { name: "Προφίλ αναζήτησης" })).toHaveCount(0);
   expect(state.paid()).toBe(0);
 });
+
+for (const [code, message] of Object.entries(FOOTBALL_V2_PLANNING_FAILURES))
+  test(`V2 safe planning failure ${code} renders on mobile without retry`, async ({ page }) => {
+    const state = await fixture(
+      page,
+      true,
+      true,
+      "matched",
+      "el",
+      { home: "Arsenal", away: "Liverpool" },
+      1,
+      false,
+      false,
+      false,
+      "combo",
+      false,
+      undefined,
+      code,
+    );
+    const button = page.locator("button[aria-expanded]").filter({ hasText: "Άρσεναλ" });
+    await button.click();
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await expect(page.getByText(message, { exact: false })).toBeVisible();
+      await expect(page.getByText(code, { exact: false })).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    }
+    expect(
+      (await new AxeBuilder({ page }).include("#football-predictions").analyze()).violations,
+    ).toEqual([]);
+    expect(state.paid()).toBe(0);
+  });
