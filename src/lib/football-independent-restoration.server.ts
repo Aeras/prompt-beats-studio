@@ -137,6 +137,12 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
 
   const boundary =
     /^(?:#{1,4}\s*)?(?:head.to.head|h2h|related (?:matches|predictions)|comments|reader comments|discussion|личные встречи|комментарии|σχόλια|προϊστορία)(?=$|[^\p{L}])/iu;
+  // Same-pair headings that open historical/administrative blocks (H2H, past results,
+  // standings, line-ups, other predictions) end the preview too: they carry other dates.
+  const topicalBoundary =
+    /(?:head.to.head|\bh2h\b|past results|previous (?:meetings|results)|\bstandings\b|line-?ups|injuries|where to watch|now trending|latest predictions|related (?:matches|predictions)|προϊστορία|βαθμολογία|личные встречи)/iu;
+  const competitionLine =
+    /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|σουπερ λιγκ|серия а/iu;
   const samePair = (line: string) => {
     const v = line.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
     return homeAliases.some((a) => v.includes(a)) && awayAliases.some((a) => v.includes(a));
@@ -144,8 +150,11 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
   // Repeated headings naming the same pair continue the section; only other fixtures end it.
   const fixtureBoundary = (line: string) =>
     !samePair(line) &&
+    !competitionLine.test(line) &&
     line.length <= 240 &&
-    (/\s(?:vs\.?|v\.?|at|—|–)\s/iu.test(line) || /\p{L}\s+-\s+\p{L}|\p{L}[—–]\p{L}/u.test(line));
+    // Both sides must be names: "kick-off 2026 at 19:45" is a time, not another fixture.
+    (/\p{L}\.?\s+(?:vs\.?|v\.?|at|—|–)\s+\p{L}/iu.test(line) ||
+      /\p{L}\s+-\s+\p{L}|\p{L}[—–]\p{L}/u.test(line));
   for (let i = 0; i < lines.length; i++) {
     const heading = lines[i]!.trim();
     if (!heading || heading.length > 240) continue;
@@ -159,7 +168,16 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
       searchProfileVersion: "v2_experimental",
     });
     if (pair.failures.some((v) => !["date_missing", "competition_missing"].includes(v))) continue;
-    let metadata = "";
+    // Match cards often print the date/time line just above the team heading
+    // ("08/11/26 - 19:45" then "Fiorentina - Juventus"); admit up to 3 such lines.
+    let lead = "";
+    for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+      const line = lines[j]!.trim();
+      // Only short date/time rows qualify; navigation or league menus never do.
+      if (line.length > 60 || !/\d{1,2}[:/.]\d{2}/u.test(line) || /\p{L}{3,}/u.test(line)) break;
+      lead = lines[j]! + "\n" + lead;
+    }
+    let metadata = lead;
     let established = false;
     let metadataEnd = i;
     for (let j = i; j < Math.min(i + 12, lines.length); j++) {
@@ -180,7 +198,11 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
     let end = lines.length;
     for (let j = metadataEnd + 1; j < lines.length; j++) {
       const line = lines[j]!.trim();
-      if (boundary.test(line) || fixtureBoundary(line)) {
+      if (
+        boundary.test(line) ||
+        fixtureBoundary(line) ||
+        (line.length <= 120 && topicalBoundary.test(line))
+      ) {
         end = j;
         break;
       }

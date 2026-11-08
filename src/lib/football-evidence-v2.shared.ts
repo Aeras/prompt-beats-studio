@@ -166,6 +166,32 @@ const monthNames = [
   "november|nov|νοεμβριου|ноября",
   "december|dec|δεκεμβριου|декабря",
 ];
+const weekdayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+/** Positive-only fixture-date forms. Ambiguous dd/mm(/yy) slash dates and year-less
+ * "weekday, d month" phrases count only when they equal the fixture's own local date
+ * (weekday included); they never create a conflict, so foreign readings stay inert. */
+function fixtureOnlyDates(text: string, target: string | null): { date: string; index: number }[] {
+  if (!target) return [];
+  const [year, month, day] = target.split("-").map(Number) as [number, number, number];
+  const out: { date: string; index: number }[] = [];
+  for (const m of text.matchAll(
+    /(?:^|[^\p{N}/.])(\d{1,2})\/(\d{1,2})\/(20\d{2}|\d{2})(?![\p{N}/.])/gu,
+  )) {
+    const y = m[3]!.length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+    if (Number(m[1]) === day && Number(m[2]) === month && y === year)
+      out.push({ date: target, index: m.index ?? 0 });
+  }
+  const weekday = weekdayNames[new Date(target + "T12:00:00Z").getUTCDay()]!;
+  const names = monthNames[month - 1]!;
+  for (const m of text.matchAll(
+    new RegExp(
+      `(?:^|[^\\p{L}])${weekday},?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:${names})(?![\\p{L}])(?!,?\\s+20\\d{2})`,
+      "gu",
+    ),
+  ))
+    if (Number(m[1]) === day) out.push({ date: target, index: m.index ?? 0 });
+  return out;
+}
 function explicitDates(text: string): { date: string; index: number }[] {
   const dates: { date: string; index: number }[] = [];
   const push = (date: string, index: number | undefined) => dates.push({ date, index: index ?? 0 });
@@ -182,10 +208,7 @@ function explicitDates(text: string): { date: string; index: number }[] {
     if (day < 1 || day > 31 || month < 1 || month > 12) continue;
     if (m[2] === "/" && day <= 12) continue;
     const year = m[4]!;
-    push(
-      `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
-      m.index,
-    );
+    push(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, m.index);
   }
   monthNames.forEach((names, i) => {
     for (const m of text.matchAll(
@@ -202,6 +225,23 @@ function explicitDates(text: string): { date: string; index: number }[] {
   });
   return dates;
 }
+/** A bare "4 November 2026 • 12:21 UTC" row is an article byline stamp, not a kickoff,
+ * when it is at or before the evidence cutoff and within 10 days before kickoff. */
+function isBylineStamp(line: string, kickoffUtc: string, cutoff: string) {
+  const m = line
+    .trim()
+    .match(
+      /^(\d{1,2})\s+(\p{L}+)\.?\s+(20\d{2})\s*(?:[•·|,-]\s*)?\d{1,2}:\d{2}(?:\s*(?:utc|gmt|cet|cest))?$/iu,
+    );
+  if (!m) return false;
+  const month = monthNames.findIndex((names) =>
+    names.split("|").includes(m[2]!.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()),
+  );
+  if (month < 0) return false;
+  const at = Date.UTC(Number(m[3]), month, Number(m[1]));
+  const kick = Date.parse(kickoffUtc);
+  return at <= Date.parse(cutoff) && at < kick && kick - at <= 10 * 86_400_000;
+}
 /** All predicates are evaluated; title and URL are deliberately not fixture proof. */
 export function traceFootballFixture(
   text: string,
@@ -217,7 +257,8 @@ export function traceFootballFixture(
     .split("\n")
     .filter(
       (line) =>
-        !/min read|minute read|published|last updated|δημοσιεύ|обновлен|опубликован/iu.test(line),
+        !/min read|minute read|published|last updated|δημοσιεύ|обновлен|опубликован/iu.test(line) &&
+        !isBylineStamp(line, f.kickoffUtc, cutoff),
     )
     .join("\n");
   const t = n(fixtureContext).replace(/[«»“”]/gu, ""),
@@ -248,7 +289,7 @@ export function traceFootballFixture(
   add("venue_unknown", !forward && !reversed);
   add("reversed_venue", reversed);
   const dated = explicitDates(t);
-  const dates = [...new Set(dated.map((d) => d.date))];
+  const dates = [...new Set([...dated, ...fixtureOnlyDates(t, local.date)].map((d) => d.date))];
   add("date_missing", !dates.length || !local.date);
   // A conflicting date rejects the page only when it appears in fixture context (near a
   // team name); unrelated dates elsewhere (other matches, archives, footers) are ignored.
@@ -267,9 +308,22 @@ export function traceFootballFixture(
         .format(new Date(local.date + "T12:00:00Z"))
         .toLowerCase()
     : null;
+  // An explicit full "weekday, d month yyyy" statement of the fixture date outranks a
+  // loose "Monday's game between ..." narrative phrase on the same page.
+  const statesFixtureWeekday =
+    !!weekday &&
+    !!local.date &&
+    explicitDates(t).some(
+      (d) =>
+        d.date === local.date &&
+        new RegExp(`(?:^|[^\\p{L}])(?:${weekday}|${weekday.slice(0, 3)})\\.?,?\\s*$`, "u").test(
+          t.slice(Math.max(0, d.index - 12), d.index + 1),
+        ),
+    );
   add(
     "weekday_conflict",
     !!weekday &&
+      !statesFixtureWeekday &&
       fixtureContext.split("\n").some((line) => {
         const v = n(line),
           day = v.match(

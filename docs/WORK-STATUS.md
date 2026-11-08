@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## Football V2 fixture verification rejected genuine previews — CODE_COMPLETE_RELEASE_PENDING (2026-11-08)
+
+- **Evidence:** runs `145a3fd2`, `e0626248`, `bcc7157e` (Fiorentina–Juventus): 162/166 extracted picks `fixtureVerified=false`; offline replay of the same public articles (footballpredictions.com, footballwhispers.com) reproduced the rejection.
+- **Root cause:** fixture binding was over-strict: `dd/mm/yyyy`/`dd/mm/yy` and year-less "Sunday, 8 November" were never read as the fixture date; a byline stamp ("4 November 2026 • 12:21 UTC") counted as a conflicting date; "2026 at 19:45" ended the preview section as if it were another fixture; "Italy Serie A - Stadio" ended it too; a loose "Monday's game" phrase overrode an explicit "Sunday, 8 November 2026"; sections ran into H2H/standings blocks.
+- **Fix:** positive-only fixture-date forms (exact fixture day/month/year or weekday only, never a conflict); byline stamp filter (≤ cutoff, ≤ 10 days before kickoff); name-to-name fixture boundaries, competition lines excluded; up to 3 short date/time rows above a match-card heading; topical section boundaries. Previous meetings, reversed venue, other fixtures and wrong weekdays stay rejected.
+- **Verification:** both real articles now verify offline; new regression tests; full Bun suite 2,106 PASS / 1 skip / 0 FAIL; strict TS PASS. Live confirmation needs a new run after Publish. No paid calls, DB writes, push, PR, merge or Publish.
+
 ## 2026-11-08 — Football V2 invalid_extraction when picks exceed 80 — CODE_COMPLETE_RELEASE_PENDING
 
 - **Evidence:** run `e0626248-26c6-4288-85fd-64610f5c1183` (12:30 UTC): 20 discovered / 17 readable sources, both extract calls observed and well-formed, then `reason: invalid_extraction` before synthesis; 0 stored candidates. Previous run had 78 candidates.
