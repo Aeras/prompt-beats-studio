@@ -17,7 +17,7 @@ function selectionKey(market: ResearchMarket): string {
   return researchMarketKey(market);
 }
 
-function publicationKey(sourceId: string, urls: Map<string, string>): string {
+function publicationKey(sourceId: string, urls: Map<string, string | null>): string {
   const url = urls.get(sourceId);
   if (!url) return JSON.stringify(["source", sourceId]);
   try {
@@ -32,7 +32,7 @@ function publicationKey(sourceId: string, urls: Map<string, string>): string {
 
 export function aggregatePublishedSelections(
   candidates: readonly RestoredCandidate[],
-  sources: readonly { id: string; url: string }[],
+  sources: readonly { id: string; url: string | null }[],
 ) {
   const urls = new Map(sources.map((source) => [source.id, source.url]));
   const seen = new Set<string>();

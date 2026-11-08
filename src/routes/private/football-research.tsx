@@ -50,6 +50,11 @@ export const Route = createFileRoute("/private/football-research")({
   head: () => ({
     meta: [
       { title: "Football Research Studio — PromptBeats" },
+      { name: "description", content: "Private PromptBeats football research, published selections and evidence-backed assessments." },
+      { property: "og:title", content: "Football Research Studio — PromptBeats" },
+      { property: "og:description", content: "Private football research with published selections and evidence-backed assessments." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex,nofollow,noarchive" },
     ],
   }),

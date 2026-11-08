@@ -29,10 +29,17 @@ export function PublishedSelectionsDistribution({
           return (
             <li key={row.marketKey} className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
-                <span className="min-w-0 flex-1 break-words font-medium [overflow-wrap:anywhere]">{label}</span>
+                <span className="min-w-0 flex-1 break-words font-medium [overflow-wrap:anywhere]">
+                  {label}
+                </span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">{valueText}</span>
               </div>
-              <Progress value={row.percentage} aria-label={label} aria-valuetext={valueText} className="h-2 bg-muted" />
+              <Progress
+                value={row.percentage}
+                aria-label={label}
+                aria-valuetext={valueText}
+                className="h-2 bg-muted"
+              />
             </li>
           );
         })}
