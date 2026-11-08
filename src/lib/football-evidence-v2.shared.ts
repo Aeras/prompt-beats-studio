@@ -256,9 +256,11 @@ export function traceFootballFixture(
     const window = t.slice(Math.max(0, index - 120), index + 120);
     return [...home, ...away].some((a) => has(window, a));
   };
+  const teamsPresent = home.some((a) => has(t, a)) && away.some((a) => has(t, a));
   add(
     "date_conflict",
-    !!local.date && dated.some((d) => d.date !== local.date && nearTeam(d.index)),
+    !!local.date &&
+      dated.some((d) => d.date !== local.date && (!teamsPresent || nearTeam(d.index))),
   );
   const weekday = local.date
     ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
