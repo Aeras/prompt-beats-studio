@@ -16,6 +16,7 @@ import {
 } from "./generator-input-limits";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "./ai-target-platforms";
 import { songBlueprintSchema } from "./song-blueprint.shared";
+import { creativeDirectionHistoryConfigSchema } from "./creative-direction-history.shared";
 import {
   generatorInputSnapshotSchema,
   revisionJobContextSchema,
@@ -556,6 +557,7 @@ describe("audit final — total encoded generation budget", () => {
         generatorInputSnapshotSchema,
         revisionJobContextSchema,
         atlasHandoffSchema,
+        creativeDirectionHistoryConfigSchema,
       },
     );
     const input = { theme: "Theme", genre: "Pop", mood: "Warm", language: "Greek" };

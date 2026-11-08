@@ -157,7 +157,8 @@ test("server wiring reads history only for opt-in and keeps the legacy completio
   expect(ai).toContain(
     "data.creativeDirectionHistory ? privateResponse?.result : parseSections(raw)",
   );
-  expect(ai).toContain("data.creativeDirectionHistory ? creativeDirectionSongSchema(schemas.song)");
+  expect(ai).toContain("schema: data.creativeDirectionHistory");
+  expect(ai).toContain("creativeDirectionSongSchema(schemas.song)");
   expect(request).toContain('"current_user_is_super_admin"');
   expect(request).toContain('"song_universe_projects"');
   const route = readFileSync("src/routes/generate.tsx", "utf8");

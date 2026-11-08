@@ -179,7 +179,7 @@ async function validateCreativeDirectionHistoryRequest(
       .maybeSingle();
     if (error || !data) throw new Error("The selected creative history universe is unavailable.");
   }
-  if (universe && (!project || linkedUniverseId !== universe.id)) {
+  if (universe && project && linkedUniverseId !== universe.id) {
     throw new Error("The selected project does not belong to the selected Song Universe.");
   }
   const scopes =

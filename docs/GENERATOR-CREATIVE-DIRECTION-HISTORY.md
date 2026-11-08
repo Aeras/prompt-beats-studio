@@ -2,7 +2,7 @@
 
 ## Κατάσταση
 
-Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το πρώτο Database Replay εντόπισε μη υποστηριζόμενη PostgreSQL συνάρτηση `jsonb_object_length(jsonb)` στις δύο νέες migrations. Η διόρθωση χρησιμοποιεί τον τελεστή `jsonb - text[]` και ελέγχει ρητά ότι υπάρχουν όλα τα απαιτούμενα κλειδιά. Το αρχικό Regression event είχε το παλιό PR body· οι τέσσερις απαιτούμενες ενότητες υπάρχουν πλέον στην περιγραφή και θα ελεγχθούν ξανά στο επόμενο synchronize event. Το Browser Quality run `42528377776` ακυρώθηκε από τον χρήστη και δεν θεωρείται επιτυχία. Οι migrations δεν έχουν εφαρμοστεί σε παραγωγή. Δεν έχει γίνει merge, deployment, AI κλήση ή publish.
+Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Διορθώθηκε το PostgreSQL JSON validation στις δύο νέες migrations. Το Regression πέρασε το PR-description contract, αλλά το full Bun suite εντόπισε τρεις περιπτώσεις: εύθραυστη assertion μορφοποίησης, λανθασμένη απόρριψη Universe-only scope και ελλιπές isolated test binding για το νέο schema. Διορθώθηκαν η server-side συμπεριφορά και τα test harnesses. Τα Database Replay και Browser Quality της προηγούμενης HEAD ακυρώθηκαν πριν ολοκληρωθούν και δεν θεωρούνται επιτυχίες. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
 
 ## Συμπεριφορά
 
