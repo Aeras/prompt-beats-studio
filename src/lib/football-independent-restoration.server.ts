@@ -234,7 +234,7 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
   )
     return false;
   const otherPair =
-    /^\p{L}[\p{L}.'’ ]{1,30}\s+(?:vs\.?|v\.?|—|–|-)\s+\p{L}[\p{L}.'’ ]{1,30}$/u;
+    /^\p{L}[\p{L}.'’ ]{0,30}?(?:\s+(?:vs\.?|v\.?|-)\s+|\s*[—–]\s*)\p{L}[\p{L}.'’ ]{1,30}$/u;
   const venueOrLeague =
     /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|stadio|stadium|arena|σουπερ λιγκ|серия а/iu;
   const isOtherPair = (raw: string) => {
