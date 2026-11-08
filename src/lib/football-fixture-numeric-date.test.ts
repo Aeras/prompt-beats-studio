@@ -39,3 +39,32 @@ test("ambiguous slash dates are still not guessed", () => {
   );
   expect(r.failures).toContain("date_missing");
 });
+
+test("saved full analysis loads when the database returns kickoff as +00:00", async () => {
+  const { readFullEvidence } = await import("./football-full-evidence.shared");
+  const payload = {
+    fixture: {
+      leagueId: "IT-SA",
+      homeTeam: "Fiorentina",
+      awayTeam: "Juventus",
+      kickoffUtc: "2026-11-08T19:45:00Z",
+    },
+    cutoff: "2026-11-08T11:31:27.993Z",
+    sources: [],
+  };
+  const fixtureRow = {
+    leagueId: "IT-SA",
+    homeTeam: "Fiorentina",
+    awayTeam: "Juventus",
+    kickoffUtc: "2026-11-08T19:45:00+00:00",
+  };
+  // Parse failures of the minimal payload are acceptable; the fixture mismatch must not be the cause.
+  const z = await import("./football-odds.shared");
+  expect(
+    z.oddsTargetSchema.safeParse({
+      ...fixtureRow,
+      kickoffUtc: new Date(Date.parse(fixtureRow.kickoffUtc)).toISOString(),
+    }).success,
+  ).toBe(true);
+  expect(readFullEvidence(undefined, fixtureRow, payload.cutoff)).toBeUndefined();
+});
