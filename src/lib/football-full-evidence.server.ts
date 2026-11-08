@@ -306,6 +306,13 @@ export async function runFullFootballEvidence(
       const result = await runFullFootballEvidence({
         ...input,
         restoration: false,
+        context: {
+          ...input.context,
+          approvedProviderSources: input.providerUrls.map((url, i) => ({
+            sourceId: `provider-src-${i + 1}`,
+            url,
+          })),
+        },
         policy,
         journal: (r) => input.journal(decorate(r)),
       });

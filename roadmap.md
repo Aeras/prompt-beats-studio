@@ -6,6 +6,8 @@
 
 ## Done
 
+- [x] Football V2 citation provenance: isolated correction and offline checks complete; production unchanged and GitHub update awaits separate approval.
+
 - [x] Cloud enabled for this project and connected; the hosted backend responds normally on all planes (auth, database, auth to database) and the preview serves pages with no backend-configuration errors in the server log.
 - [x] Repaired the collateral damage from enabling Cloud: the generated database type definitions had been overwritten with an empty schema (2591 lines to 155), which made every database call fail to compile; restored them byte-for-byte from the previous version, with no runtime, data or schema change.
 - [x] Read-only diagnosis of live promptbeats.app (slow "Checking account status…", app shows signed out, /auth email+password fails with the generic "Sign-in is unavailable" message): served build is current; the published bundle talks to the external PromptBeats project while the server side was bound elsewhere. No changes made at the time.
