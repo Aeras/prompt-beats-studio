@@ -166,12 +166,13 @@ const monthNames = [
   "november|nov|νοεμβριου|ноября",
   "december|dec|δεκεμβριου|декабря",
 ];
-function explicitDates(text: string) {
-  const dates = [...text.matchAll(/\b(20\d{2})-(\d{2})-(\d{2})(?![\dTt])/gu)].map(
-    (m) => `${m[1]}-${m[2]}-${m[3]}`,
-  );
+function explicitDates(text: string): { date: string; index: number }[] {
+  const dates: { date: string; index: number }[] = [];
+  const push = (date: string, index: number | undefined) => dates.push({ date, index: index ?? 0 });
+  for (const m of text.matchAll(/\b(20\d{2})-(\d{2})-(\d{2})(?![\dTt])/gu))
+    push(`${m[1]}-${m[2]}-${m[3]}`, m.index);
   for (const m of text.matchAll(/\b(20\d{2})-(\d{2})-(\d{2})[tT]/gu))
-    dates.push(`${m[1]}-${m[2]}-${m[3]}`);
+    push(`${m[1]}-${m[2]}-${m[3]}`, m.index);
   // Unambiguous European numeric dates only: dd.mm.yyyy, or dd/mm/yyyy with day > 12.
   for (const m of text.matchAll(
     /(?:^|[^\p{N}/.])(\d{1,2})([./])(\d{1,2})\2(20\d{2})(?![\p{N}/.])/gu,
@@ -181,7 +182,10 @@ function explicitDates(text: string) {
     if (day < 1 || day > 31 || month < 1 || month > 12) continue;
     if (m[2] === "/" && day <= 12) continue;
     const year = m[4]!;
-    dates.push(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
+    push(
+      `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      m.index,
+    );
   }
   monthNames.forEach((names, i) => {
     for (const m of text.matchAll(
@@ -190,13 +194,13 @@ function explicitDates(text: string) {
         "gu",
       ),
     ))
-      dates.push(`${m[2]}-${String(i + 1).padStart(2, "0")}-${m[1]!.padStart(2, "0")}`);
+      push(`${m[2]}-${String(i + 1).padStart(2, "0")}-${m[1]!.padStart(2, "0")}`, m.index);
     for (const m of text.matchAll(
       new RegExp(`(?:^|[^\\p{L}\\p{N}])(?:${names})\\s+(\\d{1,2}),?\\s+(20\\d{2})(?!\\d)`, "gu"),
     ))
-      dates.push(`${m[2]}-${String(i + 1).padStart(2, "0")}-${m[1]!.padStart(2, "0")}`);
+      push(`${m[2]}-${String(i + 1).padStart(2, "0")}-${m[1]!.padStart(2, "0")}`, m.index);
   });
-  return [...new Set(dates)];
+  return dates;
 }
 /** All predicates are evaluated; title and URL are deliberately not fixture proof. */
 export function traceFootballFixture(
@@ -243,9 +247,21 @@ export function traceFootballFixture(
     reversed = home.some((h) => away.some((a) => pair(a, h) || at(h, a)));
   add("venue_unknown", !forward && !reversed);
   add("reversed_venue", reversed);
-  const dates = explicitDates(t);
+  const dated = explicitDates(t);
+  const dates = [...new Set(dated.map((d) => d.date))];
   add("date_missing", !dates.length || !local.date);
-  add("date_conflict", !!local.date && dates.some((d) => d !== local.date));
+  // A conflicting date rejects the page only when it appears in fixture context (near a
+  // team name); unrelated dates elsewhere (other matches, archives, footers) are ignored.
+  const nearTeam = (index: number) => {
+    const window = t.slice(Math.max(0, index - 120), index + 120);
+    return [...home, ...away].some((a) => has(window, a));
+  };
+  const teamsPresent = home.some((a) => has(t, a)) && away.some((a) => has(t, a));
+  add(
+    "date_conflict",
+    !!local.date &&
+      dated.some((d) => d.date !== local.date && (!teamsPresent || nearTeam(d.index))),
+  );
   const weekday = local.date
     ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
         .format(new Date(local.date + "T12:00:00Z"))
