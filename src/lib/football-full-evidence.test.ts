@@ -618,3 +618,39 @@ test("whole authored combination plus provider support is distinct from combinin
     }
   }
 });
+test("staged extraction drops a non-literal quote but keeps valid candidates and completes", async () => {
+  const h = hit(prefix + "Synthetic Unicode 👟 текст ".repeat(6500) + quote);
+  const base = setup([h], { capacity: { context: 125000, output: 16384 } });
+  const s = setup([h], {
+    capacity: { context: 125000, output: 16384 },
+    caller: (id) => async (call) => {
+      const r = await base.input.caller(id)(call);
+      const raw = JSON.parse(r.text);
+      if (Array.isArray(raw.evidenceCandidates) && JSON.parse(call.prompt).chunks) {
+        raw.evidenceCandidates.push(
+          {
+            sourceId: "src-unknown",
+            quote: "invented",
+            market: { kind: "dc", period: "FT", selection: "X2" },
+            kind: "editorial",
+            rationale: "",
+          },
+          {
+            ...(raw.evidenceCandidates[0] ?? {
+              sourceId: "x",
+              market: { kind: "dc", period: "FT", selection: "X2" },
+              kind: "editorial",
+            }),
+            quote: "Paraphrased text not in the article",
+          },
+          { garbage: true },
+        );
+      }
+      return { ...r, text: JSON.stringify(raw) };
+    },
+  });
+  const r = await runFullFootballEvidence(s.input);
+  expect(r.report.mode).toBe("staged_extraction");
+  expect(r.report.candidates.length).toBeGreaterThan(0);
+  expect(r.report.candidates.every((c) => h.text.includes(c.quote))).toBe(true);
+});
