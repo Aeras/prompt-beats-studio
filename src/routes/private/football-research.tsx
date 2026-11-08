@@ -735,6 +735,8 @@ function PrivateFootballResearchPage() {
             <div className="space-y-3">
               {history.data?.map((entry) => {
                 const open = expanded.includes(entry.id);
+                const profileVersion =
+                  entry.analysis?.searchProfileVersion ?? entry.searchProfileVersion;
                 return (
                   <article
                     key={entry.id}
@@ -771,9 +773,8 @@ function PrivateFootballResearchPage() {
                             {new Date(entry.created_at).toLocaleDateString("el-GR")} ·{" "}
                             {entry.model_id}
                             <span className="block text-xs text-slate-400">
-                              {entry.analysis?.searchProfileVersion
-                                ? FOOTBALL_SEARCH_PROFILES[entry.analysis.searchProfileVersion]
-                                    .label
+                              {profileVersion
+                                ? FOOTBALL_SEARCH_PROFILES[profileVersion].label
                                 : "Παλαιότερη ανάλυση · προφίλ μη καταγεγραμμένο"}
                             </span>
                             {entry.analysis?.tavilySearchDepth && (
@@ -799,7 +800,10 @@ function PrivateFootballResearchPage() {
                     {open && (
                       <div className="space-y-4 border-t border-white/10 p-4">
                         {!entry.analysis && entry.fullEvidenceV2 && (
-                          <OnlinePredictionsPanel fullEvidence={entry.fullEvidenceV2} />
+                          <OnlinePredictionsPanel
+                            fullEvidence={entry.fullEvidenceV2}
+                            failureDetail={entry.fullEvidenceFailureDetail}
+                          />
                         )}
                         {entry.analysis ? (
                           <>

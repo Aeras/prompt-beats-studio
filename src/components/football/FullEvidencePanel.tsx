@@ -2,7 +2,10 @@ import { IndependentMarketsPanel } from "./IndependentMarketsPanel";
 import { useI18n } from "@/i18n";
 import { footballEvidenceMarketLabel } from "@/i18n/football-evidence-v2";
 import { descriptiveMarketKey, descriptiveMarketFamily } from "@/lib/football-evidence-v2.shared";
-import type { FullEvidenceReport } from "@/lib/football-full-evidence.shared";
+import type {
+  FullEvidenceFailureDetail,
+  FullEvidenceReport,
+} from "@/lib/football-full-evidence.shared";
 const reasons: Record<string, string> = {
   authorization_changed: "Η πρόσβαση ή η διαθεσιμότητα του μοντέλου άλλαξε πριν από την κλήση.",
   capacity_unknown: "Δεν υπάρχουν επιβεβαιωμένα όρια context/εξόδου για το επιλεγμένο μοντέλο.",
@@ -24,11 +27,18 @@ const exclusions: Record<string, string> = {
   market_stance_unconfirmed: "Η ερμηνεία της αγοράς χρειάζεται επιβεβαίωση",
   candidate_limit: "Πολλές επιλογές της ίδιας πηγής",
 };
-export function FullEvidencePanel({ report }: { report: FullEvidenceReport }) {
+export function FullEvidencePanel({
+  report,
+  failureDetail,
+}: {
+  report: FullEvidenceReport;
+  failureDetail?: FullEvidenceFailureDetail;
+}) {
   if (report.restoration)
     return (
       <IndependentMarketsPanel
         report={report}
+        {...(failureDetail ? { failureDetail } : {})}
         audit={<LegacyFullEvidencePanel report={report} />}
       />
     );

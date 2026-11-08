@@ -1,5 +1,8 @@
 import { FullEvidencePanel } from "./FullEvidencePanel";
-import type { FullEvidenceReport } from "@/lib/football-full-evidence.shared";
+import type {
+  FullEvidenceFailureDetail,
+  FullEvidenceReport,
+} from "@/lib/football-full-evidence.shared";
 import { useI18n } from "@/i18n";
 import { independentMessages, legacyMarketAst } from "@/i18n/football-independent-assessment";
 import { footballEvidenceMarketLabel } from "@/i18n/football-evidence-v2";
@@ -18,8 +21,10 @@ export function OnlinePredictionsPanel({
   data,
   evidenceV2,
   fullEvidence,
+  failureDetail,
 }: {
   fullEvidence?: FullEvidenceReport | undefined;
+  failureDetail?: FullEvidenceFailureDetail | undefined;
   data?: FootballPredictionConsensus | undefined;
   evidenceV2?: FootballClaimLedger | undefined;
   estimates?: { market: string; percent: number }[] | undefined;
@@ -65,7 +70,10 @@ export function OnlinePredictionsPanel({
         []),
     ]),
   ].slice(0, 25);
-  if (fullEvidence) return <FullEvidencePanel report={fullEvidence} />;
+  if (fullEvidence)
+    return (
+      <FullEvidencePanel report={fullEvidence} {...(failureDetail ? { failureDetail } : {})} />
+    );
   return (
     <section
       aria-label={t.title}

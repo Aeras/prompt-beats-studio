@@ -5,6 +5,7 @@ import { normalizeAuthoredMarkets } from "./football-independent-normalization.s
 import { researchMarketKey, type ResearchMarket } from "./football-independent-markets.shared";
 import {
   aggregateVerifiedMarkets,
+  contradictsPublishedPredictionEvidence,
   type RestoredCandidate,
 } from "./football-independent-restoration.shared";
 import { createRestorationPolicy } from "./football-independent-restoration.server";
@@ -318,6 +319,34 @@ function candidate(id: number, market: ResearchMarket, family = "publisher-a"): 
     reasons: [],
   };
 }
+test("absence-of-picks language distinguishes provisional from eligible published evidence", () => {
+  const verified = candidate(0, over);
+  const provisional = { ...verified, eligibleForConsensus: false };
+  expect(
+    contradictsPublishedPredictionEvidence(
+      "No published predictions from independently verified publishers could be counted.",
+      [provisional],
+    ),
+  ).toBe(false);
+  expect(
+    contradictsPublishedPredictionEvidence("No published predictions were found.", [provisional]),
+  ).toBe(true);
+  expect(
+    contradictsPublishedPredictionEvidence("Δεν υπάρχουν επαληθευμένες ανεξάρτητες προβλέψεις.", [
+      provisional,
+    ]),
+  ).toBe(false);
+  expect(
+    contradictsPublishedPredictionEvidence("Нет подтверждённых независимых прогнозов.", [
+      provisional,
+    ]),
+  ).toBe(false);
+  expect(
+    contradictsPublishedPredictionEvidence("No independently verified picks were found.", [
+      verified,
+    ]),
+  ).toBe(true);
+});
 test("all exact markets aggregated independently of AI selection; same family one vote and conflicts removed", () => {
   const btts: ResearchMarket = { kind: "btts", period: "FT", selection: "yes" };
   const rows = aggregateVerifiedMarkets([
@@ -373,6 +402,44 @@ test("unknown publisher stays readable and visible but not an independent vote",
   expect(result.report.restoration?.onlineComparisonStatus).toBe("not_verified");
   expect(result.report.restoration?.candidates[0]?.quoteVerified).toBe(true);
 });
+test("qualified lack of independently verified picks is allowed when every sourced candidate is provisional", async () => {
+  const s = setup([hit(undefined, "https://unreviewed.example.org/fixture")]);
+  const original = s.input.caller;
+  s.input.caller = (id) => async (call) => {
+    const receipt = await original(id)(call);
+    const raw = JSON.parse(receipt.text);
+    raw.independentAssessment.rationale =
+      "No published predictions from independently verified publishers could be counted; this view relies on provider evidence only.";
+    return { ...receipt, text: JSON.stringify(raw) };
+  };
+  const result = await runFullFootballEvidence(s.input);
+  expect(result.report.coverage).toBe("complete");
+  expect(result.report.restoration?.candidates).toHaveLength(1);
+  expect(result.report.restoration?.candidates[0]?.eligibleForConsensus).toBe(false);
+  expect(result.report.restoration?.onlineComparisonStatus).toBe("not_verified");
+  expect(s.calls).toHaveLength(1);
+});
+
+test("the same no-predictions claim is rejected when an independently verified pick exists", async () => {
+  const s = setup();
+  const original = s.input.caller;
+  s.input.caller = (id) => async (call) => {
+    const receipt = await original(id)(call);
+    const raw = JSON.parse(receipt.text);
+    raw.independentAssessment.rationale =
+      "There are no published predictions from independently verified publishers.";
+    return { ...receipt, text: JSON.stringify(raw) };
+  };
+  const error = await runFullFootballEvidence(s.input).then(
+    () => undefined,
+    (caught: unknown) => caught,
+  );
+  expect(error).toBeInstanceOf(FullCoverageError);
+  expect(error instanceof FullCoverageError ? error.failureDetail : undefined).toBe(
+    "published_prediction_conflict",
+  );
+  expect(s.calls).toHaveLength(1);
+});
 test("malformed independent assessment stops without paid repair", async () => {
   const s = setup();
   s.input.caller = () => async () => ({
@@ -382,8 +449,16 @@ test("malformed independent assessment stops without paid repair", async () => {
     provider: "openrouter",
     model: "offline",
   });
-  await expect(runFullFootballEvidence(s.input)).rejects.toBeInstanceOf(FullCoverageError);
+  const error = await runFullFootballEvidence(s.input).then(
+    () => undefined,
+    (caught: unknown) => caught,
+  );
+  expect(error).toBeInstanceOf(FullCoverageError);
   expect(s.states.at(-1)?.calls).toHaveLength(1);
+  expect(error instanceof FullCoverageError ? error.failureDetail : undefined).toBe(
+    "assessment_schema_invalid",
+  );
+  expect(s.states.at(-1)?.restoration?.assessment).toBeUndefined();
 });
 
 test("frozen real excerpts retain hashes and do not pretend full article replay", () => {

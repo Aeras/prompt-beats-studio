@@ -18,6 +18,7 @@ import {
   utf8Bytes,
   fullCandidateSchema,
   fullEvidenceSchema,
+  FullEvidenceValidationError,
   fullJudgmentSchema,
   validateFullReport,
   type FullEvidenceHit,
@@ -289,7 +290,10 @@ export type FullEvidenceRunInput = {
   journal: (r: FullEvidenceReport) => Promise<void>;
 };
 export class FullCoverageError extends Error {
-  constructor(public report: FullEvidenceReport) {
+  constructor(
+    public report: FullEvidenceReport,
+    public failureDetail?: import("./football-full-evidence.shared").FullEvidenceFailureDetail,
+  ) {
     super("incomplete_coverage");
   }
 }
@@ -307,7 +311,8 @@ export async function runFullFootballEvidence(
       });
       return { ...result, report: decorate(result.report) };
     } catch (e) {
-      if (e instanceof FullCoverageError) throw new FullCoverageError(decorate(e.report));
+      if (e instanceof FullCoverageError)
+        throw new FullCoverageError(decorate(e.report), e.failureDetail);
       throw e;
     }
   }
@@ -359,10 +364,13 @@ export async function runFullFootballEvidence(
     if (!validateFullReport(checked)) throw Error("Invalid coverage journal");
     await input.journal(checked);
   };
-  const fail = async (reason: FullEvidenceReport["reason"]) => {
+  const fail = async (
+    reason: FullEvidenceReport["reason"],
+    failureDetail?: import("./football-full-evidence.shared").FullEvidenceFailureDetail,
+  ) => {
     report.reason = reason;
     await checkpoint();
-    throw new FullCoverageError(report);
+    throw new FullCoverageError(report, failureDetail);
   };
   const plan = fullCoveragePlan(
     docs,
@@ -536,12 +544,17 @@ export async function runFullFootballEvidence(
   if (input.policy) {
     try {
       j = input.policy.judge(final.raw["independentAssessment"], docs, report);
-    } catch {
-      return await fail("invalid_judgment");
+    } catch (error) {
+      return await fail(
+        "invalid_judgment",
+        error instanceof FullEvidenceValidationError
+          ? error.detail
+          : "assessment_validation_failed",
+      );
     }
   } else {
     const judgment = fullJudgmentSchema.safeParse(final.raw["independentAssessment"]);
-    if (!judgment.success) return await fail("invalid_judgment");
+    if (!judgment.success) return await fail("invalid_judgment", "judgment_schema_invalid");
     j = judgment.data;
     const allowed = new Set([
       ...docs
@@ -566,7 +579,14 @@ export async function runFullFootballEvidence(
       ) ||
       (j.selection && j.selection.kind !== "other" && !coherentDescriptiveSelection(j.selection))
     )
-      return await fail("invalid_judgment");
+      return await fail(
+        "invalid_judgment",
+        j.evidenceUrls.some((u) => !allowed.has(u))
+          ? "unapproved_source_reference"
+          : j.supportingClaimIds.length
+            ? "unknown_source_reference"
+            : "prohibited_claim",
+      );
     if (
       j.selection?.kind === "and" &&
       (!j.jointRationale ||
@@ -578,7 +598,7 @@ export async function runFullFootballEvidence(
             j.evidenceUrls.includes(docs.find((d) => d.id === c.sourceId)?.url ?? ""),
         ))
     )
-      return await fail("invalid_judgment");
+      return await fail("invalid_judgment", "invalid_combination");
     if (
       report.candidates.some(
         (c) => c.kind === "editorial" && c.quoteVerified && c.fixtureVerified,
@@ -587,16 +607,16 @@ export async function runFullFootballEvidence(
         j.rationale,
       )
     )
-      return await fail("invalid_judgment");
+      return await fail("invalid_judgment", "published_prediction_conflict");
   }
   const citedDocs = docs.filter((d) => d.url && d.text && j.evidenceUrls.includes(d.url));
   for (const url of new Set(citedDocs.map((d) => d.url))) {
     const versions = citedDocs.filter((d) => d.url === url);
     if (versions.length > 1 && !versions.some((d) => j.evidenceSourceIds?.includes(d.id)))
-      return await fail("invalid_judgment");
+      return await fail("invalid_judgment", "ambiguous_source_reference");
   }
   if (j.evidenceSourceIds?.some((id) => !citedDocs.some((d) => d.id === id)))
-    return await fail("invalid_judgment");
+    return await fail("invalid_judgment", "unknown_source_reference");
   report.judgment = j;
   report.citedSourceIds = j.evidenceSourceIds ?? citedDocs.map((d) => d.id);
   report.providerCitations = j.evidenceUrls.filter((u) => input.providerUrls.includes(u));
