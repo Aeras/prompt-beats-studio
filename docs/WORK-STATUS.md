@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-08 — Non-counted published selection distribution — CODE_COMPLETE_RELEASE_PENDING
+
+- **Baseline:** anonymous GitHub read verified main `e30c8fefe6235f879009d2ee01d06f724a393c35` matches sandbox; related historical draft PR #524 remains open. No remote mutation performed.
+- **Acceptance / implementation:** presentation-only exact-market grouping before the unchanged detailed publication list. Count once per publication URL (fragment ignored, path/query preserved) plus exact normalized selection, source-ID fallback when URL unavailable; distinct selections from one publication all count. Preserve periods, lines, statistics, subjects, players, settlement and combination legs. Descending counts, unique sample denominator and common 0–100% bars; frequency explicitly not probability or consensus. Heading uses unique total; original candidate links/quotes retained. No server, storage, schema, search, quota or assessment changes.
+- **Verification:** 8 new offline rule tests; 65 focused tests PASS; full Bun suite 2,098 PASS / 1 SKIP / 0 FAIL; scoped ESLint/Prettier PASS; preview build OK. Playwright rendered the actual panel with synthetic saved-data fixture: 6 original entries -> 5 unique selections, 5 bars, all source entries retained, primary assessment unchanged; desktop 1280×1800 and mobile 384×658 screenshots reviewed without horizontal overflow.
+- **Limits / release:** authenticated production readback unavailable (external unmanaged auth); not represented as live-account end-to-end verification. No paid calls, DB writes, push, PR, merge or Publish. Local UI change can be rolled back without data coordination; official CI and production verification remain separate release steps.
+
 ## 2026-11-08 — Football V2 staged extraction aborts on one non-literal quote — CODE_COMPLETE_RELEASE_PENDING
 
 - **Evidence:** run `5753295e` (Fiorentina–Juventus, 09:07 UTC) and earlier same-fixture runs failed `incomplete_coverage / invalid_extraction` after one paid extract call; any single non-literal or schema-invalid candidate aborted the whole run.

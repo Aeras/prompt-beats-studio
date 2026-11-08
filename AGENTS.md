@@ -65,6 +65,8 @@ The GitHub workflow guard can verify presence of this contract, evidence structu
 
 ## 8. Architecture rules
 
+- Non-counted published-pick distributions are derived by a pure presentation helper using exact market and publication identities; never reuse these counts for consensus. Why: sample frequency is not publisher independence or outcome probability.
+
 - AI-discovered football fixtures are written only by server code via service-role RPCs after independent HTTP corroboration; model output and citations are never persisted as verified. Why: AI output is untrusted and paid analysis must target real fixtures.
 
 - Football V2 restoration resolves run-supplied source IDs to exact verified article/provider URLs before persistence; citation eligibility is independent of publisher consensus eligibility. Why: model URLs are untrusted and valid articles need not be independent publisher votes.
