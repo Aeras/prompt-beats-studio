@@ -256,17 +256,27 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
     /(?:head.to.head|\bh2h\b|past results|previous (?:meetings|results)|\bstandings\b|line-?ups|injuries|where to watch|latest predictions|related (?:matches|predictions)|προϊστορία|βαθμολογία|личные встречи)/iu;
   const otherPair =
     /^\p{L}[\p{L}.'’ ]{1,30}\s+(?:vs\.?|v\.?|—|–|-)\s+\p{L}[\p{L}.'’ ]{1,30}$/u;
+  const venueOrLeague =
+    /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|stadio|stadium|arena|σουπερ λιγκ|серия а/iu;
+  // A short prediction heading ("Prediction", "Correct Score Prediction", "Прогноз на матч")
+  // opens the authored pick block of this article, even after an H2H section.
+  const pickHeading =
+    /(?:^|[^\p{L}])(?:predictions?|tips?|picks?|verdict|we say|best bet|прогноз|ставк|πρόβλεψ|προγνωστικ)(?=$|[^\p{L}])/iu;
   for (let j = before.length - 2; j >= 0 && j >= before.length - 400; j--) {
     const line = before[j]!.trim();
     if (!line || line.length > 120) continue;
-    if (blocked.test(line)) return false;
     if (samePair(line)) {
-      if (topical.test(line)) return false;
+      if (topical.test(line) && !pickHeading.test(line)) return false;
       break;
     }
-    if (otherPair.test(line)) return false;
+    if (line.length <= 60 && pickHeading.test(line) && !topical.test(line)) break;
+    if (blocked.test(line)) return false;
+    if (otherPair.test(line) && !venueOrLeague.test(line)) return false;
   }
-  const near = text.slice(Math.max(0, at - 600), at + quote.length + 200);
+  // The quote's own neighbourhood: the two preceding non-empty lines and the next one.
+  const prev = before.slice(0, -1).filter((l) => l.trim()).slice(-2).join("\n").slice(-600);
+  const after = text.slice(at + quote.length).split("\n").slice(0, 2).join("\n").slice(0, 300);
+  const near = prev + "\n" + (before[before.length - 1] ?? "") + quote + after;
   const local = traceFootballFixture(near, input.fixture, input.cutoff, opts);
   if (
     local.failures.some((f) =>
