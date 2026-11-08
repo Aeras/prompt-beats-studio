@@ -337,11 +337,21 @@ export function readFullEvidence(
   );
   if (hits.length !== 1) return;
   const p = z.union([fullSidecarSchema, restoredSidecarSchema]).safeParse(hits[0]);
-  const f = oddsTargetSchema.safeParse(fixture);
+  // Postgres returns timestamptz as "+00:00"; normalize to the canonical "Z" form.
+  const raw = fixture && typeof fixture === "object" ? (fixture as Record<string, unknown>) : {};
+  const kick = typeof raw["kickoffUtc"] === "string" ? Date.parse(raw["kickoffUtc"]) : NaN;
+  const f = oddsTargetSchema.safeParse(
+    Number.isFinite(kick) ? { ...raw, kickoffUtc: new Date(kick).toISOString() } : fixture,
+  );
   if (!p.success || !f.success) return;
   const r = p.data.payload;
+  const sameFixture =
+    r.fixture.leagueId === f.data.leagueId &&
+    r.fixture.homeTeam === f.data.homeTeam &&
+    r.fixture.awayTeam === f.data.awayTeam &&
+    Date.parse(r.fixture.kickoffUtc) === Date.parse(f.data.kickoffUtc);
   if (
-    JSON.stringify(r.fixture) !== JSON.stringify(f.data) ||
+    !sameFixture ||
     Date.parse(r.cutoff) !== Date.parse(cutoff) ||
     r.sources.some((s) => Date.parse(s.accessedAt) > Date.parse(cutoff))
   )
