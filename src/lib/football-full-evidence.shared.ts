@@ -12,7 +12,7 @@ import {
 import { oddsTargetSchema } from "./football-odds.shared";
 export const FULL_EVIDENCE_CONSENT = "football-v2-full-evidence-1";
 export const FULL_MAX_MODEL_CALLS = 5;
-export const FULL_EXTRACTION_TOKENS = 8192;
+export const FULL_EXTRACTION_TOKENS = 16384;
 export const FULL_FINAL_TOKENS = 16384;
 export const utf8Bytes = (s: string) => new TextEncoder().encode(s).length;
 export type FullEvidenceHit = {
