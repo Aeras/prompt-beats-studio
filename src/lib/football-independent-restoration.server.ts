@@ -179,10 +179,7 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
     let end = lines.length;
     for (let j = metadataEnd + 1; j < lines.length; j++) {
       const line = lines[j]!.trim();
-      if (
-        boundary.test(line) ||
-        fixtureBoundary(line)
-      ) {
+      if (boundary.test(line) || fixtureBoundary(line)) {
         end = j;
         break;
       }

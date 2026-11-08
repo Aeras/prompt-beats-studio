@@ -29,8 +29,13 @@ test("a numeric date for another day is still a conflict", () => {
 });
 
 test("ambiguous slash dates are still not guessed", () => {
-  const r = traceFootballFixture("Fiorentina vs Juventus 08/11/2026 Serie A", fixture, "2026-11-08T09:50:00Z", {
-    searchProfileVersion: "v2_experimental",
-  });
+  const r = traceFootballFixture(
+    "Fiorentina vs Juventus 08/11/2026 Serie A",
+    fixture,
+    "2026-11-08T09:50:00Z",
+    {
+      searchProfileVersion: "v2_experimental",
+    },
+  );
   expect(r.failures).toContain("date_missing");
 });
