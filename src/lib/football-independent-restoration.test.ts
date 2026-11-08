@@ -705,5 +705,6 @@ test("80 extracted quotes that expand to more than 80 picks do not fail extracti
   const last = states.at(-1)!;
   expect(last.reason).not.toBe("invalid_extraction");
   expect(last.candidates.length).toBe(160);
-  expect(readFullEvidence(packFullEvidence(last), fixture)).not.toBeNull();
+  const stored = packFullEvidence({}, [], last);
+  expect(readFullEvidence(stored.sources, fixture, cutoff)?.candidates.length).toBe(160);
 });
