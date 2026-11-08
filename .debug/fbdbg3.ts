@@ -13,3 +13,6 @@ for (const k of ["fp","fw"]) {
     console.log(" ", s.text.split("\n")[0].slice(0,60), "| lines", s.text.split("\n").length, "| bind", b.status, "| content", JSON.stringify(c.failures));
   }
 }
+const t = readFileSync(`/tmp/fb/fp.txt`,"utf8").split("\n");
+const s = (plainPreviewSections as any)(t.join("\n"), { fixture, cutoff })[0];
+console.log("LAST:", s.text.split("\n").slice(-2), "NEXT:", t[s.text.split("\n").length]);
