@@ -233,13 +233,26 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
     )
   )
     return false;
+  const otherPair =
+    /^\p{L}[\p{L}.'’ ]{1,30}\s+(?:vs\.?|v\.?|—|–|-)\s+\p{L}[\p{L}.'’ ]{1,30}$/u;
+  const venueOrLeague =
+    /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|stadio|stadium|arena|σουπερ λιγκ|серия а/iu;
+  const isOtherPair = (raw: string) => {
+    const line = raw.trim();
+    return line.length <= 120 && !samePair(line) && otherPair.test(line) && !venueOrLeague.test(line);
+  };
   const lines = text.split("\n");
   const anchored = lines.some((line, i) => {
     if (line.trim().length > 240 || !samePair(line)) return false;
     const head = traceFootballFixture(line, input.fixture, input.cutoff, opts);
     if (head.failures.includes("venue_unknown") || head.failures.includes("reversed_venue"))
       return false;
-    const window = lines.slice(Math.max(0, i - 3), i + 7).join("\n").slice(0, 2000);
+    // The date must belong to this pair: never read across another fixture's line.
+    let from = i,
+      to = i;
+    while (from > Math.max(0, i - 3) && !isOtherPair(lines[from - 1]!)) from--;
+    while (to < Math.min(lines.length - 1, i + 6) && !isOtherPair(lines[to + 1]!)) to++;
+    const window = lines.slice(from, to + 1).join("\n").slice(0, 2000);
     const t = traceFootballFixture(window, input.fixture, input.cutoff, opts);
     return !t.failures.some((f) =>
       ["date_missing", "date_conflict", "weekday_conflict", "reversed_venue", "qualified_team"].includes(f),
@@ -254,10 +267,6 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
     /^(?:#{1,4}\s*)?(?:head.to.head|h2h|related (?:matches|predictions)|comments|reader comments|discussion|личные встречи|комментарии|σχόλια|προϊστορία)(?=$|[^\p{L}])/iu;
   const topical =
     /(?:head.to.head|\bh2h\b|past results|previous (?:meetings|results)|\bstandings\b|line-?ups|injuries|where to watch|latest predictions|related (?:matches|predictions)|προϊστορία|βαθμολογία|личные встречи)/iu;
-  const otherPair =
-    /^\p{L}[\p{L}.'’ ]{1,30}\s+(?:vs\.?|v\.?|—|–|-)\s+\p{L}[\p{L}.'’ ]{1,30}$/u;
-  const venueOrLeague =
-    /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|stadio|stadium|arena|σουπερ λιγκ|серия а/iu;
   // A short prediction heading ("Prediction", "Correct Score Prediction", "Прогноз на матч")
   // opens the authored pick block of this article, even after an H2H section.
   const pickHeading =
@@ -269,9 +278,9 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
       if (topical.test(line) && !pickHeading.test(line)) return false;
       break;
     }
+    if (isOtherPair(line)) return false;
     if (line.length <= 60 && pickHeading.test(line) && !topical.test(line)) break;
     if (blocked.test(line)) return false;
-    if (otherPair.test(line) && !venueOrLeague.test(line)) return false;
   }
   // The quote's own neighbourhood: the two preceding non-empty lines and the next one.
   const prev = before.slice(0, -1).filter((l) => l.trim()).slice(-2).join("\n").slice(-600);
