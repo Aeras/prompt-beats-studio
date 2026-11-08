@@ -704,7 +704,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
 /** A run still "processing" after the admission window (15 min, far beyond the 300 s run
  * deadline) lost its worker before the failure write. Mark it terminal so history and
  * clearing stop showing it as in progress. Evidence/usage journals are kept unchanged. */
-export const FOOTBALL_STALE_PROCESSING_MS = 15 * 60 * 1000;
+const FOOTBALL_STALE_PROCESSING_MS = 15 * 60 * 1000;
 async function reconcileStaleFootballRuns(
   admin: (typeof import("@/integrations/supabase/client.server"))["supabaseAdmin"],
   userId: string,
