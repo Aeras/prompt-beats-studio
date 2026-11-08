@@ -129,7 +129,7 @@ BEGIN
       jsonb_build_object('type','song_universe','id',v_universe_two::text)))));
   PERFORM public.complete_generation_with_creative_direction_history(
     v_project_two_job,v_owner,v_result,
-    jsonb_set(v_direction,'{coreIdea}',to_jsonb('A separate universe begins at sea'),true),
+    jsonb_set(v_direction,'{coreIdea}',to_jsonb('A separate universe begins at sea'::text),true),
     'openai','offline-test',1);
   IF jsonb_array_length(public.read_generator_creative_direction_history(v_owner,
        jsonb_build_array(jsonb_build_object('type','project','id',v_project_two::text)))) <> 1
@@ -193,7 +193,7 @@ BEGIN
       jsonb_build_object('type','session','id',v_session_two::text)))));
   PERFORM public.complete_generation_with_creative_direction_history(
     v_session_two_job,v_owner,v_result,
-    jsonb_set(v_direction,'{coreIdea}',to_jsonb('A different independent session'),true),
+    jsonb_set(v_direction,'{coreIdea}',to_jsonb('A different independent session'::text),true),
     'openai','offline-test',1);
   IF jsonb_array_length(public.read_generator_creative_direction_history(v_owner,
        jsonb_build_array(jsonb_build_object('type','session','id',v_session::text)))) <> 1

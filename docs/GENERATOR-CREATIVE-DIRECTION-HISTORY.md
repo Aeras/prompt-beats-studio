@@ -2,7 +2,7 @@
 
 ## Κατάσταση
 
-Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το Regression gate πέρασε στο HEAD `ed377cc5a47fea79756e2ca40f2188ee49daab65`. Το Database Replay ολοκλήρωσε επιτυχώς την εφαρμογή όλων των migrations, αλλά το SQL test εντόπισε ότι η linked-Project guard απαγόρευε λανθασμένα την ανάγνωση ιστορικού από μεμονωμένο Project scope. Η διόρθωση διαχωρίζει τον γενικό έλεγχο ownership (για read RPCs) από τον αυστηρό έλεγχο canonical paired scopes μόνο κατά την εισαγωγή/ενημέρωση generation job. Το Browser Quality εκτελείται ακόμη στο προηγούμενο HEAD και θα ξανατρέξει στο διορθωμένο HEAD. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
+Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το Regression gate πέρασε στο προηγούμενο HEAD. Το Database Replay επιβεβαίωσε ότι οι migrations εφαρμόζονται και ότι ο διορθωμένος scope helper επιτρέπει ανεξάρτητες Project/Universe αναγνώσεις, ενώ το trigger κρατά την απαίτηση paired scopes για linked Project jobs. Στο επόμενο SQL test βρέθηκαν δύο test-only κλήσεις `to_jsonb()` με untyped string literals· προστέθηκε ρητό cast σε `text`. Το Browser Quality εκτελείται ακόμη σε προηγούμενο HEAD και θα ελεγχθεί ξανά στο τελικό HEAD. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
 
 ## Συμπεριφορά
 
