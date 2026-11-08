@@ -129,7 +129,7 @@ function explicitNarrativeWeekdays(text: string) {
 /** Text retrieval does not promise Markdown. A body heading must independently bind
  * both directed teams; following metadata must prove the exact competition/date.
  * Neither the search title nor a URL can lend missing fixture proof. */
-function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
+export function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
   const lines = text.split("\n");
   const homeAliases = evidenceTeamAliases(input.fixture.homeTeam, "v2_experimental");
   const awayAliases = evidenceTeamAliases(input.fixture.awayTeam, "v2_experimental");
