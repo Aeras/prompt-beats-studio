@@ -112,7 +112,11 @@ test("settlement, statistic, subject, player, score, HT/FT and combinations reta
   expect(result.rows.length).toBe(11);
 });
 test("safe formatting normalization and reversed combination legs deduplicate without broad category merging", () => {
-  const btts: Extract<ResearchMarket, { kind: "btts" }> = { kind: "btts", period: "FT", selection: "yes" };
+  const btts: Extract<ResearchMarket, { kind: "btts" }> = {
+    kind: "btts",
+    period: "FT",
+    selection: "yes",
+  };
   const result = aggregatePublishedSelections(
     [
       candidate("a", { kind: "other", label: "  Exact   PICK " }),
