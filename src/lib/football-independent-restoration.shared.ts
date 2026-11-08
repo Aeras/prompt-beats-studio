@@ -87,8 +87,16 @@ export const restoredAssessmentSchema = z
       c.addIssue({ code: "custom", message: "Alternative must differ" });
   });
 export type RestoredAssessment = z.infer<typeof restoredAssessmentSchema>;
-export function aggregateVerifiedMarkets(candidates: RestoredCandidate[]) {
-  const eligible = candidates.filter((c) => c.eligibleForConsensus && c.publisherFamily);
+export function aggregateVerifiedMarkets(
+  candidates: RestoredCandidate[],
+  knownSourceIds?: ReadonlySet<string>,
+) {
+  const eligible = candidates.filter(
+    (c) =>
+      c.eligibleForConsensus &&
+      c.publisherFamily &&
+      (!knownSourceIds || knownSourceIds.has(c.sourceId)),
+  );
   const conflicts = new Set<string>();
   for (const c of eligible)
     for (const d of eligible) {

@@ -499,7 +499,10 @@ export async function runFullFootballEvidence(
       if (!c.success) return await fail("invalid_extraction");
       for (const v of c.data) {
         const d = docs.find((d) => d.id === v.sourceId);
-        if (!d || !group.some((g) => g.sourceId === d.id && g.text.includes(v.quote)))
+        if (
+          !input.policy &&
+          (!d || !group.some((g) => g.sourceId === d.id && g.text.includes(v.quote)))
+        )
           return await fail("invalid_extraction");
         candidates.push(v);
       }

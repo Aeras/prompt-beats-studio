@@ -2,7 +2,12 @@ import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import frozenIncident from "./fixtures/football-independent-incident-excerpts.json";
 import { normalizeAuthoredMarkets } from "./football-independent-normalization.shared";
-import { researchMarketKey, type ResearchMarket } from "./football-independent-markets.shared";
+import {
+  researchMarketKey,
+  researchMarketSchema,
+  researchMarketLabel,
+  type ResearchMarket,
+} from "./football-independent-markets.shared";
 import {
   aggregateVerifiedMarkets,
   contradictsPublishedPredictionEvidence,
@@ -109,6 +114,153 @@ function setup(hits = [hit()]) {
   };
   return { input, states, calls };
 }
+test("player statistical markets have an explicit subject and localized label", () => {
+  const quote = "Top Pick: Alieu Njie Over 1.5 Shots";
+  const [market] = normalizeAuthoredMarkets(quote, fixture);
+  expect(market).toEqual({
+    kind: "stat_total",
+    statistic: "shots",
+    period: "FT",
+    subject: "player",
+    selection: "over",
+    line: 1.5,
+    player: "Alieu Njie",
+  });
+  expect(researchMarketSchema.safeParse(market).success).toBe(true);
+  expect(researchMarketLabel(market!, "en")).toContain("Alieu Njie");
+  expect(researchMarketLabel(market!, "el")).toContain("Alieu Njie");
+  expect(
+    researchMarketSchema.safeParse({
+      kind: "stat_total",
+      statistic: "shots",
+      period: "FT",
+      subject: "player",
+      selection: "over",
+      line: 1.5,
+    }).success,
+  ).toBe(false);
+});
+
+test("historical V2 player-name field with a team/match subject remains readable", () => {
+  expect(
+    researchMarketSchema.safeParse({
+      kind: "stat_total",
+      statistic: "shots",
+      period: "FT",
+      subject: "match",
+      selection: "over",
+      line: 1.5,
+      player: "Alieu Njie",
+    }).success,
+  ).toBe(true);
+});
+
+test("invalid market AST is isolated and retained as unverified", () => {
+  const s = setup();
+  const { policy } = createRestorationPolicy(s.input);
+  const docs = makeFullSources([hit()]);
+  policy.prepareDocs?.(docs);
+  policy.verify(
+    [
+      {
+        sourceId: docs[0]!.id,
+        quote: "Our pick: Over 2.5",
+        market: {
+          kind: "stat_total",
+          statistic: "shots",
+          period: "FT",
+          subject: "player",
+          selection: "over",
+          line: 1.5,
+        },
+        kind: "editorial",
+        rationale: "missing player identity",
+      },
+      {
+        sourceId: docs[0]!.id,
+        quote: "Our pick: Over 2.5",
+        market: over,
+        kind: "editorial",
+        rationale: "valid candidate",
+      },
+    ],
+    docs,
+  );
+  const evidence = policy.synthesisData() as { candidates: RestoredCandidate[] };
+  expect(evidence.candidates).toHaveLength(2);
+  expect(evidence.candidates[0]?.eligibleForConsensus).toBe(false);
+  expect(evidence.candidates[0]?.reasons).toContain("invalid_market");
+  expect(evidence.candidates[1]?.eligibleForConsensus).toBe(true);
+});
+
+test("22 offline candidates retain the player pick and exclude an unknown source", async () => {
+  const ordinaryQuote = "Our pick: Over 2.5 goals";
+  const playerQuote = "Top Pick: Alieu Njie Over 1.5 Shots";
+  const sourceText = header + ordinaryQuote + "\n" + playerQuote;
+  const s = setup([hit(sourceText, "https://sportsgambler.com/offline-fixture")]);
+  const original = s.input.caller;
+  s.input.caller = (id) => async (call) => {
+    const receipt = await original(id)(call);
+    const raw = JSON.parse(receipt.text);
+    const sourceId = JSON.parse(call.prompt).sources[0].sourceId as string;
+    raw.evidenceCandidates = [
+      ...Array.from({ length: 20 }, () => ({
+        sourceId,
+        quote: ordinaryQuote,
+        market: over,
+        kind: "editorial",
+        rationale: "offline ordinary candidate",
+      })),
+      {
+        sourceId,
+        quote: playerQuote,
+        market: {
+          kind: "stat_total",
+          statistic: "shots",
+          period: "FT",
+          subject: "player",
+          selection: "over",
+          line: 1.5,
+          player: "Alieu Njie",
+        },
+        kind: "editorial",
+        rationale: "offline player candidate",
+      },
+      {
+        sourceId: "src-unknown-source",
+        quote: ordinaryQuote,
+        market: over,
+        kind: "editorial",
+        rationale: "offline unknown-source candidate",
+      },
+    ];
+    return { ...receipt, text: JSON.stringify(raw) };
+  };
+  const result = await runFullFootballEvidence(s.input);
+  const candidates = result.report.restoration!.candidates;
+  expect(result.report.coverage).toBe("complete");
+  expect(candidates).toHaveLength(22);
+  expect(candidates.filter((c) => c.eligibleForConsensus)).toHaveLength(21);
+  expect(candidates[20]?.market.kind).toBe("stat_total");
+  if (candidates[20]?.market.kind === "stat_total") {
+    expect(candidates[20].market.subject).toBe("player");
+    expect(candidates[20].market.player).toBe("Alieu Njie");
+  }
+  expect(candidates[21]?.sourceId).toBe("src-unknown-source");
+  expect(candidates[21]?.quoteVerified).toBe(false);
+  expect(candidates[21]?.fixtureVerified).toBe(false);
+  expect(candidates[21]?.publisherFamily).toBeNull();
+  expect(candidates[21]?.eligibleForConsensus).toBe(false);
+  expect(candidates[21]?.reasons).toContain("unknown_source");
+  const counted = aggregateVerifiedMarkets(
+    candidates,
+    new Set(result.report.sources.map((source) => source.id)),
+  );
+  expect(counted.rows.reduce((n, row) => n + row.candidateIds.length, 0)).toBe(21);
+  expect(counted.rows.every((row) => !row.sourceIds.includes("src-unknown-source"))).toBe(true);
+  expect(result.report.counts.independentPublishers).toBe(1);
+});
+
 test.each([
   ['We are backing "over 2.5 goals" in this match (odds – 1.78).', "FT:total:2.5:over"],
   ["Our pick: Under 2.5 goals", "FT:total:2.5:under"],

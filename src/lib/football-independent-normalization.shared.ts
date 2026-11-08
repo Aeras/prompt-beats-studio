@@ -99,7 +99,7 @@ export function normalizeAuthoredMarkets(
           kind: "stat_total",
           statistic,
           period,
-          subject: teamSubject,
+          subject: player ? "player" : teamSubject,
           selection,
           line,
           ...(player ? { player } : {}),

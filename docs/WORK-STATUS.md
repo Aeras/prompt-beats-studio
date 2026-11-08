@@ -1,5 +1,14 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-08 — Football V2 player markets and candidate-isolated extraction — IN_PROGRESS
+
+- **Baseline / preflight:** current `main` `12344996d0c19d08fccb9294a4fe04f30aea64fe`; root `AGENTS.md` and this ledger read first. All open PRs checked; no open Football PR overlaps this finding. Existing unrelated work and pushed history are untouched.
+- **Confirmed failure:** `stat_total.subject` allowed only `match|home|away` while a separate optional `player` field existed. The restoration verifier parsed the entire candidate array at once, and staged extraction rejected unknown source IDs before per-candidate verification. A single invalid player AST or unknown source could therefore fail otherwise usable evidence.
+- **Implementation:** explicit `subject: "player"` requires a player identity; historical `match|home|away` plus optional player snapshots remain readable. Quote normalization now emits the player subject and localized labels identify the player. Candidate markets are parsed independently; invalid markets and unknown source IDs remain provisional/unverified, with no publisher family, eligibility or consensus vote. Staged V2 extraction routes policy candidates through the same server-side verification rather than failing the whole run on an unknown source. Display aggregation additionally requires a source ID present in the report manifest.
+- **Regression:** offline tests cover player normalization/labels, malformed player AST isolation, legacy snapshot compatibility and 22 candidates (20 ordinary, one valid player, one unknown source). CI is the authoritative executable verification for this online-only change; no local test claim.
+- **Restrictions preserved:** no search/query, prompt text, Version 1, token limit, quota, provider, database schema/migration, paid call or production configuration change. No production writes or deployment.
+- **Remote status:** implementation is on one focused branch and Draft PR; exact-head Regression, Browser Quality and Database Replay results remain pending. Keep `IN_PROGRESS` until checks/review and any required release verification are complete.
+
 ## 2026-11-08 — Football full-evidence extraction output cap raise — IN_PROGRESS
 
 - **Change:** Raised `FULL_EXTRACTION_TOKENS` from 8192 to 16384 in `src/lib/football-full-evidence.shared.ts` to prevent `max_tokens` truncation in the extraction stage that caused `invalid_extraction`/`incomplete_coverage` in the Fiorentina–Juventus run `966ae6d0`. Updated the matching integration-test assertion in `src/lib/football-online-research.integration.test.ts` from `maxTokens: 8192` to `16384`.

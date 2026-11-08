@@ -76,7 +76,10 @@ export function IndependentMarketsPanel({
   };
   const r = report.restoration!;
   const a = report.coverage === "complete" ? r.assessment : undefined;
-  const { rows, conflicts } = aggregateVerifiedMarkets(r.candidates);
+  const { rows, conflicts } = aggregateVerifiedMarkets(
+    r.candidates,
+    new Set(report.sources.map((source) => source.id)),
+  );
   const source = (id: string) => report.sources.find((s) => s.id === id);
   const anchor = (url: string, title: string) => (
     <a
