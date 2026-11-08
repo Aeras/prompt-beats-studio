@@ -701,11 +701,29 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
     }
   });
 
+/** A run still "processing" after the admission window (15 min, far beyond the 300 s run
+ * deadline) lost its worker before the failure write. Mark it terminal so history and
+ * clearing stop showing it as in progress. Evidence/usage journals are kept unchanged. */
+export const FOOTBALL_STALE_PROCESSING_MS = 15 * 60 * 1000;
+async function reconcileStaleFootballRuns(
+  admin: (typeof import("@/integrations/supabase/client.server"))["supabaseAdmin"],
+  userId: string,
+) {
+  await admin
+    .from("private_football_research_runs" as never)
+    .update({ status: "failed", error_code: "interrupted", completed_at: new Date().toISOString() } as never)
+    .eq("user_id", userId)
+    .eq("status", "processing")
+    .lt("created_at", new Date(Date.now() - FOOTBALL_STALE_PROCESSING_MS).toISOString())
+    .abortSignal(AbortSignal.timeout(5000));
+}
+
 export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireFootballSuperAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await reconcileStaleFootballRuns(supabaseAdmin, context.userId);
     const { data, error } = await supabaseAdmin
       .from("private_football_research_runs" as never)
       .select(
@@ -961,6 +979,7 @@ export const hidePrivateFootballResearchHistory = createServerFn({ method: "POST
   .handler(async ({ data, context }) => {
     await requireFootballSuperAdmin(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await reconcileStaleFootballRuns(supabaseAdmin, context.userId);
     const { data: runs, error } = await supabaseAdmin
       .from("private_football_research_runs" as never)
       .select("id,status")
