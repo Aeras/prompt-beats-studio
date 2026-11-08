@@ -499,19 +499,19 @@ export async function runFullFootballEvidence(
         extractionPrompt(group, docs, input.fixture),
         group,
       );
-      const c = z
-        .array(input.policy?.candidateSchema ?? fullCandidateSchema)
-        .max(80)
-        .safeParse(r.raw["evidenceCandidates"]);
-      if (!c.success) return await fail("invalid_extraction");
-      for (const v of c.data) {
+      const rawList = r.raw["evidenceCandidates"];
+      if (!Array.isArray(rawList)) return await fail("invalid_extraction");
+      const itemSchema = input.policy?.candidateSchema ?? fullCandidateSchema;
+      // Drop only individual unverifiable candidates; never abort the whole run for one bad quote.
+      for (const item of rawList) {
+        const parsed = itemSchema.safeParse(item);
+        if (!parsed.success) continue;
+        const v = parsed.data;
         const d = docs.find((d) => d.id === v.sourceId);
-        if (!d || !group.some((g) => g.sourceId === d.id && g.text.includes(v.quote)))
-          return await fail("invalid_extraction");
-        candidates.push(v);
+        if (!d || !group.some((g) => g.sourceId === d.id && g.text.includes(v.quote))) continue;
+        if (candidates.length < 80) candidates.push(v);
       }
     }
-    if (candidates.length > 80) return await fail("invalid_extraction");
     try {
       report.candidates = verify(candidates, docs, input.fixture, input.cutoff);
     } catch {
