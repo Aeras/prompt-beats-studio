@@ -29,8 +29,11 @@ test("a numeric date for another day is still a conflict", () => {
 });
 
 test("unrelated extra dotted dates do not reject a page that states the fixture date", () => {
+  const filler = "Other league news and headlines from around Europe this week. ".repeat(4);
   const r = traceFootballFixture(
-    "Fiorentina vs Juventus prediction, preview & betting tips – 08.11.2026\nItaly Serie A\nArchive: 30.06.2022 · Next round 09.11.2026",
+    "Fiorentina vs Juventus prediction, preview & betting tips – 08.11.2026\nItaly Serie A\n" +
+      filler +
+      "\nArchive: 30.06.2022 · Next round 09.11.2026",
     fixture,
     "2026-11-08T09:50:00Z",
     { searchProfileVersion: "v2_experimental" },
