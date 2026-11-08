@@ -271,19 +271,29 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
   // opens the authored pick block of this article, even after an H2H section.
   const pickHeading =
     /(?:^|[^\p{L}])(?:predictions?|tips?|picks?|verdict|we say|best bet|прогноз|ставк|πρόβλεψ|προγνωστικ)(?=$|[^\p{L}])/iu;
+  let stop = 0;
   for (let j = before.length - 2; j >= 0 && j >= before.length - 400; j--) {
     const line = before[j]!.trim();
     if (!line || line.length > 120) continue;
     if (samePair(line)) {
       if (topical.test(line) && !pickHeading.test(line)) return false;
+      stop = j;
       break;
     }
     if (isOtherPair(line)) return false;
-    if (line.length <= 60 && pickHeading.test(line) && !topical.test(line)) break;
+    if (line.length <= 60 && pickHeading.test(line) && !topical.test(line)) {
+      stop = j;
+      break;
+    }
     if (blocked.test(line)) return false;
   }
-  // The quote's own neighbourhood: the two preceding non-empty lines and the next one.
-  const prev = before.slice(0, -1).filter((l) => l.trim()).slice(-2).join("\n").slice(-600);
+  // The quote's own neighbourhood: up to two preceding non-empty lines inside its block.
+  const prev = before
+    .slice(stop, -1)
+    .filter((l) => l.trim())
+    .slice(-2)
+    .join("\n")
+    .slice(-600);
   const after = text.slice(at + quote.length).split("\n").slice(0, 2).join("\n").slice(0, 300);
   const near = prev + "\n" + (before[before.length - 1] ?? "") + quote + after;
   const local = traceFootballFixture(near, input.fixture, input.cutoff, opts);
