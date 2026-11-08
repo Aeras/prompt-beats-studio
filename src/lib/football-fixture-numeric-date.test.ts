@@ -10,7 +10,7 @@ const fixture = {
 
 test("European numeric date dd/mm/yyyy binds the fixture (Fiorentina–Juventus incident)", () => {
   const r = traceFootballFixture(
-    "Fiorentina-Juventus prediction, preview & betting tips – 08/11/2026\nItaly Serie A",
+    "Fiorentina vs Juventus prediction, preview & betting tips – 08/11/2026\nItaly Serie A",
     fixture,
     "2026-11-08T09:50:00Z",
     { searchProfileVersion: "v2_experimental" },
