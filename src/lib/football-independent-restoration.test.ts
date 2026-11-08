@@ -708,3 +708,45 @@ test("80 extracted quotes that expand to more than 80 picks do not fail extracti
   const stored = packFullEvidence({}, [], last);
   expect(readFullEvidence(stored.sources, fixture, cutoff)?.candidates.length).toBe(160);
 });
+
+// Regression for runs 145a3fd2/e0626248/bcc7157e (8 Nov 2026): genuine previews of the
+// right fixture were all rejected, so 0 editorial candidates reached the assessment.
+test.each([
+  [
+    "byline stamp, 'at 19:45' and a loose weekday phrase",
+    "Fiorentina vs Juventus Prediction\n8 November 2026\nBojan Jovanovic\n4 November 2026 • 12:21 UTC\n• 1 min read\nFiorentina vs Juventus Preview\nMonday's football game between Fiorentina and Juventus closes the round.\nOur pick: Over 2.5\nThis\nSerie A\nmatch will be played on\nSunday, 8 November 2026 at 19:45\nHead to Head\nFiorentina vs Juventus 12 April 2026",
+  ],
+  [
+    "match card with dd/mm/yy above the heading and year-less weekday date",
+    "TODAY\n08/11/26 - 19:45\nFiorentina - Juventus\nItaly Serie A - Stadio Artemio Franchi\nOur pick: Over 2.5\nJuventus can build on their Europa League success.\nFiorentina host Juventus on Sunday, 8 November.",
+  ],
+])("real preview layout verifies the fixture: %s", (_label: string, text: string) => {
+  const s = setup();
+  const { policy } = createRestorationPolicy(s.input);
+  const quote = "Our pick: Over 2.5";
+  const docs = makeFullSources([hit(text)]);
+  policy.prepareDocs?.(docs);
+  const [c] = policy.verify(
+    [{ sourceId: docs[0]!.id, quote, kind: "editorial", market: over, rationale: "test" }],
+    docs,
+    fixture,
+    cutoff,
+  );
+  expect(c?.fixtureVerified).toBe(true);
+});
+
+test("a dated match card for another fixture still cannot lend its date", () => {
+  const s = setup();
+  const { policy } = createRestorationPolicy(s.input);
+  const quote = "Our pick: Over 2.5";
+  const text = "08/11/26 - 19:45\nNapoli - Lazio\nItaly Serie A\nFiorentina - Juventus\n" + quote;
+  const docs = makeFullSources([hit(text)]);
+  policy.prepareDocs?.(docs);
+  const [c] = policy.verify(
+    [{ sourceId: docs[0]!.id, quote, kind: "editorial", market: over, rationale: "test" }],
+    docs,
+    fixture,
+    cutoff,
+  );
+  expect(c?.fixtureVerified).toBe(false);
+});
