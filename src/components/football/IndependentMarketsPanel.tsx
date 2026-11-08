@@ -1,4 +1,6 @@
 import { useI18n } from "@/i18n";
+import { PublishedSelectionsDistribution } from "./PublishedSelectionsDistribution";
+import { aggregatePublishedSelections } from "@/lib/football-published-distribution.shared";
 import { aggregateVerifiedMarkets } from "@/lib/football-independent-restoration.shared";
 import { researchMarketLabel } from "@/lib/football-independent-markets.shared";
 import type {
@@ -89,6 +91,7 @@ export function IndependentMarketsPanel({
     </a>
   );
   const provisional = r.candidates.filter((c) => !c.eligibleForConsensus);
+  const distribution = aggregatePublishedSelections(provisional, report.sources);
   return (
     <section
       aria-label={t("Ανεξάρτητη εκτίμηση AI", "Independent AI assessment")}
@@ -242,8 +245,9 @@ export function IndependentMarketsPanel({
               "Λοιπές δημοσιευμένες επιλογές — μη καταμετρημένες",
               "Other published candidates — not counted",
             )}{" "}
-            ({provisional.length})
+            ({distribution.total})
           </summary>
+          <PublishedSelectionsDistribution distribution={distribution} />
           <ul className="space-y-3 text-xs">
             {provisional.map((c) => {
               const s = source(c.sourceId);
