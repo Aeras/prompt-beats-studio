@@ -211,6 +211,77 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
   }
   return sections;
 }
+/** Page-level fixture proof for articles whose layout does not put date and competition
+ * under a team heading. The page must (1) name the directed pair on a short line whose
+ * nearby lines state exactly the fixture's local date with no other match date, and
+ * (2) name the target competition. The quote must then sit outside H2H/past-result/
+ * comment/other-fixture blocks and its own neighbourhood must not contradict the fixture.
+ * Title and URL are still never used as proof. */
+export function pageFixtureScope(text: string, quote: string, input: FullEvidenceRunInput) {
+  const opts = { searchProfileVersion: "v2_experimental" as const };
+  const home = evidenceTeamAliases(input.fixture.homeTeam, "v2_experimental");
+  const away = evidenceTeamAliases(input.fixture.awayTeam, "v2_experimental");
+  const fold = (v: string) => v.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
+  const samePair = (line: string) => {
+    const v = fold(line);
+    return home.some((a) => v.includes(a)) && away.some((a) => v.includes(a));
+  };
+  const whole = traceFootballFixture(text, input.fixture, input.cutoff, opts);
+  if (
+    whole.failures.some((f) =>
+      ["competition_missing", "home_missing", "away_missing", "same_team", "after_kickoff"].includes(f),
+    )
+  )
+    return false;
+  const lines = text.split("\n");
+  const anchored = lines.some((line, i) => {
+    if (line.trim().length > 240 || !samePair(line)) return false;
+    const head = traceFootballFixture(line, input.fixture, input.cutoff, opts);
+    if (head.failures.includes("venue_unknown") || head.failures.includes("reversed_venue"))
+      return false;
+    const window = lines.slice(Math.max(0, i - 3), i + 7).join("\n").slice(0, 2000);
+    const t = traceFootballFixture(window, input.fixture, input.cutoff, opts);
+    return !t.failures.some((f) =>
+      ["date_missing", "date_conflict", "weekday_conflict", "reversed_venue", "qualified_team"].includes(f),
+    );
+  });
+  if (!anchored) return false;
+  const at = text.indexOf(quote);
+  if (at < 0) return false;
+  // Walk back from the quote to the nearest heading-like line.
+  const before = text.slice(0, at).split("\n");
+  const blocked =
+    /^(?:#{1,4}\s*)?(?:head.to.head|h2h|related (?:matches|predictions)|comments|reader comments|discussion|личные встречи|комментарии|σχόλια|προϊστορία)(?=$|[^\p{L}])/iu;
+  const topical =
+    /(?:head.to.head|\bh2h\b|past results|previous (?:meetings|results)|\bstandings\b|line-?ups|injuries|where to watch|latest predictions|related (?:matches|predictions)|προϊστορία|βαθμολογία|личные встречи)/iu;
+  const otherPair =
+    /^\p{L}[\p{L}.'’ ]{1,30}\s+(?:vs\.?|v\.?|—|–|-)\s+\p{L}[\p{L}.'’ ]{1,30}$/u;
+  for (let j = before.length - 2; j >= 0 && j >= before.length - 400; j--) {
+    const line = before[j]!.trim();
+    if (!line || line.length > 120) continue;
+    if (blocked.test(line)) return false;
+    if (samePair(line)) {
+      if (topical.test(line)) return false;
+      break;
+    }
+    if (otherPair.test(line)) return false;
+  }
+  const near = text.slice(Math.max(0, at - 600), at + quote.length + 200);
+  const local = traceFootballFixture(near, input.fixture, input.cutoff, opts);
+  if (
+    local.failures.some((f) =>
+      ["date_conflict", "weekday_conflict", "reversed_venue", "qualified_team"].includes(f),
+    )
+  )
+    return false;
+  const date = fixtureLocalDate(input.fixture).date;
+  const expected = date
+    ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
+        .format(new Date(date + "T12:00:00Z"))
+        .toLowerCase()
+    : null;
+  return explicitNarrativeWeekdays(near).every((day) => day === expected);
+}
 export function createRestorationPolicy(input: FullEvidenceRunInput) {
   const state: FootballRestoration = {
     version: 2,
@@ -250,7 +321,7 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
         ].includes(v),
       );
       return trace.status === "verified" && !fatal && statedDays.every((day) => day === expected);
-    });
+    }) || (!!q && pageFixtureScope(canonical, q, input));
   };
   const usable = (d: ReturnType<typeof makeFullSources>[number], quote?: string) =>
     !!d.text &&
