@@ -21,7 +21,8 @@ BEGIN
 
   FOR v_scope IN SELECT value FROM jsonb_array_elements(_scopes) AS x(value) LOOP
     IF jsonb_typeof(v_scope) <> 'object'
-       OR jsonb_object_length(v_scope) <> 2
+       OR (v_scope - ARRAY['type','id']::text[]) <> '{}'::jsonb
+       OR NOT (v_scope ?& ARRAY['type','id'])
        OR jsonb_typeof(v_scope->'type') <> 'string'
        OR jsonb_typeof(v_scope->'id') <> 'string'
        OR (v_scope->>'id') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN

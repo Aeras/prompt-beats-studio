@@ -8,7 +8,7 @@ CREATE TABLE public.generator_creative_direction_history (
   job_id uuid NOT NULL REFERENCES public.ai_generation_jobs(id) ON DELETE CASCADE,
   direction jsonb NOT NULL CHECK (
     jsonb_typeof(direction) = 'object'
-    AND jsonb_object_length(direction) = 5
+    AND (direction - ARRAY['coreIdea','narrator','emotionalApproach','hookIdentity','sonicIdentity']::text[]) = '{}'::jsonb
     AND direction ?& ARRAY['coreIdea','narrator','emotionalApproach','hookIdentity','sonicIdentity']
     AND jsonb_typeof(direction->'coreIdea') = 'string'
     AND length(btrim(direction->>'coreIdea')) BETWEEN 1 AND 140
@@ -92,7 +92,8 @@ BEGIN
 
   FOR v_scope IN SELECT value FROM jsonb_array_elements(_scopes) AS x(value) LOOP
     IF jsonb_typeof(v_scope) <> 'object'
-       OR jsonb_object_length(v_scope) <> 2
+       OR (v_scope - ARRAY['type','id']::text[]) <> '{}'::jsonb
+       OR NOT (v_scope ?& ARRAY['type','id'])
        OR jsonb_typeof(v_scope->'type') <> 'string'
        OR jsonb_typeof(v_scope->'id') <> 'string'
        OR (v_scope->>'id') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
@@ -145,7 +146,8 @@ BEGIN
      OR NOT (NEW.input_payload ? 'creativeDirectionHistory') THEN RETURN NEW; END IF;
   v_config := NEW.input_payload->'creativeDirectionHistory';
   IF jsonb_typeof(v_config) <> 'object'
-     OR jsonb_object_length(v_config) <> 2
+     OR (v_config - ARRAY['version','scopes']::text[]) <> '{}'::jsonb
+     OR NOT (v_config ?& ARRAY['version','scopes'])
      OR v_config->>'version' <> '1'
      OR NOT EXISTS (
        SELECT 1 FROM public.user_roles r
@@ -254,7 +256,7 @@ BEGIN
   IF NOT public.generator_creative_direction_scopes_owned(_user_id, v_config->'scopes') THEN
     RAISE EXCEPTION 'creative direction history configuration is invalid';
   END IF;
-  IF jsonb_typeof(_result) <> 'object' OR jsonb_object_length(_result) <> 4
+  IF jsonb_typeof(_result) <> 'object' OR (_result - ARRAY['title','tags','lyrics','note']::text[]) <> '{}'::jsonb
      OR NOT (_result ?& ARRAY['title','tags','lyrics','note'])
      OR jsonb_typeof(_result->'title') <> 'string'
      OR jsonb_typeof(_result->'tags') <> 'string'
@@ -262,7 +264,7 @@ BEGIN
      OR jsonb_typeof(_result->'note') <> 'string' THEN
     RAISE EXCEPTION 'user song result must retain its four-field contract';
   END IF;
-  IF jsonb_typeof(_direction) <> 'object' OR jsonb_object_length(_direction) <> 5
+  IF jsonb_typeof(_direction) <> 'object' OR (_direction - ARRAY['coreIdea','narrator','emotionalApproach','hookIdentity','sonicIdentity']::text[]) <> '{}'::jsonb
      OR NOT (_direction ?& ARRAY['coreIdea','narrator','emotionalApproach','hookIdentity','sonicIdentity'])
      OR jsonb_typeof(_direction->'coreIdea') <> 'string'
      OR length(btrim(_direction->>'coreIdea')) NOT BETWEEN 1 AND 140

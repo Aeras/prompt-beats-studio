@@ -2,7 +2,7 @@
 
 ## Κατάσταση
 
-Η υλοποίηση και η διόρθωση των scopes έχουν ανέβει στο origin στο branch `codex/creative-direction-history-20261108`. Το αρχικό commit είναι `c6aced69a11de239b6498c22ca23d1307d4490ce` και το τελικό commit υλοποίησης είναι `46cd6e53837a8c51b86346c141e85d5057d3e9b1`. Το branch είναι έτοιμο για PR και τα τρία υποχρεωτικά GitHub gates. Η migration δεν έχει εφαρμοστεί σε βάση παραγωγής. Δεν έγιναν AI κλήσεις ή publish.
+Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το πρώτο Database Replay εντόπισε μη υποστηριζόμενη PostgreSQL συνάρτηση `jsonb_object_length(jsonb)` στις δύο νέες migrations. Η διόρθωση χρησιμοποιεί τον τελεστή `jsonb - text[]` και ελέγχει ρητά ότι υπάρχουν όλα τα απαιτούμενα κλειδιά. Το αρχικό Regression event είχε το παλιό PR body· οι τέσσερις απαιτούμενες ενότητες υπάρχουν πλέον στην περιγραφή και θα ελεγχθούν ξανά στο επόμενο synchronize event. Το Browser Quality run `42528377776` ακυρώθηκε από τον χρήστη και δεν θεωρείται επιτυχία. Οι migrations δεν έχουν εφαρμοστεί σε παραγωγή. Δεν έχει γίνει merge, deployment, AI κλήση ή publish.
 
 ## Συμπεριφορά
 
