@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-08 — Football V2 invalid_extraction when picks exceed 80 — CODE_COMPLETE_RELEASE_PENDING
+
+- **Evidence:** run `e0626248-26c6-4288-85fd-64610f5c1183` (12:30 UTC): 20 discovered / 17 readable sources, both extract calls observed and well-formed, then `reason: invalid_extraction` before synthesis; 0 stored candidates. Previous run had 78 candidates.
+- **Root cause:** up to 80 extracted quotes are allowed, but one quote can state several distinct picks; restored normalization then produced more than 80 market rows and the hard `> 80` bound aborted the whole extraction.
+- **Fix:** shared bound `MAX_RESTORED_CANDIDATES = 160`, equal to the existing restored-evidence schema limit, used by the restoration overflow check and the stored full-evidence report schema. Overflow beyond it still fails truthfully; no picks are silently dropped. No change to quotes, fixture verification, consensus, quota, searches or V1.
+- **Verification:** new regression test (80 quotes × 2 picks → 160 candidates, saved report reads back) fails with the old bound and passes now; full Bun suite 2,071 PASS / 1 skip / 0 FAIL; strict TS PASS. Live confirmation needs a new run after Publish. No paid calls, DB writes, push, PR, merge or Publish.
+
 ## 2026-11-08 — Football fixture date_conflict regression from dotted-date parsing — CODE_COMPLETE_RELEASE_PENDING
 
 - **Evidence:** production run `145a3fd2-7bc0-43e9-810b-513b07b30ca0` (Fiorentina–Juventus, 12:10 UTC) extracted 78 candidates with `quoteVerified=true` but `fixtureVerified=false` for all 78 (`fixture_unverified`), yielding 0 editorial candidates and an abstention. Same-fixture runs at 11:31 UTC (2/58 verified) and 11:40 UTC (5/58→53 verified) preceded the publish of the dd.mm.yyyy parsing change (`885b19d9`); the 12:10 run followed it.
