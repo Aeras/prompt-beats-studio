@@ -995,7 +995,11 @@ async function reconcileStaleFootballRuns(
 ) {
   await admin
     .from("private_football_research_runs" as never)
-    .update({ status: "failed", error_code: "interrupted", completed_at: new Date().toISOString() } as never)
+    .update({
+      status: "failed",
+      error_code: "interrupted",
+      completed_at: new Date().toISOString(),
+    } as never)
     .eq("user_id", userId)
     .eq("status", "processing")
     .lt("created_at", new Date(Date.now() - FOOTBALL_STALE_PROCESSING_MS).toISOString())

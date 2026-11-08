@@ -229,7 +229,13 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
   const whole = traceFootballFixture(text, input.fixture, input.cutoff, opts);
   if (
     whole.failures.some((f) =>
-      ["competition_missing", "home_missing", "away_missing", "same_team", "after_kickoff"].includes(f),
+      [
+        "competition_missing",
+        "home_missing",
+        "away_missing",
+        "same_team",
+        "after_kickoff",
+      ].includes(f),
     )
   )
     return false;
@@ -239,7 +245,9 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
     /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|stadio|stadium|arena|σουπερ λιγκ|серия а/iu;
   const isOtherPair = (raw: string) => {
     const line = raw.trim();
-    return line.length <= 120 && !samePair(line) && otherPair.test(line) && !venueOrLeague.test(line);
+    return (
+      line.length <= 120 && !samePair(line) && otherPair.test(line) && !venueOrLeague.test(line)
+    );
   };
   const lines = text.split("\n");
   const anchored = lines.some((line, i) => {
@@ -252,10 +260,19 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
       to = i;
     while (from > Math.max(0, i - 3) && !isOtherPair(lines[from - 1]!)) from--;
     while (to < Math.min(lines.length - 1, i + 6) && !isOtherPair(lines[to + 1]!)) to++;
-    const window = lines.slice(from, to + 1).join("\n").slice(0, 2000);
+    const window = lines
+      .slice(from, to + 1)
+      .join("\n")
+      .slice(0, 2000);
     const t = traceFootballFixture(window, input.fixture, input.cutoff, opts);
     return !t.failures.some((f) =>
-      ["date_missing", "date_conflict", "weekday_conflict", "reversed_venue", "qualified_team"].includes(f),
+      [
+        "date_missing",
+        "date_conflict",
+        "weekday_conflict",
+        "reversed_venue",
+        "qualified_team",
+      ].includes(f),
     );
   });
   if (!anchored) return false;
@@ -294,7 +311,12 @@ export function pageFixtureScope(text: string, quote: string, input: FullEvidenc
     .slice(-2)
     .join("\n")
     .slice(-600);
-  const after = text.slice(at + quote.length).split("\n").slice(0, 2).join("\n").slice(0, 300);
+  const after = text
+    .slice(at + quote.length)
+    .split("\n")
+    .slice(0, 2)
+    .join("\n")
+    .slice(0, 300);
   const near = prev + "\n" + (before[before.length - 1] ?? "") + quote + after;
   const local = traceFootballFixture(near, input.fixture, input.cutoff, opts);
   if (
@@ -320,37 +342,40 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
   const scope = (text: string, quote?: string) => {
     const canonical = bindingText(text);
     const q = quote ? bindingText(quote) : undefined;
-    return plainPreviewSections(canonical, input).some((s) => {
-      if (q && !s.text.includes(q)) return false;
-      const trace = traceFootballFixture(s.binding, input.fixture, input.cutoff, {
-        searchProfileVersion: "v2_experimental",
-      });
-      const date = fixtureLocalDate(input.fixture).date;
-      const expected = date
-        ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
-            .format(new Date(date + "T12:00:00Z"))
-            .toLowerCase()
-        : null;
-      const narrative = s.text
-        .split("\n")
-        .filter((line) => !/published|last updated|δημοσιεύ|опубликован|обновлен/iu.test(line))
-        .join("\n");
-      const statedDays = explicitNarrativeWeekdays(narrative);
-      const contentTrace = traceFootballFixture(s.text, input.fixture, input.cutoff, {
-        searchProfileVersion: "v2_experimental",
-      });
-      const fatal = contentTrace.failures.some((v) =>
-        [
-          "date_conflict",
-          "weekday_conflict",
-          "timestamp_conflict",
-          "reversed_venue",
-          "qualified_team",
-          "multi_fixture",
-        ].includes(v),
-      );
-      return trace.status === "verified" && !fatal && statedDays.every((day) => day === expected);
-    }) || (!!q && pageFixtureScope(canonical, q, input));
+    return (
+      plainPreviewSections(canonical, input).some((s) => {
+        if (q && !s.text.includes(q)) return false;
+        const trace = traceFootballFixture(s.binding, input.fixture, input.cutoff, {
+          searchProfileVersion: "v2_experimental",
+        });
+        const date = fixtureLocalDate(input.fixture).date;
+        const expected = date
+          ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
+              .format(new Date(date + "T12:00:00Z"))
+              .toLowerCase()
+          : null;
+        const narrative = s.text
+          .split("\n")
+          .filter((line) => !/published|last updated|δημοσιεύ|опубликован|обновлен/iu.test(line))
+          .join("\n");
+        const statedDays = explicitNarrativeWeekdays(narrative);
+        const contentTrace = traceFootballFixture(s.text, input.fixture, input.cutoff, {
+          searchProfileVersion: "v2_experimental",
+        });
+        const fatal = contentTrace.failures.some((v) =>
+          [
+            "date_conflict",
+            "weekday_conflict",
+            "timestamp_conflict",
+            "reversed_venue",
+            "qualified_team",
+            "multi_fixture",
+          ].includes(v),
+        );
+        return trace.status === "verified" && !fatal && statedDays.every((day) => day === expected);
+      }) ||
+      (!!q && pageFixtureScope(canonical, q, input))
+    );
   };
   const usable = (d: ReturnType<typeof makeFullSources>[number], quote?: string) =>
     !!d.text &&
