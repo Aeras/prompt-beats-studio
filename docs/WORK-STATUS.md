@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-08 — Football V2 staged extraction aborts on one non-literal quote — CODE_COMPLETE_RELEASE_PENDING
+
+- **Evidence:** run `5753295e` (Fiorentina–Juventus, 09:07 UTC) and earlier same-fixture runs failed `incomplete_coverage / invalid_extraction` after one paid extract call; any single non-literal or schema-invalid candidate aborted the whole run.
+- **Fix:** `football-full-evidence.server.ts` now drops only invalid/unverifiable individual candidates (schema, unknown source, non-literal quote) and continues to synthesis; non-JSON/non-array output still fails. Quote-literal verification unchanged. No extra paid calls, quotas, consent or V1 change.
+- **Verification:** new offline regression test; 149 focused Football tests PASS; strict TS PASS. Requires GitHub CI + Publish.
+
 ## 2026-11-08 — Football V2 citation provenance correction — CODE_COMPLETE_RELEASE_PENDING
 
 - **Baseline / ownership:** GitHub main and sandbox HEAD `29f260cbaa8a2fa6434658a31630768d8c2b5b8b` directly verified via Νίκος's GitHub API. Open Football PR #524 remains at `71321c9f`; its related player-market changes already appear on main. This correction is isolated under `/tmp/pb-v2-citations`; no main, branch, PR or production update.
