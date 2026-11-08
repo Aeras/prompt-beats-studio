@@ -771,7 +771,7 @@ test.each([
   [
     "prediction heading after H2H block",
     menu +
-      "Fiorentina vs Juventus Live Stream\nFiorentina\nJuventus\n2026-11-08 19:45:00\nSerie A\nHead to head\nPast meetings since 23/12/2024 favour Juventus.\nPrediction\nOur pick: Over 2.5",
+      "Fiorentina vs Juventus Live Stream\nFiorentina\nJuventus\n2026-11-08 19:45:00\nSerie A\nForm guide\nFiorentina are unbeaten in two.\nJuventus lost away last week.\nTeam news\nNo new injuries.\nHead to head\nPast meetings since 23/12/2024 favour Juventus.\nPrediction\nOur pick: Over 2.5",
   ],
   [
     "match card with league - stadium line",
