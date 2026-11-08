@@ -434,7 +434,7 @@ export async function runFullFootballEvidence(
               prompt,
               maxTokens,
               abortSignal: input.signal,
-              requestTimeoutMs: 90000,
+              requestTimeoutMs: 180000,
               jsonObjectOutput: true,
             }),
           )

@@ -197,7 +197,7 @@ export const refreshPrivateAiFixtureCandidates = createServerFn({ method: "POST"
                 dispatched = true;
                 return globalThis.fetch(input, init);
               },
-              signal: AbortSignal.timeout(90_000),
+              signal: AbortSignal.timeout(180_000),
             },
           );
         },
