@@ -299,8 +299,8 @@ export function traceFootballFixture(
     explicitDates(t).some(
       (d) =>
         d.date === local.date &&
-        new RegExp(`${weekday}\\.?,?\\s+$`, "u").test(
-          t.slice(Math.max(0, d.index - 14), d.index + 1).replace(/^.*?(?=[a-z]+\.?,?\s+$)/u, ""),
+        new RegExp(`(?:^|[^\\p{L}])(?:${weekday}|${weekday.slice(0, 3)})\\.?,?\\s*$`, "u").test(
+          t.slice(Math.max(0, d.index - 12), d.index + 1),
         ),
     );
   add(
