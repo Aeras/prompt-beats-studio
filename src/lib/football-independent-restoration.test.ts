@@ -783,7 +783,7 @@ test.each([
     menu +
       "Fiorentina vs Juventus Questions\nFiorentina vs Juventus kicks off on Sunday 8 November 2026 in the 2026/27 Serie A.\nWhat is our prediction?\nOur pick: Over 2.5",
   ],
-])("real page shape is fixture-verified: %s", (_name, text) => {
+])("real page shape is fixture-verified: %s", (_name: string, text: string) => {
   expect(verifyOne(text, "Our pick: Over 2.5").fixtureVerified).toBe(true);
 });
 test.each([
@@ -803,6 +803,6 @@ test.each([
     "reversed fixture",
     "Juventus vs Fiorentina Prediction\n8 November 2026\nSerie A\nPrediction\nOur pick: Over 2.5",
   ],
-])("wrong-fixture page shape stays unverified: %s", (_name, text) => {
+])("wrong-fixture page shape stays unverified: %s", (_name: string, text: string) => {
   expect(verifyOne(text, "Our pick: Over 2.5").fixtureVerified).toBe(false);
 });
