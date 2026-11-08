@@ -5,6 +5,7 @@ import { generationOutput, parseSections } from "./generation-result.shared";
 import {
   buildCreativeDirectionHistoryPrompt,
   creativeDirectionHistoryConfigSchema,
+  creativeDirectionHistoryConfigForSelection,
   creativeDirectionSchema,
   parseCreativeDirectionModelResponse,
 } from "./creative-direction-history.shared";
@@ -65,6 +66,29 @@ test("enabled request accepts only isolated project/universe or session scopes",
       ],
     }),
   ).toThrow();
+});
+
+test("scope selection carries project and universe together and falls back only to its own session", () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const universeId = "22222222-2222-4222-8222-222222222222";
+  const sessionId = "33333333-3333-4333-8333-333333333333";
+  const scopes = (patch: Partial<Parameters<typeof creativeDirectionHistoryConfigForSelection>[0]>) =>
+    creativeDirectionHistoryConfigForSelection({
+      enabled: true,
+      projectId: null,
+      universeId: null,
+      sessionId,
+      ...patch,
+    })?.scopes;
+
+  expect(scopes({ enabled: false })).toBeUndefined();
+  expect(scopes({ projectId })).toEqual([{ type: "project", id: projectId }]);
+  expect(scopes({ universeId })).toEqual([{ type: "song_universe", id: universeId }]);
+  expect(scopes({ projectId, universeId })).toEqual([
+    { type: "project", id: projectId },
+    { type: "song_universe", id: universeId },
+  ]);
+  expect(scopes({})).toEqual([{ type: "session", id: sessionId }]);
 });
 
 test("history context is bounded to 15 concise directions and gives the brief priority", () => {
@@ -140,4 +164,11 @@ test("server wiring reads history only for opt-in and keeps the legacy completio
   expect(route).toContain("advanced && !revisionMode && moderation.isSuperAdmin");
   expect(route).toContain('id="generator-creative-direction-history"');
   expect(route).toContain("disabled={busy || Boolean(jobId)}");
+  expect(route).toContain("setCreativeDirectionProjectId(storyMapHandoff.projectId)");
+  expect(route).toContain("setCreativeDirectionProjectId(songUniverseHandoff.projectId)");
+  expect(route).toContain("setCreativeDirectionUniverseId(songUniverseHandoff.universeId)");
+  expect(route).toContain(
+    "setCreativeDirectionProjectId(inspirationWallHandoff.connectedProjectId)",
+  );
+  expect(route).toContain('id="generator-creative-direction-project-scope"');
 });

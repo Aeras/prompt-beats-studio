@@ -57,6 +57,20 @@ export const creativeDirectionSchema = z
 export type CreativeDirection = z.infer<typeof creativeDirectionSchema>;
 export type CreativeDirectionScope = z.infer<typeof creativeDirectionScopeSchema>;
 export type CreativeDirectionHistoryConfig = z.infer<typeof creativeDirectionHistoryConfigSchema>;
+export function creativeDirectionHistoryConfigForSelection(input: {
+  enabled: boolean;
+  projectId: string | null;
+  universeId: string | null;
+  sessionId: string;
+}): CreativeDirectionHistoryConfig | undefined {
+  if (!input.enabled) return undefined;
+  const scopes: CreativeDirectionScope[] = [];
+  if (input.projectId) scopes.push({ type: "project", id: input.projectId });
+  if (input.universeId) scopes.push({ type: "song_universe", id: input.universeId });
+  if (!scopes.length) scopes.push({ type: "session", id: input.sessionId });
+  return creativeDirectionHistoryConfigSchema.parse({ version: 1, scopes });
+}
+
 export const creativeDirectionHistoryEntriesSchema = z
   .array(creativeDirectionSchema)
   .max(CREATIVE_DIRECTION_HISTORY_LIMIT);

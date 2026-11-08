@@ -98,6 +98,7 @@ async function fixture(
     plannerUnavailable?: boolean;
     setup?: "success" | "failure";
     archivedPrompt?: boolean;
+    creativeHistoryProject?: boolean;
   } = {},
 ) {
   const user = {
@@ -218,7 +219,7 @@ async function fixture(
     const url = new URL(route.request().url());
     const name = Buffer.from(url.pathname.split("/_serverFn/")[1] ?? "", "base64url").toString();
     let data: Record<string, unknown> = {};
-    if (route.request().method() === "POST" && name.includes("MusicInspiration")) {
+    if (route.request().method() === "POST") {
       const body: unknown = route.request().postDataJSON();
       const wire = body as { t?: WireNode; data?: Record<string, unknown> };
       data = wire.t
@@ -251,7 +252,18 @@ async function fixture(
       });
       return;
     }
-    if (name.includes("generateSongSetup")) {
+    if (name.includes("listPromptProjects")) {
+      result = {
+        projects: options.creativeHistoryProject
+          ? [
+              {
+                id: "cd520000-0000-4000-8000-000000000001",
+                name: "Creative history project",
+              },
+            ]
+          : [],
+      };
+    } else if (name.includes("generateSongSetup")) {
       if (options.setup === "failure")
         return route.fulfill({ status: 500, body: "SECRET provider Zod payload" });
       result = {
@@ -1591,7 +1603,41 @@ test("V5 research candidate selector follows V4, uses server default, and never 
   await page.locator("button[data-generator-mode=advanced]").click();
   await expect(selector).toHaveValue("v5_beta_1");
   await expect(historyToggle).toHaveAttribute("aria-checked", "false");
+  await historyToggle.click();
+  await page.locator("button[data-generator-mode=revision]").click();
+  await expect(historyToggle).toHaveCount(0);
+  await page.locator("button[data-generator-mode=advanced]").click();
+  await expect(historyToggle).toHaveAttribute("aria-checked", "false");
   expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(historyToggle).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+      true,
+    );
+  }
+});
+
+test("creative history Project scope selector is optional, opt-in and keyboard accessible", async ({
+  page,
+}) => {
+  const f = await fixture(page, { superAdmin: true, creativeHistoryProject: true });
+  const historyToggle = page.locator("#generator-creative-direction-history");
+  const projectScope = page.locator("#generator-creative-direction-project-scope");
+  await expect(projectScope).toHaveCount(0);
+  await historyToggle.focus();
+  await expect(historyToggle).toBeFocused();
+  await historyToggle.click();
+  await expect(projectScope).toBeVisible();
+  await expect(projectScope.locator("option")).toHaveText([
+    "Independent session",
+    "Creative history project",
+  ]);
+  await projectScope.selectOption("cd520000-0000-4000-8000-000000000001");
+  await expect(projectScope).toHaveValue("cd520000-0000-4000-8000-000000000001");
+  await historyToggle.click();
+  await expect(projectScope).toHaveCount(0);
+  expect(f.calls.filter((call) => call.name.includes("startGenerationJob"))).toHaveLength(0);
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await expect(historyToggle).toBeVisible();

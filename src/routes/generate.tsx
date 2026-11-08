@@ -123,7 +123,7 @@ import {
   type InspirationWallSongSetupHandoff,
 } from "@/lib/inspiration-wall-song-setup.shared";
 import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
-import type { CreativeDirectionScope } from "@/lib/creative-direction-history.shared";
+import { creativeDirectionHistoryConfigForSelection } from "@/lib/creative-direction-history.shared";
 import {
   buildStoryMapSongSetupDescription,
   STORY_MAP_SONG_SETUP_HANDOFF_KEY,
@@ -1189,7 +1189,12 @@ function GeneratePage() {
   const promptProjects = useQuery({
     queryKey: ["generator", "prompt-projects", user?.id],
     queryFn: () => listPromptProjects(),
-    enabled: Boolean(user && (saveDialogOpen || revisionMode)),
+    enabled: Boolean(
+      user &&
+        (saveDialogOpen ||
+          revisionMode ||
+          (moderation.isSuperAdmin && advanced && creativeDirectionHistoryEnabled)),
+    ),
   });
   const revisionVersions = useQuery({
     queryKey: ["generator", "revision-versions", user?.id, revisionProjectId],
@@ -2672,6 +2677,19 @@ function GeneratePage() {
       );
       return;
     }
+    if (
+      creativeDirectionHistoryEnabled &&
+      !creativeDirectionUniverseId &&
+      !creativeDirectionProjectId &&
+      (promptProjects.isLoading || promptProjects.isError)
+    ) {
+      setStatus(
+        appLanguage === "el"
+          ? "Περίμενε να φορτωθεί η λίστα Project πριν από τη δημιουργία."
+          : "Wait for the Project list to load before generating.",
+      );
+      return;
+    }
     if (!generatorFeature.allowed) {
       setStatus(t("generator.featureUnavailable"));
       return;
@@ -2732,30 +2750,16 @@ function GeneratePage() {
           ...(atlasInstructions ? { atlasOrigin: atlasInstructions.origin } : {}),
           operation: revisionMode ? "revision" : "generate",
           inputSnapshot: currentSnapshot,
-          ...(creativeDirectionHistoryEnabled &&
-          advanced &&
-          !revisionMode &&
-          moderation.isSuperAdmin
-            ? {
-                creativeDirectionHistory: {
-                  version: 1 as const,
-                  scopes: (() => {
-                    const scopes: CreativeDirectionScope[] = [];
-                    const projectId = creativeDirectionProjectId;
-                    const universeId = creativeDirectionUniverseId;
-                    if (projectId) scopes.push({ type: "project", id: projectId });
-                    if (universeId) scopes.push({ type: "song_universe", id: universeId });
-                    if (!scopes.length) {
-                      if (!user?.id) throw new Error("Please sign in before generating.");
-                      scopes.push({
-                        type: "session",
-                        id: creativeDirectionSessionId,
-                      });
-                    }
-                    return scopes;
-                  })(),
-                },
-              }
+          ...(moderation.isSuperAdmin && advanced && !revisionMode
+            ? (() => {
+                const history = creativeDirectionHistoryConfigForSelection({
+                  enabled: creativeDirectionHistoryEnabled,
+                  projectId: creativeDirectionProjectId,
+                  universeId: creativeDirectionUniverseId,
+                  sessionId: creativeDirectionSessionId,
+                });
+                return history ? { creativeDirectionHistory: history } : {};
+              })()
             : {}),
           revision: revisionMode
             ? {
@@ -3864,6 +3868,62 @@ function GeneratePage() {
                     onCheckedChange={setCreativeDirectionHistoryEnabled}
                   />
                 </div>
+                {creativeDirectionHistoryEnabled && !creativeDirectionUniverseId && (
+                  <label className="mt-3 block space-y-1.5">
+                    <span className="text-[11px] text-muted-foreground">
+                      {appLanguage === "el"
+                        ? "Scope Project (προαιρετικό)"
+                        : "Project scope (optional)"}
+                    </span>
+                    <select
+                      id="generator-creative-direction-project-scope"
+                      aria-label={
+                        appLanguage === "el" ? "Scope Project" : "Project scope"
+                      }
+                      value={creativeDirectionProjectId ?? ""}
+                      disabled={
+                        busy ||
+                        Boolean(jobId) ||
+                        promptProjects.isLoading ||
+                        promptProjects.isError
+                      }
+                      onChange={(event) => setCreativeDirectionProjectId(event.target.value || null)}
+                      className={fieldClass}
+                    >
+                      <option value="">
+                        {appLanguage === "el" ? "Ανεξάρτητη συνεδρία" : "Independent session"}
+                      </option>
+                      {(promptProjects.data?.projects ?? []).map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-muted-foreground">
+                      {appLanguage === "el"
+                        ? "Αν το Project ανήκει σε Song Universe, αυτό προστίθεται αυτόματα."
+                        : "A linked Song Universe is included automatically when one exists."}
+                    </p>
+                    {promptProjects.isError && (
+                      <p role="alert" className="text-[11px] text-destructive">
+                        {appLanguage === "el"
+                          ? "Δεν φορτώθηκαν τα Project. Δοκίμασε ξανά πριν ξεκινήσεις."
+                          : "Projects could not be loaded. Try again before starting."}
+                      </p>
+                    )}
+                  </label>
+                )}
+                {creativeDirectionHistoryEnabled && creativeDirectionUniverseId && (
+                  <p className="mt-3 text-[10px] text-muted-foreground" role="status">
+                    {creativeDirectionProjectId
+                      ? appLanguage === "el"
+                        ? "Scope: Project και συνδεδεμένο Song Universe"
+                        : "Scope: Project and linked Song Universe"
+                      : appLanguage === "el"
+                        ? "Scope: Song Universe"
+                        : "Scope: Song Universe"}
+                  </p>
+                )}
               </div>
             )}
             {revisionMode && (

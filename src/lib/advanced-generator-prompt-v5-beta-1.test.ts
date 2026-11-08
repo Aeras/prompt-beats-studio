@@ -38,6 +38,11 @@ const base = {
   targetPlatform: "udio",
 };
 const version = "v5_beta_1";
+const historyProjectId = "11111111-1111-4111-8111-111111111111";
+const secondHistoryProjectId = "44444444-4444-4444-8444-444444444444";
+const historyUniverseId = "22222222-2222-4222-8222-222222222222";
+const secondHistoryUniverseId = "55555555-5555-4555-8555-555555555555";
+const historySessionId = "33333333-3333-4333-8333-333333333333";
 function codeParts(path: string, names: string[]) {
   const raw = readFileSync(path, "utf8");
   const source = ts.createSourceFile(path, raw, ts.ScriptTarget.Latest, true);
@@ -304,7 +309,7 @@ test("opted-in history uses the same single model call and returns only four son
     ...fullInput(),
     creativeDirectionHistory: {
       version: 1,
-      scopes: [{ type: "session", id: "33333333-3333-4333-8333-333333333333" }],
+      scopes: [{ type: "session", id: historySessionId }],
     },
   };
   const history = [
@@ -332,6 +337,9 @@ function admissionFixture() {
   let allowed = true,
     roleError = false;
   const started: any[] = [];
+  const memberships = new Map<string, string>();
+  const ownedProjects = new Set([historyProjectId, secondHistoryProjectId]);
+  const ownedUniverses = new Set([historyUniverseId, secondHistoryUniverseId]);
   const module = evaluate(readFileSync("src/lib/generation-jobs.functions.ts", "utf8"), {
     require: (name: string) => {
       if (name === "zod") return { z };
@@ -393,10 +401,39 @@ function admissionFixture() {
       throw Error("Unexpected admission RPC " + name);
     },
     from: (table: string) => {
+      const filters: Array<[string, unknown]> = [];
       const query: any = {
         select: () => query,
-        eq: () => query,
-        maybeSingle: async () => ({ data: { id: table }, error: null }),
+        eq: (key: string, value: unknown) => {
+          filters.push([key, value]);
+          return query;
+        },
+        maybeSingle: async () => {
+          const value = (key: string) => filters.find(([filter]) => filter === key)?.[1];
+          if (table === "prompt_projects") {
+            const id = value("id");
+            return {
+              data: id && ownedProjects.has(String(id)) && value("user_id") === "owner"
+                ? { id }
+                : null,
+              error: null,
+            };
+          }
+          if (table === "song_universe_projects") {
+            const universeId = memberships.get(String(value("project_id")));
+            return { data: universeId ? { universe_id: universeId } : null, error: null };
+          }
+          if (table === "song_universes") {
+            const id = value("id");
+            return {
+              data: id && ownedUniverses.has(String(id)) && value("owner_id") === "owner"
+                ? { id }
+                : null,
+              error: null,
+            };
+          }
+          throw Error("Unexpected admission table " + table);
+        },
       };
       return query;
     },
@@ -414,6 +451,7 @@ function admissionFixture() {
   return {
     invoke,
     started,
+    membership: (projectId: string, universeId: string) => memberships.set(projectId, universeId),
     role: (value: boolean, error = false) => {
       allowed = value;
       roleError = error;
@@ -448,7 +486,7 @@ test("history admission binds the opt-in to Super Admin Advanced mode before job
   const f = admissionFixture();
   const creativeDirectionHistory = {
     version: 1,
-    scopes: [{ type: "session", id: "33333333-3333-4333-8333-333333333333" }],
+    scopes: [{ type: "session", id: historySessionId }],
   };
   f.role(false);
   await expect(f.invoke({ creativeDirectionHistory })).rejects.toThrow("Super Admin");
@@ -464,11 +502,116 @@ test("history admission binds the opt-in to Super Admin Advanced mode before job
   expect(f.started).toHaveLength(1);
   expect(f.started[0]._input.creativeDirectionHistory).toEqual(creativeDirectionHistory);
 });
+
+test(
+  "actual admission keeps project, universe, paired and session scopes isolated and canonical",
+  async () => {
+    const sessionConfig = {
+      version: 1,
+      scopes: [{ type: "session", id: historySessionId }],
+    };
+    const projectConfig = {
+      version: 1,
+      scopes: [{ type: "project", id: historyProjectId }],
+    };
+    const universeConfig = {
+      version: 1,
+      scopes: [{ type: "song_universe", id: historyUniverseId }],
+    };
+    const pairedConfig = {
+      version: 1,
+      scopes: [
+        { type: "project", id: historyProjectId },
+        { type: "song_universe", id: historyUniverseId },
+      ],
+    };
+
+    const f = admissionFixture();
+    const sessionJob = await f.invoke({ creativeDirectionHistory: sessionConfig });
+    expect(sessionJob.job.input?.creativeDirectionHistory).toEqual(sessionConfig);
+
+    const independentProject = await f.invoke({ creativeDirectionHistory: projectConfig });
+    expect(independentProject.job.input?.creativeDirectionHistory).toEqual(projectConfig);
+
+    f.membership(historyProjectId, historyUniverseId);
+    const linkedProjectJob = await f.invoke({ creativeDirectionHistory: projectConfig });
+    expect(linkedProjectJob.job.input?.creativeDirectionHistory).toEqual(pairedConfig);
+
+    const universeJob = await f.invoke({ creativeDirectionHistory: universeConfig });
+    expect(universeJob.job.input?.creativeDirectionHistory).toEqual(universeConfig);
+
+    const pairedJob = await f.invoke({ creativeDirectionHistory: pairedConfig });
+    expect(pairedJob.job.input?.creativeDirectionHistory).toEqual(pairedConfig);
+
+    const otherProjectJob = await f.invoke({
+      creativeDirectionHistory: {
+        version: 1,
+        scopes: [{ type: "project", id: secondHistoryProjectId }],
+      },
+    });
+    expect(otherProjectJob.job.input?.creativeDirectionHistory?.scopes).toEqual([
+      { type: "project", id: secondHistoryProjectId },
+    ]);
+    expect(f.started).toHaveLength(6);
+
+    const mismatched = {
+      version: 1,
+      scopes: [
+        { type: "project", id: historyProjectId },
+        { type: "song_universe", id: secondHistoryUniverseId },
+      ],
+    };
+    await expect(f.invoke({ creativeDirectionHistory: mismatched })).rejects.toThrow(
+      "does not belong",
+    );
+    expect(f.started).toHaveLength(6);
+  },
+);
+
+test(
+  "Generator admission persists resolved Project+Universe scopes through worker read and completion",
+  async () => {
+    const admission = admissionFixture();
+    admission.membership(historyProjectId, historyUniverseId);
+    const admitted = await admission.invoke({
+      creativeDirectionHistory: {
+        version: 1,
+        scopes: [{ type: "project", id: historyProjectId }],
+      },
+    });
+    const durableInput = admitted.job.input!;
+    const expectedScopes = [
+      { type: "project", id: historyProjectId },
+      { type: "song_universe", id: historyUniverseId },
+    ];
+    expect(durableInput.creativeDirectionHistory?.scopes).toEqual(expectedScopes);
+
+    const worker = workerFixture(durableInput);
+    expect(await worker.run()).toEqual({ ran: true });
+    expect(worker.dispatches).toBe(1);
+    expect(worker.readScopes).toEqual([expectedScopes]);
+    expect(worker.generationContexts).toEqual([
+      expect.objectContaining({
+        creativeDirectionHistory: [
+          expect.objectContaining({ coreIdea: "A traveler finding courage at dawn" }),
+        ],
+      }),
+    ]);
+    expect(
+      worker.rpcCalls.filter(
+        ({ name }) => name === "complete_generation_with_creative_direction_history",
+      ),
+    ).toHaveLength(1);
+  },
+);
+
 function workerFixture(input: any, allowed = true, roleError = false) {
   let state = "pending",
     dispatches = 0;
   const patches: any[] = [];
   const rpcCalls: Array<{ name: string; args: any }> = [];
+  const readScopes: unknown[] = [];
+  const generationContexts: unknown[] = [];
   const job: any = {
     id: "a5000000-0000-4000-8000-000000000004",
     user_id: "owner",
@@ -491,7 +634,8 @@ function workerFixture(input: any, allowed = true, roleError = false) {
               : null,
           error: roleError ? {} : null,
         };
-      if (name === "read_generator_creative_direction_history")
+      if (name === "read_generator_creative_direction_history") {
+        readScopes.push(args._scopes);
         return {
           data: [
             {
@@ -504,6 +648,7 @@ function workerFixture(input: any, allowed = true, roleError = false) {
           ],
           error: null,
         };
+      }
       if (name === "complete_generation_with_creative_direction_history") {
         state = "completed";
         patches.push({ status: "completed", result: args._result });
@@ -556,8 +701,17 @@ function workerFixture(input: any, allowed = true, roleError = false) {
       AI_DISABLED_MESSAGE: "AI disabled",
       AI_UNAVAILABLE_MESSAGE: "AI unavailable",
       safeErrorType: () => "Error",
-      runSongGeneration: async (data: any) => {
+      runSongGeneration: async (
+        data: any,
+        _userId: string,
+        _generationId: string | null,
+        _signal: AbortSignal,
+        _recordCancellation: unknown,
+        _recordRemoteOperation: unknown,
+        context: unknown,
+      ) => {
         dispatches++;
+        generationContexts.push(context);
         expect(data.promptVersion).toBe(input.promptVersion);
         return {
           result: output,
@@ -590,6 +744,8 @@ function workerFixture(input: any, allowed = true, roleError = false) {
     run: () => worker(job.id),
     patches,
     rpcCalls,
+    readScopes,
+    generationContexts,
     get dispatches() {
       return dispatches;
     },
@@ -635,6 +791,7 @@ test("opted-in worker reads private history once and atomically saves metadata w
     (call) => call.name === "complete_generation_with_creative_direction_history",
   );
   expect(read?.args._scopes).toEqual(input.creativeDirectionHistory.scopes);
+  expect(worker.readScopes).toEqual([input.creativeDirectionHistory.scopes]);
   expect(complete?.args._direction.coreIdea).toBe("A traveler leaving at dawn");
   expect(Object.keys(complete!.args._result)).toEqual(["title", "tags", "lyrics", "note"]);
   expect(worker.patches.some((patch) => patch.result?.creativeDirection)).toBe(false);

@@ -166,6 +166,17 @@ export const songUniverseSongSetupHandoffSchema = z.union([
 ]);
 export type SongUniverseSongSetupHandoff = z.infer<typeof songUniverseSongSetupHandoffSchema>;
 
+export function resolveSongUniverseHandoffProjectId(
+  isSuperAdmin: boolean,
+  selectedProjectId: string,
+  projects: readonly { projectId: string }[],
+): string | null {
+  if (!isSuperAdmin) return null;
+  const selected = projects.find((project) => project.projectId === selectedProjectId);
+  if (selected) return selected.projectId;
+  return projects.length === 1 ? projects[0]!.projectId : null;
+}
+
 // Keep the storage key stable so already-open Generator tabs and v1 handoffs remain compatible.
 export const SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY = "pb:song-universe-song-setup:v1";
 

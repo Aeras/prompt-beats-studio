@@ -124,8 +124,8 @@ async function validateCreativeDirectionHistoryRequest(
   userId: string,
   config: CreativeDirectionHistoryConfig | undefined,
   input: { advanced?: boolean; operation?: string; inputSnapshot?: unknown },
-) {
-  if (!config) return;
+): Promise<CreativeDirectionHistoryConfig | undefined> {
+  if (!config) return undefined;
   if (input.operation !== "generate" || input.advanced !== true) {
     throw new Error("Creative direction history is available only for Advanced generation.");
   }
@@ -142,6 +142,7 @@ async function validateCreativeDirectionHistoryRequest(
 
   const project = config.scopes.find((scope) => scope.type === "project");
   const universe = config.scopes.find((scope) => scope.type === "song_universe");
+  let linkedUniverseId: string | null = null;
   if (project) {
     const { data, error } = await supabase
       .from("prompt_projects")
@@ -150,6 +151,24 @@ async function validateCreativeDirectionHistoryRequest(
       .eq("user_id", userId)
       .maybeSingle();
     if (error || !data) throw new Error("The selected creative history project is unavailable.");
+    const { data: membership, error: membershipError } = await supabase
+      .from("song_universe_projects")
+      .select("universe_id")
+      .eq("project_id", project.id)
+      .maybeSingle();
+    if (membershipError) throw new Error("The Project's Song Universe could not be verified.");
+    linkedUniverseId = membership?.universe_id ?? null;
+    if (linkedUniverseId) {
+      const { data: linkedUniverse, error: linkedUniverseError } = await supabase
+        .from("song_universes")
+        .select("id")
+        .eq("id", linkedUniverseId)
+        .eq("owner_id", userId)
+        .maybeSingle();
+      if (linkedUniverseError || !linkedUniverse) {
+        throw new Error("The Project's Song Universe is unavailable.");
+      }
+    }
   }
   if (universe) {
     const { data, error } = await supabase
@@ -160,17 +179,14 @@ async function validateCreativeDirectionHistoryRequest(
       .maybeSingle();
     if (error || !data) throw new Error("The selected creative history universe is unavailable.");
   }
-  if (project && universe) {
-    const { data, error } = await supabase
-      .from("song_universe_projects")
-      .select("id")
-      .eq("project_id", project.id)
-      .eq("universe_id", universe.id)
-      .maybeSingle();
-    if (error || !data) {
-      throw new Error("The selected project does not belong to the selected Song Universe.");
-    }
+  if (universe && (!project || linkedUniverseId !== universe.id)) {
+    throw new Error("The selected project does not belong to the selected Song Universe.");
   }
+  const scopes =
+    project && linkedUniverseId
+      ? [project, { type: "song_universe" as const, id: linkedUniverseId }]
+      : config.scopes;
+  return creativeDirectionHistoryConfigSchema.parse({ version: 1, scopes });
 }
 
 type JobRow = {
@@ -246,7 +262,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
     assertGenerationInputLimits(data, isAdmin === true);
-    await validateCreativeDirectionHistoryRequest(
+    const validatedCreativeDirectionHistory = await validateCreativeDirectionHistoryRequest(
       supabase,
       context.userId,
       data.creativeDirectionHistory,
@@ -275,6 +291,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       baseMusicStyle: _baseMusicStyle,
       instruments: _instruments,
       revision: clientRevision,
+      creativeDirectionHistory: _clientCreativeDirectionHistory,
       ...basePayload
     } = data;
 
@@ -283,6 +300,9 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       generationModel: selectedModel,
       operation: "generate",
       revision: null,
+      ...(validatedCreativeDirectionHistory
+        ? { creativeDirectionHistory: validatedCreativeDirectionHistory }
+        : {}),
     };
 
     if (data.operation === "revision") {
