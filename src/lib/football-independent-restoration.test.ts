@@ -681,3 +681,30 @@ test("numeric totals and unqualified scorelines do not become DC or result", () 
   expect(normalizeAuthoredMarkets("Our pick: 1.5 goals", fixture)).toHaveLength(0);
   expect(normalizeAuthoredMarkets("Our pick: 1-2", fixture)).toHaveLength(0);
 });
+
+test("80 extracted quotes that expand to more than 80 picks do not fail extraction", async () => {
+  const text = header + "Our pick: Over 2.5. Our pick: BTTS Yes.";
+  const { input, states } = setup([hit(text)]);
+  const base = input.caller;
+  input.caller = (id) => async (call) => {
+    const r = await base(id)(call);
+    const out = JSON.parse(r.text);
+    if (Array.isArray(out.evidenceCandidates) && out.evidenceCandidates.length) {
+      const sourceId = out.evidenceCandidates[0].sourceId;
+      out.evidenceCandidates = Array.from({ length: 80 }, () => ({
+        sourceId,
+        quote: "Our pick: Over 2.5. Our pick: BTTS Yes.",
+        market: { kind: "other", label: "goals picks" },
+        kind: "editorial",
+        rationale: "Synthetic excerpt",
+      }));
+    }
+    return { ...r, text: JSON.stringify(out) };
+  };
+  await runFullFootballEvidence(input).catch(() => undefined);
+  const last = states.at(-1)!;
+  expect(last.reason).not.toBe("invalid_extraction");
+  expect(last.candidates.length).toBe(160);
+  const stored = packFullEvidence({}, [], last);
+  expect(readFullEvidence(stored.sources, fixture, cutoff)?.candidates.length).toBe(160);
+});
