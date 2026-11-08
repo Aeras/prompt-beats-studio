@@ -1,7 +1,4 @@
-import {
-  researchMarketKey,
-  type ResearchMarket,
-} from "./football-independent-markets.shared";
+import { researchMarketKey, type ResearchMarket } from "./football-independent-markets.shared";
 import type { RestoredCandidate } from "./football-independent-restoration.shared";
 
 const normalizedText = (value: string) =>
@@ -9,8 +6,7 @@ const normalizedText = (value: string) =>
 
 /** Presentation-only identity; never changes evidence, eligibility or consensus. */
 function selectionKey(market: ResearchMarket): string {
-  if (market.kind === "and")
-    return JSON.stringify(["and", market.legs.map(selectionKey).sort()]);
+  if (market.kind === "and") return JSON.stringify(["and", market.legs.map(selectionKey).sort()]);
   if (market.kind === "other") return JSON.stringify(["other", normalizedText(market.label)]);
   if (market.kind === "stat_total" && market.player)
     return researchMarketKey({ ...market, player: normalizedText(market.player) });
@@ -51,7 +47,10 @@ export function aggregatePublishedSelections(
   return {
     total,
     rows: [...groups.values()]
-      .sort((a, b) => b.count - a.count || (a.marketKey < b.marketKey ? -1 : a.marketKey > b.marketKey ? 1 : 0))
+      .sort(
+        (a, b) =>
+          b.count - a.count || (a.marketKey < b.marketKey ? -1 : a.marketKey > b.marketKey ? 1 : 0),
+      )
       .map((row) => ({ ...row, percentage: total ? (row.count / total) * 100 : 0 })),
   };
 }
