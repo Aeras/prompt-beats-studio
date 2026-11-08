@@ -174,7 +174,9 @@ function fixtureOnlyDates(text: string, target: string | null): { date: string; 
   if (!target) return [];
   const [year, month, day] = target.split("-").map(Number) as [number, number, number];
   const out: { date: string; index: number }[] = [];
-  for (const m of text.matchAll(/(?:^|[^\p{N}/.])(\d{1,2})\/(\d{1,2})\/(20\d{2}|\d{2})(?![\p{N}/.])/gu)) {
+  for (const m of text.matchAll(
+    /(?:^|[^\p{N}/.])(\d{1,2})\/(\d{1,2})\/(20\d{2}|\d{2})(?![\p{N}/.])/gu,
+  )) {
     const y = m[3]!.length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
     if (Number(m[1]) === day && Number(m[2]) === month && y === year)
       out.push({ date: target, index: m.index ?? 0 });
@@ -206,10 +208,7 @@ function explicitDates(text: string): { date: string; index: number }[] {
     if (day < 1 || day > 31 || month < 1 || month > 12) continue;
     if (m[2] === "/" && day <= 12) continue;
     const year = m[4]!;
-    push(
-      `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
-      m.index,
-    );
+    push(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, m.index);
   }
   monthNames.forEach((names, i) => {
     for (const m of text.matchAll(
@@ -231,7 +230,9 @@ function explicitDates(text: string): { date: string; index: number }[] {
 function isBylineStamp(line: string, kickoffUtc: string, cutoff: string) {
   const m = line
     .trim()
-    .match(/^(\d{1,2})\s+(\p{L}+)\.?\s+(20\d{2})\s*(?:[•·|,-]\s*)?\d{1,2}:\d{2}(?:\s*(?:utc|gmt|cet|cest))?$/iu);
+    .match(
+      /^(\d{1,2})\s+(\p{L}+)\.?\s+(20\d{2})\s*(?:[•·|,-]\s*)?\d{1,2}:\d{2}(?:\s*(?:utc|gmt|cet|cest))?$/iu,
+    );
   if (!m) return false;
   const month = monthNames.findIndex((names) =>
     names.split("|").includes(m[2]!.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()),

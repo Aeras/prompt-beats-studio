@@ -141,7 +141,8 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
   // standings, line-ups, other predictions) end the preview too: they carry other dates.
   const topicalBoundary =
     /(?:head.to.head|\bh2h\b|past results|previous (?:meetings|results)|\bstandings\b|line-?ups|injuries|where to watch|now trending|latest predictions|related (?:matches|predictions)|προϊστορία|βαθμολογία|личные встречи)/iu;
-  const competitionLine = /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|σουπερ λιγκ|серия а/iu;
+  const competitionLine =
+    /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|σουπερ λιγκ|серия а/iu;
   const samePair = (line: string) => {
     const v = line.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
     return homeAliases.some((a) => v.includes(a)) && awayAliases.some((a) => v.includes(a));
