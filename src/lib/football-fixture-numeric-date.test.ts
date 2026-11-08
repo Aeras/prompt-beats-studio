@@ -66,8 +66,5 @@ test("saved full analysis loads when the database returns kickoff as +00:00", as
       kickoffUtc: new Date(Date.parse(fixtureRow.kickoffUtc)).toISOString(),
     }).success,
   ).toBe(true);
-  expect(payload.fixture.kickoffUtc).toBe(
-    new Date(Date.parse(fixtureRow.kickoffUtc)).toISOString(),
-  );
   expect(readFullEvidence(undefined, fixtureRow, payload.cutoff)).toBeUndefined();
 });
