@@ -413,9 +413,8 @@ function admissionFixture() {
           if (table === "prompt_projects") {
             const id = value("id");
             return {
-              data: id && ownedProjects.has(String(id)) && value("user_id") === "owner"
-                ? { id }
-                : null,
+              data:
+                id && ownedProjects.has(String(id)) && value("user_id") === "owner" ? { id } : null,
               error: null,
             };
           }
@@ -426,9 +425,10 @@ function admissionFixture() {
           if (table === "song_universes") {
             const id = value("id");
             return {
-              data: id && ownedUniverses.has(String(id)) && value("owner_id") === "owner"
-                ? { id }
-                : null,
+              data:
+                id && ownedUniverses.has(String(id)) && value("owner_id") === "owner"
+                  ? { id }
+                  : null,
               error: null,
             };
           }
@@ -503,107 +503,101 @@ test("history admission binds the opt-in to Super Admin Advanced mode before job
   expect(f.started[0]._input.creativeDirectionHistory).toEqual(creativeDirectionHistory);
 });
 
-test(
-  "actual admission keeps project, universe, paired and session scopes isolated and canonical",
-  async () => {
-    const sessionConfig = {
-      version: 1,
-      scopes: [{ type: "session", id: historySessionId }],
-    };
-    const projectConfig = {
-      version: 1,
-      scopes: [{ type: "project", id: historyProjectId }],
-    };
-    const universeConfig = {
-      version: 1,
-      scopes: [{ type: "song_universe", id: historyUniverseId }],
-    };
-    const pairedConfig = {
-      version: 1,
-      scopes: [
-        { type: "project", id: historyProjectId },
-        { type: "song_universe", id: historyUniverseId },
-      ],
-    };
-
-    const f = admissionFixture();
-    const sessionJob = await f.invoke({ creativeDirectionHistory: sessionConfig });
-    expect(sessionJob.job.input?.creativeDirectionHistory).toEqual(sessionConfig);
-
-    const independentProject = await f.invoke({ creativeDirectionHistory: projectConfig });
-    expect(independentProject.job.input?.creativeDirectionHistory).toEqual(projectConfig);
-
-    f.membership(historyProjectId, historyUniverseId);
-    const linkedProjectJob = await f.invoke({ creativeDirectionHistory: projectConfig });
-    expect(linkedProjectJob.job.input?.creativeDirectionHistory).toEqual(pairedConfig);
-
-    const universeJob = await f.invoke({ creativeDirectionHistory: universeConfig });
-    expect(universeJob.job.input?.creativeDirectionHistory).toEqual(universeConfig);
-
-    const pairedJob = await f.invoke({ creativeDirectionHistory: pairedConfig });
-    expect(pairedJob.job.input?.creativeDirectionHistory).toEqual(pairedConfig);
-
-    const otherProjectJob = await f.invoke({
-      creativeDirectionHistory: {
-        version: 1,
-        scopes: [{ type: "project", id: secondHistoryProjectId }],
-      },
-    });
-    expect(otherProjectJob.job.input?.creativeDirectionHistory?.scopes).toEqual([
-      { type: "project", id: secondHistoryProjectId },
-    ]);
-    expect(f.started).toHaveLength(6);
-
-    const mismatched = {
-      version: 1,
-      scopes: [
-        { type: "project", id: historyProjectId },
-        { type: "song_universe", id: secondHistoryUniverseId },
-      ],
-    };
-    await expect(f.invoke({ creativeDirectionHistory: mismatched })).rejects.toThrow(
-      "does not belong",
-    );
-    expect(f.started).toHaveLength(6);
-  },
-);
-
-test(
-  "Generator admission persists resolved Project+Universe scopes through worker read and completion",
-  async () => {
-    const admission = admissionFixture();
-    admission.membership(historyProjectId, historyUniverseId);
-    const admitted = await admission.invoke({
-      creativeDirectionHistory: {
-        version: 1,
-        scopes: [{ type: "project", id: historyProjectId }],
-      },
-    });
-    const durableInput = admitted.job.input!;
-    const expectedScopes = [
+test("actual admission keeps project, universe, paired and session scopes isolated and canonical", async () => {
+  const sessionConfig = {
+    version: 1,
+    scopes: [{ type: "session", id: historySessionId }],
+  };
+  const projectConfig = {
+    version: 1,
+    scopes: [{ type: "project", id: historyProjectId }],
+  };
+  const universeConfig = {
+    version: 1,
+    scopes: [{ type: "song_universe", id: historyUniverseId }],
+  };
+  const pairedConfig = {
+    version: 1,
+    scopes: [
       { type: "project", id: historyProjectId },
       { type: "song_universe", id: historyUniverseId },
-    ];
-    expect(durableInput.creativeDirectionHistory?.scopes).toEqual(expectedScopes);
+    ],
+  };
 
-    const worker = workerFixture(durableInput);
-    expect(await worker.run()).toEqual({ ran: true });
-    expect(worker.dispatches).toBe(1);
-    expect(worker.readScopes).toEqual([expectedScopes]);
-    expect(worker.generationContexts).toEqual([
-      expect.objectContaining({
-        creativeDirectionHistory: [
-          expect.objectContaining({ coreIdea: "A traveler finding courage at dawn" }),
-        ],
-      }),
-    ]);
-    expect(
-      worker.rpcCalls.filter(
-        ({ name }) => name === "complete_generation_with_creative_direction_history",
-      ),
-    ).toHaveLength(1);
-  },
-);
+  const f = admissionFixture();
+  const sessionJob = await f.invoke({ creativeDirectionHistory: sessionConfig });
+  expect(sessionJob.job.input?.creativeDirectionHistory).toEqual(sessionConfig);
+
+  const independentProject = await f.invoke({ creativeDirectionHistory: projectConfig });
+  expect(independentProject.job.input?.creativeDirectionHistory).toEqual(projectConfig);
+
+  f.membership(historyProjectId, historyUniverseId);
+  const linkedProjectJob = await f.invoke({ creativeDirectionHistory: projectConfig });
+  expect(linkedProjectJob.job.input?.creativeDirectionHistory).toEqual(pairedConfig);
+
+  const universeJob = await f.invoke({ creativeDirectionHistory: universeConfig });
+  expect(universeJob.job.input?.creativeDirectionHistory).toEqual(universeConfig);
+
+  const pairedJob = await f.invoke({ creativeDirectionHistory: pairedConfig });
+  expect(pairedJob.job.input?.creativeDirectionHistory).toEqual(pairedConfig);
+
+  const otherProjectJob = await f.invoke({
+    creativeDirectionHistory: {
+      version: 1,
+      scopes: [{ type: "project", id: secondHistoryProjectId }],
+    },
+  });
+  expect(otherProjectJob.job.input?.creativeDirectionHistory?.scopes).toEqual([
+    { type: "project", id: secondHistoryProjectId },
+  ]);
+  expect(f.started).toHaveLength(6);
+
+  const mismatched = {
+    version: 1,
+    scopes: [
+      { type: "project", id: historyProjectId },
+      { type: "song_universe", id: secondHistoryUniverseId },
+    ],
+  };
+  await expect(f.invoke({ creativeDirectionHistory: mismatched })).rejects.toThrow(
+    "does not belong",
+  );
+  expect(f.started).toHaveLength(6);
+});
+
+test("Generator admission persists resolved Project+Universe scopes through worker read and completion", async () => {
+  const admission = admissionFixture();
+  admission.membership(historyProjectId, historyUniverseId);
+  const admitted = await admission.invoke({
+    creativeDirectionHistory: {
+      version: 1,
+      scopes: [{ type: "project", id: historyProjectId }],
+    },
+  });
+  const durableInput = admitted.job.input!;
+  const expectedScopes = [
+    { type: "project", id: historyProjectId },
+    { type: "song_universe", id: historyUniverseId },
+  ];
+  expect(durableInput.creativeDirectionHistory?.scopes).toEqual(expectedScopes);
+
+  const worker = workerFixture(durableInput);
+  expect(await worker.run()).toEqual({ ran: true });
+  expect(worker.dispatches).toBe(1);
+  expect(worker.readScopes).toEqual([expectedScopes]);
+  expect(worker.generationContexts).toEqual([
+    expect.objectContaining({
+      creativeDirectionHistory: [
+        expect.objectContaining({ coreIdea: "A traveler finding courage at dawn" }),
+      ],
+    }),
+  ]);
+  expect(
+    worker.rpcCalls.filter(
+      ({ name }) => name === "complete_generation_with_creative_direction_history",
+    ),
+  ).toHaveLength(1);
+});
 
 function workerFixture(input: any, allowed = true, roleError = false) {
   let state = "pending",

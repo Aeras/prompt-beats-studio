@@ -2,7 +2,7 @@
 
 ## Κατάσταση
 
-Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Διορθώθηκε το PostgreSQL JSON validation στις δύο νέες migrations. Το Regression πέρασε το PR-description contract, αλλά το full Bun suite εντόπισε τρεις περιπτώσεις: εύθραυστη assertion μορφοποίησης, λανθασμένη απόρριψη Universe-only scope και ελλιπές isolated test binding για το νέο schema. Διορθώθηκαν η server-side συμπεριφορά και τα test harnesses. Τα Database Replay και Browser Quality της προηγούμενης HEAD ακυρώθηκαν πριν ολοκληρωθούν και δεν θεωρούνται επιτυχίες. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
+Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Διορθώθηκε το PostgreSQL JSON validation στις δύο νέες migrations και η server-side admission δέχεται πλέον ανεξάρτητο Universe scope, ενώ ελέγχει αυστηρά τα συνδυασμένα Project–Universe scopes. Διορθώθηκαν επίσης τρεις regression-test αστοχίες (εύθραυστη assertion μορφοποίησης και δύο test harness bindings). Το τελευταίο Regression run έφτασε στο changed-source lint και εντόπισε 130 Prettier-only διαφορές σε τέσσερα αρχεία· εφαρμόστηκαν οι ακριβείς προτεινόμενες αλλαγές από τα CI diagnostics. Build/typecheck δεν έτρεξαν ακόμη σε εκείνο το run. Τα Database Replay και Browser Quality προηγούμενου HEAD ακυρώθηκαν πριν ολοκληρωθούν. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
 
 ## Συμπεριφορά
 

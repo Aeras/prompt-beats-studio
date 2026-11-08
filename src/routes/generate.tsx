@@ -1191,9 +1191,9 @@ function GeneratePage() {
     queryFn: () => listPromptProjects(),
     enabled: Boolean(
       user &&
-        (saveDialogOpen ||
-          revisionMode ||
-          (moderation.isSuperAdmin && advanced && creativeDirectionHistoryEnabled)),
+      (saveDialogOpen ||
+        revisionMode ||
+        (moderation.isSuperAdmin && advanced && creativeDirectionHistoryEnabled)),
     ),
   });
   const revisionVersions = useQuery({
@@ -3877,17 +3877,14 @@ function GeneratePage() {
                     </span>
                     <select
                       id="generator-creative-direction-project-scope"
-                      aria-label={
-                        appLanguage === "el" ? "Scope Project" : "Project scope"
-                      }
+                      aria-label={appLanguage === "el" ? "Scope Project" : "Project scope"}
                       value={creativeDirectionProjectId ?? ""}
                       disabled={
-                        busy ||
-                        Boolean(jobId) ||
-                        promptProjects.isLoading ||
-                        promptProjects.isError
+                        busy || Boolean(jobId) || promptProjects.isLoading || promptProjects.isError
                       }
-                      onChange={(event) => setCreativeDirectionProjectId(event.target.value || null)}
+                      onChange={(event) =>
+                        setCreativeDirectionProjectId(event.target.value || null)
+                      }
                       className={fieldClass}
                     >
                       <option value="">

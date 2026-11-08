@@ -72,7 +72,9 @@ test("scope selection carries project and universe together and falls back only 
   const projectId = "11111111-1111-4111-8111-111111111111";
   const universeId = "22222222-2222-4222-8222-222222222222";
   const sessionId = "33333333-3333-4333-8333-333333333333";
-  const scopes = (patch: Partial<Parameters<typeof creativeDirectionHistoryConfigForSelection>[0]>) =>
+  const scopes = (
+    patch: Partial<Parameters<typeof creativeDirectionHistoryConfigForSelection>[0]>,
+  ) =>
     creativeDirectionHistoryConfigForSelection({
       enabled: true,
       projectId: null,

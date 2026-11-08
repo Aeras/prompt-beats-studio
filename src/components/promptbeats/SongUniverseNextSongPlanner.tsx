@@ -72,7 +72,12 @@ export function SongUniverseNextSongPlanner({
   onRefresh,
 }: {
   universe: SongUniverseRecord;
-  projects: Array<{ id: string; projectId: string; projectName: string; universeRole: string | null }>;
+  projects: Array<{
+    id: string;
+    projectId: string;
+    projectName: string;
+    universeRole: string | null;
+  }>;
   onClose: () => void;
   onRefresh: () => Promise<void>;
 }) {
@@ -95,7 +100,9 @@ export function SongUniverseNextSongPlanner({
   const [relationships, setRelationships] = useState(lines(universe.storyBible.relationships));
   const [locations, setLocations] = useState(lines(universe.storyBible.locations));
   const [worldRules, setWorldRules] = useState(lines(universe.storyBible.worldRules));
-  const [recurringSymbols, setRecurringSymbols] = useState(lines(universe.storyBible.recurringSymbols));
+  const [recurringSymbols, setRecurringSymbols] = useState(
+    lines(universe.storyBible.recurringSymbols),
+  );
   const [desiredEnding, setDesiredEnding] = useState(universe.storyBible.desiredEnding ?? "");
   const [storyTone, setStoryTone] = useState(universe.storyBible.tone ?? "");
   const [storyAudience, setStoryAudience] = useState(universe.storyBible.audience ?? "");
@@ -140,9 +147,7 @@ export function SongUniverseNextSongPlanner({
     }
     const availableProjectIds = projects.map((project) => project.projectId);
     if (targetProjectId && availableProjectIds.includes(targetProjectId)) return;
-    setTargetProjectId(
-      resolveSongUniverseHandoffProjectId(true, targetProjectId, projects) ?? "",
-    );
+    setTargetProjectId(resolveSongUniverseHandoffProjectId(true, targetProjectId, projects) ?? "");
   }, [moderation.isLoading, moderation.isSuperAdmin, projects, targetProjectId]);
 
   const nextPosition = projects.length;
@@ -277,10 +282,7 @@ export function SongUniverseNextSongPlanner({
           targetRole: targetRole.trim() || null,
         },
       };
-      window.sessionStorage.setItem(
-        SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY,
-        JSON.stringify(handoff),
-      );
+      window.sessionStorage.setItem(SONG_UNIVERSE_SONG_SETUP_HANDOFF_KEY, JSON.stringify(handoff));
       void navigate({ to: "/generate" });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -334,10 +336,10 @@ export function SongUniverseNextSongPlanner({
       copyListBlock(el ? "Διατήρησε" : "Keep", brief.identityToPreserve),
       copyListBlock(el ? "Υποχρεωτικά σεβάσου" : "Must respect", brief.mustRespect),
       copyListBlock(el ? "Εξερεύνησε" : "Explore", brief.themesToExplore),
-      copyListBlock(
-        el ? "Προτίμησε να μην επαναλάβεις" : "Prefer not to repeat",
-        [...brief.preferNotToRepeatThemes, ...brief.preferNotToRepeatMotifs],
-      ),
+      copyListBlock(el ? "Προτίμησε να μην επαναλάβεις" : "Prefer not to repeat", [
+        ...brief.preferNotToRepeatThemes,
+        ...brief.preferNotToRepeatMotifs,
+      ]),
       ...(brief.mustAvoid.length > 0
         ? [copyListBlock(el ? "Must avoid" : "Must avoid", brief.mustAvoid)]
         : []),
@@ -356,7 +358,10 @@ export function SongUniverseNextSongPlanner({
       ...EDITABLE_FIELDS.filter(
         (item) => isSeries || !["storyProgression", "nextNarrativeOpportunity"].includes(item.key),
       ).map((item) => copyTextBlock(el ? item.el : item.en, editableValue(item.key))),
-      copyListBlock(el ? "Γιατί" : "Why", brief.evidence.map((item) => item.statement)),
+      copyListBlock(
+        el ? "Γιατί" : "Why",
+        brief.evidence.map((item) => item.statement),
+      ),
       copyTextBlock(el ? "Σύνοψη reasoning" : "Reasoning summary", brief.reasoningSummary),
     ];
 
@@ -444,9 +449,7 @@ export function SongUniverseNextSongPlanner({
               onChange={(event) => setTargetProjectId(event.target.value)}
               className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-foreground"
             >
-              <option value="">
-                {el ? "Μόνο Song Universe" : "Song Universe only"}
-              </option>
+              <option value="">{el ? "Μόνο Song Universe" : "Song Universe only"}</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.projectId}>
                   {project.projectName}
@@ -536,17 +539,49 @@ export function SongUniverseNextSongPlanner({
             {el ? "Story Bible / Canon" : "Story Bible / Canon"}
           </summary>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <StoryLines label={el ? "Canon facts" : "Canon facts"} value={canonFacts} onChange={setCanonFacts} />
-            <StoryLines label={el ? "Χαρακτήρες" : "Characters"} value={characters} onChange={setCharacters} />
-            <StoryLines label={el ? "Σχέσεις" : "Relationships"} value={relationships} onChange={setRelationships} />
-            <StoryLines label={el ? "Τοποθεσίες" : "Locations"} value={locations} onChange={setLocations} />
-            <StoryLines label={el ? "Κανόνες κόσμου" : "World rules"} value={worldRules} onChange={setWorldRules} />
-            <StoryLines label={el ? "Επαναλαμβανόμενα σύμβολα" : "Recurring symbols"} value={recurringSymbols} onChange={setRecurringSymbols} />
+            <StoryLines
+              label={el ? "Canon facts" : "Canon facts"}
+              value={canonFacts}
+              onChange={setCanonFacts}
+            />
+            <StoryLines
+              label={el ? "Χαρακτήρες" : "Characters"}
+              value={characters}
+              onChange={setCharacters}
+            />
+            <StoryLines
+              label={el ? "Σχέσεις" : "Relationships"}
+              value={relationships}
+              onChange={setRelationships}
+            />
+            <StoryLines
+              label={el ? "Τοποθεσίες" : "Locations"}
+              value={locations}
+              onChange={setLocations}
+            />
+            <StoryLines
+              label={el ? "Κανόνες κόσμου" : "World rules"}
+              value={worldRules}
+              onChange={setWorldRules}
+            />
+            <StoryLines
+              label={el ? "Επαναλαμβανόμενα σύμβολα" : "Recurring symbols"}
+              value={recurringSymbols}
+              onChange={setRecurringSymbols}
+            />
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <StoryText label={el ? "Επιθυμητό τέλος" : "Desired ending"} value={desiredEnding} onChange={setDesiredEnding} />
+            <StoryText
+              label={el ? "Επιθυμητό τέλος" : "Desired ending"}
+              value={desiredEnding}
+              onChange={setDesiredEnding}
+            />
             <StoryText label={el ? "Τόνος" : "Tone"} value={storyTone} onChange={setStoryTone} />
-            <StoryText label={el ? "Κοινό" : "Audience"} value={storyAudience} onChange={setStoryAudience} />
+            <StoryText
+              label={el ? "Κοινό" : "Audience"}
+              value={storyAudience}
+              onChange={setStoryAudience}
+            />
           </div>
         </details>
       )}
@@ -558,7 +593,11 @@ export function SongUniverseNextSongPlanner({
           disabled={busy !== null}
           className="flex items-center gap-2 rounded-xl bg-gradient-neon px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-40"
         >
-          {busy === "plan" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          {busy === "plan" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
           {brief
             ? el
               ? "Νέα κατεύθυνση"
@@ -597,7 +636,9 @@ export function SongUniverseNextSongPlanner({
               {el ? "Δεδομένα" : "Data"}: {planMeta.overallCompleteness}
             </span>
             {planMeta.modelLabel && (
-              <span className="rounded-full border border-white/10 px-2 py-1">{planMeta.modelLabel}</span>
+              <span className="rounded-full border border-white/10 px-2 py-1">
+                {planMeta.modelLabel}
+              </span>
             )}
             {planMeta.fallback && (
               <span className="rounded-full border border-amber-400/30 px-2 py-1 text-amber-200">
@@ -624,7 +665,9 @@ export function SongUniverseNextSongPlanner({
               }`}
             >
               {el ? "Έλεγχος ομοιότητας" : "Similarity check"}: {planMeta.duplicateRisk.reason}
-              {planMeta.duplicateRisk.projectTitle ? ` — ${planMeta.duplicateRisk.projectTitle}` : ""}
+              {planMeta.duplicateRisk.projectTitle
+                ? ` — ${planMeta.duplicateRisk.projectTitle}`
+                : ""}
             </div>
           )}
 
@@ -659,7 +702,10 @@ export function SongUniverseNextSongPlanner({
 
           <div className="grid gap-3 lg:grid-cols-2">
             <BriefList title={el ? "Διατήρησε" : "Keep"} items={brief.identityToPreserve} />
-            <BriefList title={el ? "Υποχρεωτικά σεβάσου" : "Must respect"} items={brief.mustRespect} />
+            <BriefList
+              title={el ? "Υποχρεωτικά σεβάσου" : "Must respect"}
+              items={brief.mustRespect}
+            />
             <BriefList title={el ? "Εξερεύνησε" : "Explore"} items={brief.themesToExplore} />
             <BriefList
               title={el ? "Προτίμησε να μην επαναλάβεις" : "Prefer not to repeat"}
@@ -676,9 +722,18 @@ export function SongUniverseNextSongPlanner({
 
           {isSeries && (
             <div className="grid gap-3 lg:grid-cols-2">
-              <BriefText title={el ? "Story so far" : "Story so far"} value={brief.narrativeState} />
-              <BriefList title={el ? "Μην επαναλάβεις" : "Do not repeat"} items={brief.eventsNotToRepeat} />
-              <BriefText title={el ? "Εξέλιξη" : "Story progression"} value={brief.storyProgression} />
+              <BriefText
+                title={el ? "Story so far" : "Story so far"}
+                value={brief.narrativeState}
+              />
+              <BriefList
+                title={el ? "Μην επαναλάβεις" : "Do not repeat"}
+                items={brief.eventsNotToRepeat}
+              />
+              <BriefText
+                title={el ? "Εξέλιξη" : "Story progression"}
+                value={brief.storyProgression}
+              />
               <BriefText
                 title={el ? "Επόμενη αφηγηματική ευκαιρία" : "Next chapter opportunity"}
                 value={brief.nextNarrativeOpportunity}
@@ -720,7 +775,9 @@ export function SongUniverseNextSongPlanner({
                   </span>
                   {editing ? (
                     <textarea
-                      rows={item.key === "themesToExplore" || item.key === "storyProgression" ? 3 : 2}
+                      rows={
+                        item.key === "themesToExplore" || item.key === "storyProgression" ? 3 : 2
+                      }
                       value={editableValue(item.key)}
                       onChange={(event) => updateBriefField(item.key, event.target.value)}
                       className="mt-1 w-full rounded-lg border border-white/10 bg-black/20 p-2 text-xs text-foreground"
@@ -736,8 +793,14 @@ export function SongUniverseNextSongPlanner({
           </div>
 
           <div className="grid gap-3 lg:grid-cols-2">
-            <BriefList title={el ? "Γιατί" : "Why"} items={brief.evidence.map((item) => item.statement)} />
-            <BriefText title={el ? "Σύνοψη reasoning" : "Reasoning summary"} value={brief.reasoningSummary} />
+            <BriefList
+              title={el ? "Γιατί" : "Why"}
+              items={brief.evidence.map((item) => item.statement)}
+            />
+            <BriefText
+              title={el ? "Σύνοψη reasoning" : "Reasoning summary"}
+              value={brief.reasoningSummary}
+            />
           </div>
 
           <button
@@ -746,10 +809,12 @@ export function SongUniverseNextSongPlanner({
             disabled={busy !== null || moderation.isLoading}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-neon px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-40"
           >
-            {busy === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {el
-              ? "Χρήση αυτής της κατεύθυνσης στο Song Setup"
-              : "Use this direction in Song Setup"}
+            {busy === "approve" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+            {el ? "Χρήση αυτής της κατεύθυνσης στο Song Setup" : "Use this direction in Song Setup"}
           </button>
         </div>
       )}
@@ -805,7 +870,9 @@ function StoryText({
 function BriefList({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/15 p-3">
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </div>
       <ul className="mt-2 space-y-1 text-xs leading-relaxed">
         {listOrDash(items).map((item, index) => (
           <li key={`${index}-${item}`}>• {item}</li>
@@ -818,8 +885,12 @@ function BriefList({ title, items }: { title: string; items: string[] }) {
 function BriefText({ title, value }: { title: string; value: string | null }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/15 p-3">
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</div>
-      <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-foreground/90">{value || "—"}</p>
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-foreground/90">
+        {value || "—"}
+      </p>
     </div>
   );
 }
