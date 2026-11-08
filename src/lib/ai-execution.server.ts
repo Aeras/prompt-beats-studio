@@ -4,6 +4,7 @@ import type { AiOperation, NormalizedUsage } from "./ai-usage.server";
 import { recordAiUsage } from "./ai-usage.server";
 import { usageEvidence } from "./ai-usage-evidence";
 import type { ModelCall, ModelResult, ModelCaller } from "./ai-provider.server";
+import type { CreativeDirection } from "./creative-direction-history.shared";
 
 export type ExecutionContext = {
   /** Server-owned durable identity for standalone research; never a client job ID. */
@@ -14,6 +15,7 @@ export type ExecutionContext = {
   jobId?: string;
   qualityActionId?: string;
   recoveryOnly?: boolean;
+  creativeDirectionHistory?: CreativeDirection[];
 };
 type Execution = {
   id: string;

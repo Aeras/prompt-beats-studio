@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
+import { Switch } from "@/components/ui/switch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -122,6 +123,7 @@ import {
   type InspirationWallSongSetupHandoff,
 } from "@/lib/inspiration-wall-song-setup.shared";
 import type { GeneratorInputSnapshot } from "@/lib/generator-revision.shared";
+import type { CreativeDirectionScope } from "@/lib/creative-direction-history.shared";
 import {
   buildStoryMapSongSetupDescription,
   STORY_MAP_SONG_SETUP_HANDOFF_KEY,
@@ -172,7 +174,6 @@ import {
 const JOB_STORAGE_KEY = "pb:generation-job";
 const QUALITY_JOB_STORAGE_KEY = "pb:quality-check-job";
 const SONG_ANALYZER_HANDOFF_KEY = "pb:song-analyzer-handoff";
-
 export const Route = createFileRoute("/generate")({
   validateSearch: z.object({
     mode: z.enum(["revision"]).optional(),
@@ -1146,6 +1147,27 @@ function GeneratePage() {
   const [storyMapHandoff, setStoryMapHandoff] = useState<StoryMapSongSetupHandoff | null>(null);
   const [songUniverseHandoff, setSongUniverseHandoff] =
     useState<SongUniverseSongSetupHandoff | null>(null);
+  const [creativeDirectionProjectId, setCreativeDirectionProjectId] = useState<string | null>(null);
+  const [creativeDirectionUniverseId, setCreativeDirectionUniverseId] = useState<string | null>(
+    null,
+  );
+  const [creativeDirectionHistoryEnabled, setCreativeDirectionHistoryEnabled] = useState(false);
+  const [creativeDirectionSessionId, setCreativeDirectionSessionId] = useState(
+    () => freshSession ?? search.session ?? crypto.randomUUID(),
+  );
+  const creativeDirectionOwnerRef = useRef(user?.id);
+  useEffect(() => {
+    const ownerChanged = creativeDirectionOwnerRef.current !== user?.id;
+    if (ownerChanged) creativeDirectionOwnerRef.current = user?.id;
+    if (ownerChanged || !user?.id || !moderation.isSuperAdmin) {
+      setCreativeDirectionProjectId(null);
+      setCreativeDirectionUniverseId(null);
+      setCreativeDirectionHistoryEnabled(false);
+      if (ownerChanged && !freshSession && !search.session) {
+        setCreativeDirectionSessionId(crypto.randomUUID());
+      }
+    }
+  }, [freshSession, moderation.isSuperAdmin, search.session, user?.id]);
   const [storyDriven, setStoryDriven] = useState(false);
   const [songSetupPrefill, setSongSetupPrefill] = useState<{
     key: string;
@@ -1266,7 +1288,7 @@ function GeneratePage() {
           : "Could not load the Story Map handoff into Song Setup.",
       );
     }
-  }, [appLanguage]);
+  }, [appLanguage, freshSession]);
 
   useEffect(() => {
     if (!storyMapHandoff || songSetupFeature.isLoading) return;
@@ -1280,6 +1302,8 @@ function GeneratePage() {
       return;
     }
     const description = buildStoryMapSongSetupDescription(storyMapHandoff, appLanguage);
+    setCreativeDirectionProjectId(storyMapHandoff.projectId);
+    setCreativeDirectionUniverseId(null);
     setAdvanced(true);
     if (storyMapHandoff.projectId) setSaveProjectId(storyMapHandoff.projectId);
     setSongSetupPrefill({
@@ -1311,7 +1335,7 @@ function GeneratePage() {
           : "Could not load the Song Universe handoff into Song Setup.",
       );
     }
-  }, [appLanguage]);
+  }, [appLanguage, freshSession]);
 
   useEffect(() => {
     if (!songUniverseHandoff || songSetupFeature.isLoading || songUniverseFeature.isLoading) return;
@@ -1325,6 +1349,8 @@ function GeneratePage() {
       return;
     }
     const description = buildSongUniverseContextText(songUniverseHandoff, appLanguage);
+    setCreativeDirectionProjectId(songUniverseHandoff.projectId);
+    setCreativeDirectionUniverseId(songUniverseHandoff.universeId);
     setAdvanced(true);
     if (songUniverseHandoff.projectId) setSaveProjectId(songUniverseHandoff.projectId);
     setSongSetupPrefill({
@@ -1363,7 +1389,7 @@ function GeneratePage() {
           : "Could not load the Inspiration Wall handoff into Song Setup.",
       );
     }
-  }, [appLanguage]);
+  }, [appLanguage, freshSession]);
 
   useEffect(() => {
     if (!inspirationWallHandoff || songSetupFeature.isLoading) return;
@@ -1389,6 +1415,8 @@ function GeneratePage() {
       setInspirationWallHandoff(null);
       return;
     }
+    setCreativeDirectionProjectId(inspirationWallHandoff.connectedProjectId);
+    setCreativeDirectionUniverseId(null);
     setAdvanced(true);
     if (inspirationWallHandoff.connectedProjectId) {
       setSaveProjectId(inspirationWallHandoff.connectedProjectId);
@@ -1508,6 +1536,7 @@ function GeneratePage() {
     setInstructions,
     setBpm,
     setCustomBpm,
+    freshSession,
   ]);
 
   useEffect(() => {
@@ -2632,6 +2661,17 @@ function GeneratePage() {
 
   const generate = async () => {
     if (!ready) return;
+    if (
+      creativeDirectionHistoryEnabled &&
+      (!user?.id || !moderation.isSuperAdmin || !advanced || revisionMode)
+    ) {
+      setStatus(
+        appLanguage === "el"
+          ? "Το ιστορικό μουσικών κατευθύνσεων είναι διαθέσιμο μόνο σε Super Admin Advanced δημιουργίες."
+          : "Musical direction history is available only for Super Admin Advanced generations.",
+      );
+      return;
+    }
     if (!generatorFeature.allowed) {
       setStatus(t("generator.featureUnavailable"));
       return;
@@ -2692,6 +2732,31 @@ function GeneratePage() {
           ...(atlasInstructions ? { atlasOrigin: atlasInstructions.origin } : {}),
           operation: revisionMode ? "revision" : "generate",
           inputSnapshot: currentSnapshot,
+          ...(creativeDirectionHistoryEnabled &&
+          advanced &&
+          !revisionMode &&
+          moderation.isSuperAdmin
+            ? {
+                creativeDirectionHistory: {
+                  version: 1 as const,
+                  scopes: (() => {
+                    const scopes: CreativeDirectionScope[] = [];
+                    const projectId = creativeDirectionProjectId;
+                    const universeId = creativeDirectionUniverseId;
+                    if (projectId) scopes.push({ type: "project", id: projectId });
+                    if (universeId) scopes.push({ type: "song_universe", id: universeId });
+                    if (!scopes.length) {
+                      if (!user?.id) throw new Error("Please sign in before generating.");
+                      scopes.push({
+                        type: "session",
+                        id: creativeDirectionSessionId,
+                      });
+                    }
+                    return scopes;
+                  })(),
+                },
+              }
+            : {}),
           revision: revisionMode
             ? {
                 projectId: revisionProjectId || null,
@@ -3108,6 +3173,7 @@ function GeneratePage() {
   const changeGeneratorMode = (mode: "basic" | "advanced" | "revision") => {
     setRequiredValidationAttempted(false);
     if (mode === "revision") {
+      setCreativeDirectionHistoryEnabled(false);
       setRevisionMode(true);
       setAdvanced(true);
       setResult(null);
@@ -3126,6 +3192,7 @@ function GeneratePage() {
     }
 
     const nextAdvanced = mode === "advanced";
+    if (!nextAdvanced) setCreativeDirectionHistoryEnabled(false);
     syncSharedFieldsForMode(nextAdvanced);
     setRevisionMode(false);
     setAdvanced(nextAdvanced);
@@ -3729,7 +3796,7 @@ function GeneratePage() {
                   htmlFor="generator-prompt-version"
                   className="mb-2 block text-xs font-semibold text-accent"
                 >
-                  Generator Prompt Version · Super Admin
+                  Prompt
                 </label>
                 <select
                   id="generator-prompt-version"
@@ -3780,11 +3847,23 @@ function GeneratePage() {
                     {promptRegistryCopy[appLanguage].failed}
                   </p>
                 )}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {appLanguage === "el"
-                    ? "Οι V1–V4 παραμένουν αμετάβλητες. Η V5 BETA 1 είναι ερευνητικός υποψήφιος Creative Master, όχι αποδεδειγμένα ανώτερο prompt. Μόνο για Super Admin."
-                    : "V1–V4 remain unchanged. V5 BETA 1 is a Creative Master research candidate, not a proven superior prompt. Super Admin only."}
-                </p>
+                <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+                  <span
+                    id="generator-creative-direction-history-label"
+                    className="text-xs text-muted-foreground"
+                  >
+                    {appLanguage === "el"
+                      ? "Ιστορικό μουσικών κατευθύνσεων"
+                      : "Musical direction history"}
+                  </span>
+                  <Switch
+                    id="generator-creative-direction-history"
+                    aria-labelledby="generator-creative-direction-history-label"
+                    checked={creativeDirectionHistoryEnabled}
+                    disabled={busy || Boolean(jobId)}
+                    onCheckedChange={setCreativeDirectionHistoryEnabled}
+                  />
+                </div>
               </div>
             )}
             {revisionMode && (

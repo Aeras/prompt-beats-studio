@@ -107,6 +107,8 @@ jobs:
           bash scripts/tests/upload-receipt-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/atomic_revision_finalize.sql
           bash scripts/tests/atomic-revision-db-races.sh "$PROJECT_ID"
+          docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/creative_direction_history.sql
+          bash scripts/tests/creative-direction-history-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/stripe_checkout_reservation.sql
           bash scripts/tests/checkout-reservation-races.sh "$PROJECT_ID"
           docker exec -i "supabase_db_$PROJECT_ID" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/upload_success_quota.sql
