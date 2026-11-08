@@ -2,7 +2,7 @@
 
 ## Κατάσταση
 
-Το αρχικό branch `codex/creative-direction-history-20261108` έχει ήδη ανέβει στο origin στο commit `c6aced69a11de239b6498c22ca23d1307d4490ce`. Δεν υπάρχει PR ή CI run για αυτό το branch. Η παρούσα διόρθωση βρίσκεται ως μη δεσμευμένο τοπικό diff στο ίδιο branch. Η migration δεν έχει εφαρμοστεί σε βάση παραγωγής. Δεν έγιναν AI κλήσεις ή publish.
+Η υλοποίηση και η διόρθωση των scopes έχουν ανέβει στο origin στο branch `codex/creative-direction-history-20261108`. Το αρχικό commit είναι `c6aced69a11de239b6498c22ca23d1307d4490ce` και το τελικό commit υλοποίησης είναι `46cd6e53837a8c51b86346c141e85d5057d3e9b1`. Το branch είναι έτοιμο για PR και τα τρία υποχρεωτικά GitHub gates. Η migration δεν έχει εφαρμοστεί σε βάση παραγωγής. Δεν έγιναν AI κλήσεις ή publish.
 
 ## Συμπεριφορά
 
