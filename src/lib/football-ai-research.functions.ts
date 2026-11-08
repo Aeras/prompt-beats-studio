@@ -559,18 +559,37 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
           raw && typeof raw === "object" && !Array.isArray(raw)
             ? (raw as Record<string, unknown>)
             : {};
-        const externalPredictionConsensus = buildFootballPredictionConsensus(
-          identity,
-          evidenceSnapshot,
-          {
-            onlinePredictions: predictionReferences,
-            ...(interpretation["onlineJudgment"] === undefined
-              ? {}
-              : { onlineJudgment: interpretation["onlineJudgment"] }),
-          },
-          evidenceCutoff,
-          [...providerEvidenceUrls(providerEvidence), ...footballV2EvidenceUrls(onlineEvidenceV2)],
-        );
+        // The legacy V1 consensus is a secondary projection: a malformed legacy field must
+        // never discard a completed primary assessment.
+        let externalPredictionConsensus: ReturnType<typeof buildFootballPredictionConsensus>;
+        try {
+          externalPredictionConsensus = buildFootballPredictionConsensus(
+            identity,
+            evidenceSnapshot,
+            {
+              onlinePredictions: predictionReferences,
+              ...(interpretation["onlineJudgment"] === undefined
+                ? {}
+                : { onlineJudgment: interpretation["onlineJudgment"] }),
+            },
+            evidenceCutoff,
+            [
+              ...providerEvidenceUrls(providerEvidence),
+              ...footballV2EvidenceUrls(onlineEvidenceV2),
+            ],
+          );
+        } catch (consensusError) {
+          console.error("[football-research] legacy_consensus_failed", {
+            runId,
+            message: String((consensusError as Error)?.message ?? consensusError).slice(0, 300),
+          });
+          externalPredictionConsensus = buildFootballPredictionConsensus(
+            identity,
+            [],
+            {},
+            evidenceCutoff,
+          );
+        }
         const wireAssessment = { ...interpretation };
         delete wireAssessment["onlinePredictions"];
         delete wireAssessment["onlineJudgment"];
@@ -665,6 +684,11 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         };
       });
     } catch (error) {
+      console.error("[football-research] run_failed", {
+        runId,
+        failureCode,
+        message: String((error as Error)?.message ?? error).slice(0, 300),
+      });
       if (researchAudit.fullEvidenceV2?.coverage === "complete") {
         const failed = researchAudit.fullEvidenceV2;
         failed.coverage = "incomplete_coverage";
