@@ -6,7 +6,7 @@ import {
 } from "./football-independent-restoration.shared";
 import type { ResearchMarket } from "./football-independent-markets.shared";
 
-const over = (line: number): ResearchMarket => ({
+const over = (line: number): Extract<ResearchMarket, { kind: "total" }> => ({
   kind: "total",
   period: "FT",
   selection: "over",
@@ -112,7 +112,7 @@ test("settlement, statistic, subject, player, score, HT/FT and combinations reta
   expect(result.rows.length).toBe(11);
 });
 test("safe formatting normalization and reversed combination legs deduplicate without broad category merging", () => {
-  const btts: ResearchMarket = { kind: "btts", period: "FT", selection: "yes" };
+  const btts: Extract<ResearchMarket, { kind: "btts" }> = { kind: "btts", period: "FT", selection: "yes" };
   const result = aggregatePublishedSelections(
     [
       candidate("a", { kind: "other", label: "  Exact   PICK " }),
