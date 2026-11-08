@@ -99,12 +99,10 @@ export function researchMarketLabel(m: ResearchMarket, locale: "el" | "en" = "en
     return `${prefix}${locale === "el" ? (m.settlement === "asian" ? "Ασιατικό χάντικαπ" : "Ευρωπαϊκό χάντικαπ") : m.settlement + " handicap"} ${m.selection} (${m.line > 0 ? "+" : ""}${m.line})`;
   if (m.kind === "stat_total") {
     const subject =
-      m.subject === "player"
-        ? m.player
-        : m.player ??
-          (locale === "el"
-            ? { match: "Αγώνα", home: "Γηπεδούχου", away: "Φιλοξενούμενου" }[m.subject]
-            : m.subject);
+      m.player ??
+      (locale === "el"
+        ? { match: "Αγώνα", home: "Γηπεδούχου", away: "Φιλοξενούμενου" }[m.subject]
+        : m.subject);
     return `${prefix}${subject} ${locale === "el" ? { corners: "κόρνερ", cards: "κάρτες", yellow_cards: "κίτρινες κάρτες", red_cards: "κόκκινες κάρτες", shots: "σουτ", shots_on_target: "σουτ στην εστία" }[m.statistic] : m.statistic.replaceAll("_", " ")} ${m.selection === "over" ? "Over" : "Under"} ${m.line}`;
   }
   return prefix + m.selection;
@@ -148,4 +146,4 @@ export function compatibleResearchLegs(legs: ResearchMarket[]): boolean {
     for (let a = 0; a <= 30; a++) if (legs.every((m) => accepts(m, h, a))) return true;
   return false;
 }
-export const RESEARCH_MARKET_GRAMMAR = `Use EXACT market ASTs. FT/HT is period, not a guess. {kind:"1x2",period:"FT",selection:"1"|"X"|"2"}; {kind:"dc",period,selection:"1X"|"X2"|"12"}; {kind:"total",period,selection:"over"|"under",line:2.5}; {kind:"btts",period,selection:"yes"|"no"}; {kind:"htft",half:"1"|"X"|"2",full:"1"|"X"|"2"}; {kind:"score",period,home:1,away:2}; {kind:"stat_total",statistic:"corners"|"cards"|"yellow_cards"|"red_cards"|"shots"|"shots_on_target",period,subject:"match"|"home"|"away",selection:"over"|"under",line:9.5,player?:exact name}; {kind:"handicap",period,settlement:"asian"|"european",selection:"1"|"2",line:-1}. Never infer Asian/European settlement from an ambiguous handicap. AND is {kind:"and",legs:[two distinct compatible leaf ASTs]}, only if author explicitly recommends the whole conjunction. Separate main/alternative picks are separate candidates. Use {kind:"other",label:literal description} only for truly unsupported/ambiguous settlement, not for a paragraph containing several recognizable picks. X/2 is HT/FT, X2 is double chance. Corners/cards/player markets are not goals. Model market is provisional: server normalizes the literal recommendation independently.`;
+export const RESEARCH_MARKET_GRAMMAR = `Use EXACT market ASTs. FT/HT is period, not a guess. {kind:"1x2",period:"FT",selection:"1"|"X"|"2"}; {kind:"dc",period,selection:"1X"|"X2"|"12"}; {kind:"total",period,selection:"over"|"under",line:2.5}; {kind:"btts",period,selection:"yes"|"no"}; {kind:"htft",half:"1"|"X"|"2",full:"1"|"X"|"2"}; {kind:"score",period,home:1,away:2}; {kind:"stat_total",statistic:"corners"|"cards"|"yellow_cards"|"red_cards"|"shots"|"shots_on_target",period,subject:"match"|"home"|"away",selection:"over"|"under",line:9.5,player?:exact name; player markets use subject:"player" and require player:"exact name"}; {kind:"handicap",period,settlement:"asian"|"european",selection:"1"|"2",line:-1}. Never infer Asian/European settlement from an ambiguous handicap. AND is {kind:"and",legs:[two distinct compatible leaf ASTs]}, only if author explicitly recommends the whole conjunction. Separate main/alternative picks are separate candidates. Use {kind:"other",label:literal description} only for truly unsupported/ambiguous settlement, not for a paragraph containing several recognizable picks. X/2 is HT/FT, X2 is double chance. Corners/cards/player markets are not goals. Model market is provisional: server normalizes the literal recommendation independently.`;
