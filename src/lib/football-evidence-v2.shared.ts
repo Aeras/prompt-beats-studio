@@ -245,7 +245,9 @@ export function traceFootballFixture(
   add("reversed_venue", reversed);
   const dates = explicitDates(t);
   add("date_missing", !dates.length || !local.date);
-  add("date_conflict", !!local.date && dates.some((d) => d !== local.date));
+  // Conflict only when the page states dates but none is the fixture date; unrelated
+  // extra dates (other matches, footer, older articles) must not reject a correct page.
+  add("date_conflict", !!local.date && dates.length > 0 && !dates.includes(local.date));
   const weekday = local.date
     ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
         .format(new Date(local.date + "T12:00:00Z"))
