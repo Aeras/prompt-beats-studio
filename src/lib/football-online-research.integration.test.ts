@@ -389,7 +389,7 @@ for (const [iteration, mode] of (
             const prompt = JSON.parse(input.prompt);
             if (v2) {
               if (prompt.readingChunks) {
-                expect(input).toHaveProperty("maxTokens", 8192);
+                expect(input).toHaveProperty("maxTokens", 16384);
                 const evidenceCandidates = prompt.readingChunks
                   .filter((c: { text: string }) => c.text.includes("Our pick: Over 2.5"))
                   .map((c: { sourceId: string }) => ({
