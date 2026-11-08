@@ -98,7 +98,7 @@ export const runPrivateFootballExpertReview = createServerFn({ method: "POST" })
             usableBookmakerOddsSnapshot: usableOdds(assessment.bookmakerOddsSnapshot, oddsCutoff),
           }),
           maxTokens: 4096,
-          requestTimeoutMs: 90000,
+          requestTimeoutMs: 180000,
           jsonObjectOutput: true,
           ...(resolved.reasoningEffort ? { reasoningEffort: resolved.reasoningEffort } : {}),
         });

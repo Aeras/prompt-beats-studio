@@ -8,9 +8,9 @@ export const FOOTBALL_SEARCH_CALLS = 5;
 export const FOOTBALL_RESULTS_PER_SEARCH = 5;
 export const FOOTBALL_MODEL_OUTPUT_TOKENS = 16384;
 export const FOOTBALL_MAX_PROMPT_BYTES = 262144;
-export const FOOTBALL_RUN_TIMEOUT_MS = 150000;
+export const FOOTBALL_RUN_TIMEOUT_MS = 300000;
 export const FOOTBALL_SEARCH_TIMEOUT_MS = 15000;
-export const FOOTBALL_MODEL_TIMEOUT_MS = 90000;
+export const FOOTBALL_MODEL_TIMEOUT_MS = 180000;
 export const FOOTBALL_CONSENT_VERSION = "football-five-searches-v2" as const;
 export function footballResearchBudget(
   depth: "basic" | "advanced",
