@@ -2206,6 +2206,116 @@ export type Database = {
         }
         Relationships: []
       }
+      private_football_expert_reviews: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          decision: Json | null
+          error_code: string | null
+          id: string
+          model_id: string
+          provider_started_at: string | null
+          run_id: string
+          status: string
+          usage: Json | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          decision?: Json | null
+          error_code?: string | null
+          id?: string
+          model_id: string
+          provider_started_at?: string | null
+          run_id: string
+          status?: string
+          usage?: Json | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          decision?: Json | null
+          error_code?: string | null
+          id?: string
+          model_id?: string
+          provider_started_at?: string | null
+          run_id?: string
+          status?: string
+          usage?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_football_expert_reviews_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: true
+            referencedRelation: "private_football_research_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      private_football_odds_attempts: {
+        Row: {
+          created_at: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      private_football_odds_budget: {
+        Row: {
+          month: string
+          requests: number
+        }
+        Insert: {
+          month: string
+          requests: number
+        }
+        Update: {
+          month?: string
+          requests?: number
+        }
+        Relationships: []
+      }
+      private_football_odds_feed: {
+        Row: {
+          blocked_until: string | null
+          file: string
+          lease_until: string | null
+          payload: Json | null
+          retrieved_at: string | null
+          status: string
+          token: string | null
+        }
+        Insert: {
+          blocked_until?: string | null
+          file: string
+          lease_until?: string | null
+          payload?: Json | null
+          retrieved_at?: string | null
+          status?: string
+          token?: string | null
+        }
+        Update: {
+          blocked_until?: string | null
+          file?: string
+          lease_until?: string | null
+          payload?: Json | null
+          retrieved_at?: string | null
+          status?: string
+          token?: string | null
+        }
+        Relationships: []
+      }
       private_football_research_hidden: {
         Row: {
           hidden_at: string
@@ -4842,6 +4952,10 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_private_football_odds_feed: {
+        Args: { _file?: string }
+        Returns: Json
+      }
       claim_private_football_research_run: {
         Args: {
           _away_team: string
@@ -5187,6 +5301,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      finish_private_football_odds_feed: {
+        Args: {
+          _payload: Json
+          _retry_after_ms?: number
+          _status: string
+          _token: string
+        }
+        Returns: undefined
+      }
       flush_ai_usage_outbox: { Args: { _limit?: number }; Returns: number }
       follow_creator: { Args: { _target_user_id: string }; Returns: Json }
       generator_prompt_catalog: { Args: never; Returns: Json }
@@ -5422,6 +5545,10 @@ export type Database = {
       }
       read_music_inspiration_usage_internal: {
         Args: { _job_id: string; _user_id: string }
+        Returns: Json
+      }
+      read_private_football_odds_feed: {
+        Args: { _file: string }
         Returns: Json
       }
       reap_unjournaled_ai_jobs_internal: { Args: never; Returns: number }
