@@ -136,7 +136,13 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
 
   const boundary =
     /^(?:#{1,4}\s*)?(?:head.to.head|h2h|related (?:matches|predictions)|comments|reader comments|discussion|личные встречи|комментарии|σχόλια|προϊστορία)(?=$|[^\p{L}])/iu;
+  const samePair = (line: string) => {
+    const v = line.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
+    return homeAliases.some((a) => v.includes(a)) && awayAliases.some((a) => v.includes(a));
+  };
+  // Repeated headings naming the same pair continue the section; only other fixtures end it.
   const fixtureBoundary = (line: string) =>
+    !samePair(line) &&
     line.length <= 240 &&
     (/\s(?:vs\.?|v\.?|at|—|–)\s/iu.test(line) || /\p{L}\s+-\s+\p{L}|\p{L}[—–]\p{L}/u.test(line));
   for (let i = 0; i < lines.length; i++) {
@@ -175,9 +181,7 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
       const line = lines[j]!.trim();
       if (
         boundary.test(line) ||
-        (line.length <= 240 &&
-          (/\s(?:vs\.?|v\.?|at|—|–)\s/iu.test(line) ||
-            /\p{L}\s+-\s+\p{L}|\p{L}[—–]\p{L}/u.test(line)))
+        fixtureBoundary(line)
       ) {
         end = j;
         break;
@@ -401,6 +405,24 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
           return { ...withoutIds, evidenceUrls: r.evidenceUrls };
         });
         rejectedCount += rejected;
+        if (!resolved.evidenceUrls.length && choice.market.kind !== "and") {
+          // Invented references only: fall back to server-verified authored sources for
+          // the same market. The grounded-support check below still applies.
+          const grounded = citableDocs.filter((d) =>
+            state.candidates.some(
+              (c) =>
+                c.sourceId === d.id &&
+                c.quoteVerified &&
+                c.fixtureVerified &&
+                c.kind === "editorial" &&
+                !c.reasons.includes("market_stance_unconfirmed") &&
+                researchMarketKey(c.market) === researchMarketKey(choice.market),
+            ),
+          );
+          resolved.evidenceUrls = [...new Set(grounded.flatMap((d) => (d.url ? [d.url] : [])))];
+          resolved.evidenceSourceIds = grounded.map((d) => d.id);
+          if (resolved.evidenceUrls.length) rejected = Math.max(rejected, 1);
+        }
         if (!resolved.evidenceUrls.length) return undefined;
         if (rejected) {
           // After removing invented references, do not preserve a claim merely because
