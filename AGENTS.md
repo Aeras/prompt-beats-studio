@@ -70,3 +70,5 @@ The GitHub workflow guard can verify presence of this contract, evidence structu
 - AI-discovered football fixtures are written only by server code via service-role RPCs after independent HTTP corroboration; model output and citations are never persisted as verified. Why: AI output is untrusted and paid analysis must target real fixtures.
 
 - Football V2 restoration resolves run-supplied source IDs to exact verified article/provider URLs before persistence; citation eligibility is independent of publisher consensus eligibility. Why: model URLs are untrusted and valid articles need not be independent publisher votes.
+
+- Restored football picks are fixture-verified by a heading section OR by page-level proof that binds the directed pair to the exact fixture date in its own card and keeps the quote outside H2H/other-fixture blocks. Why: real previews rarely put date and competition under one heading.
