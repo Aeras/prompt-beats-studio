@@ -2,7 +2,7 @@
 
 ## Open
 
-- [ ] Published non-counted football selections: exact-market distribution, source deduplication, offline tests and mobile/desktop verification; no AI calls or consensus change.
+- [x] Published non-counted football selections: exact-market distribution, publication deduplication, 8 offline tests and mobile/desktop fixture verification complete; no AI calls or consensus change. Release and authenticated production verification pending separately.
 
 - [ ] Decide which database the app should run on. Enabling Cloud created a new, empty backend and made it the project's active one (0 tables, 0 accounts, 0 storage), so the app's real data is not reachable from it. Two ways forward: build on the new Cloud backend (apply the project's migrations there, then bring accounts/tracks/uploads across), or point the app back at the existing PromptBeats database (one settings action by the user, since no tool can re-bind the project's built-in backend). Not started: no schema created in the new backend, no data copied, nothing published.
 
