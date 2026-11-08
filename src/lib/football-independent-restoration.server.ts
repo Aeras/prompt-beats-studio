@@ -172,7 +172,8 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
     let lead = "";
     for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
       const line = lines[j]!.trim();
-      if (boundary.test(line) || fixtureBoundary(line)) break;
+      // Only short date/time rows qualify; navigation or league menus never do.
+      if (line.length > 60 || !/\d{1,2}[:/.]\d{2}/u.test(line) || /\p{L}{3,}/u.test(line)) break;
       lead = lines[j]! + "\n" + lead;
     }
     let metadata = lead;

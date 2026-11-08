@@ -113,7 +113,7 @@ test("ordinal dates are accepted without guessed numeric-date convention", () =>
   expect(
     buildFootballClaimLedger(
       f,
-      [doc("Fiorentina vs Juventus Serie A 08/11/2026\nOur pick: Over 2.5")],
+      [doc("Fiorentina vs Juventus Serie A 11/08/2026\nOur pick: Over 2.5")],
       cutoff,
     ).sourceCount,
   ).toBe(0);
