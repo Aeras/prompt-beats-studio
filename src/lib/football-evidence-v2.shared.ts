@@ -172,14 +172,15 @@ function explicitDates(text: string) {
   );
   for (const m of text.matchAll(/\b(20\d{2})-(\d{2})-(\d{2})[tT]/gu))
     dates.push(`${m[1]}-${m[2]}-${m[3]}`);
-  // European numeric dates (dd/mm/yyyy, dd.mm.yyyy, dd/mm/yy) used by prediction sites.
+  // Unambiguous European numeric dates only: dd.mm.yyyy, or dd/mm/yyyy with day > 12.
   for (const m of text.matchAll(
-    /(?:^|[^\p{N}/.])(\d{1,2})[./](\d{1,2})[./](20\d{2}|\d{2})(?![\p{N}/.])/gu,
+    /(?:^|[^\p{N}/.])(\d{1,2})([./])(\d{1,2})\2(20\d{2})(?![\p{N}/.])/gu,
   )) {
     const day = Number(m[1]),
-      month = Number(m[2]);
+      month = Number(m[3]);
     if (day < 1 || day > 31 || month < 1 || month > 12) continue;
-    const year = m[3]!.length === 2 ? `20${m[3]}` : m[3]!;
+    if (m[2] === "/" && day <= 12) continue;
+    const year = m[4]!;
     dates.push(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
   }
   monthNames.forEach((names, i) => {

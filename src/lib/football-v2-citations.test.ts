@@ -135,16 +135,16 @@ test("unsupported remaining market abstains after unknown references are removed
   expect(judgment.selection).toBeUndefined();
   expect(judgment.evidenceUrls).toEqual([]);
 });
-test("unknown references alone yield understandable abstention", () => {
+test("unknown references alone fall back to verified authored sources for the same market", () => {
   const s = setup();
   const judgment = s.policy.judge(
     { ...s.assessment, primary: { ...s.assessment.primary, evidenceUrls: unknown } },
     s.docs,
     {} as never,
   );
-  expect(judgment.decision).toBe("abstain");
-  expect(judgment.rationale).toContain("verified");
-  expect(judgment.evidenceUrls).toEqual([]);
+  expect(judgment.decision).toBe("lean");
+  expect(judgment.evidenceUrls.length).toBeGreaterThan(0);
+  expect(judgment.evidenceUrls.some((u) => unknown.includes(u))).toBe(false);
 });
 test("actual V2 engine saves only resolved citations in one offline model dispatch", async () => {
   const s = setup();
