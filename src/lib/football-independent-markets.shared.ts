@@ -6,7 +6,25 @@ import {
 } from "./football-evidence-v2.shared";
 
 const period = z.enum(["FT", "HT"]);
-const extraLeaf = z.discriminatedUnion("kind", [
+const extraLeaf = z.union([
+  z
+    .object({
+      kind: z.literal("stat_total"),
+      statistic: z.enum([
+        "corners",
+        "cards",
+        "yellow_cards",
+        "red_cards",
+        "shots",
+        "shots_on_target",
+      ]),
+      period,
+      subject: z.literal("player"),
+      selection: z.enum(["over", "under"]),
+      line: z.number().min(0).max(100).multipleOf(0.5),
+      player: z.string().trim().min(2).max(100),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("stat_total"),
@@ -22,6 +40,7 @@ const extraLeaf = z.discriminatedUnion("kind", [
       subject: z.enum(["match", "home", "away"]),
       selection: z.enum(["over", "under"]),
       line: z.number().min(0).max(100).multipleOf(0.5),
+      // Retained for compatibility with historical V2 snapshots.
       player: z.string().trim().min(2).max(100).optional(),
     })
     .strict(),
@@ -78,8 +97,16 @@ export function researchMarketLabel(m: ResearchMarket, locale: "el" | "en" = "en
   if (m.kind === "score") return `${prefix}${m.home}–${m.away}`;
   if (m.kind === "handicap")
     return `${prefix}${locale === "el" ? (m.settlement === "asian" ? "Ασιατικό χάντικαπ" : "Ευρωπαϊκό χάντικαπ") : m.settlement + " handicap"} ${m.selection} (${m.line > 0 ? "+" : ""}${m.line})`;
-  if (m.kind === "stat_total")
-    return `${prefix}${m.player ?? (locale === "el" ? { match: "Αγώνα", home: "Γηπεδούχου", away: "Φιλοξενούμενου" }[m.subject] : m.subject)} ${locale === "el" ? { corners: "κόρνερ", cards: "κάρτες", yellow_cards: "κίτρινες κάρτες", red_cards: "κόκκινες κάρτες", shots: "σουτ", shots_on_target: "σουτ στην εστία" }[m.statistic] : m.statistic.replaceAll("_", " ")} ${m.selection === "over" ? "Over" : "Under"} ${m.line}`;
+  if (m.kind === "stat_total") {
+    const subject =
+      m.subject === "player"
+        ? m.player
+        : m.player ??
+          (locale === "el"
+            ? { match: "Αγώνα", home: "Γηπεδούχου", away: "Φιλοξενούμενου" }[m.subject]
+            : m.subject);
+    return `${prefix}${subject} ${locale === "el" ? { corners: "κόρνερ", cards: "κάρτες", yellow_cards: "κίτρινες κάρτες", red_cards: "κόκκινες κάρτες", shots: "σουτ", shots_on_target: "σουτ στην εστία" }[m.statistic] : m.statistic.replaceAll("_", " ")} ${m.selection === "over" ? "Over" : "Under"} ${m.line}`;
+  }
   return prefix + m.selection;
 }
 /** Settlement feasibility, not estimated joint probability or bookmaker availability. */

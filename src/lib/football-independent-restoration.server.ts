@@ -33,7 +33,7 @@ const inputCandidate = z
   .object({
     sourceId: z.string().max(80),
     quote: z.string().min(1).max(1200),
-    market: researchMarketSchema,
+    market: z.unknown(),
     kind: z.enum(["editorial", "algorithm", "odds", "statistics", "uncertain"]),
     rationale: z.string().max(300).default(""),
   })
@@ -156,6 +156,7 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
     candidates: [],
     onlineComparisonStatus: "not_verified",
   };
+  const knownSourceIds = new Set<string>();
   const scope = (text: string, quote?: string) => {
     const canonical = bindingText(text);
     const q = quote ? bindingText(quote) : undefined;
@@ -200,12 +201,25 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
     readingRules: RESTORED_READING_RULES,
     candidateSchema: inputCandidate,
     prepareDocs(docs) {
-      for (const d of docs) d.manifest.publisherFamily = d.url ? restoredPublisher(d.url) : null;
+      knownSourceIds.clear();
+      for (const d of docs) {
+        knownSourceIds.add(d.id);
+        d.manifest.publisherFamily = d.url ? restoredPublisher(d.url) : null;
+      }
     },
     verify(raw, docs) {
-      const parsed = z.array(inputCandidate).max(80).parse(raw);
+      const rows = z.array(z.unknown()).max(80).safeParse(raw);
+      if (!rows.success) throw Error("invalid_extraction");
       const result: RestoredCandidate[] = [];
-      for (const c of parsed) {
+      for (const rawCandidate of rows.data) {
+        const parsedCandidate = inputCandidate.safeParse(rawCandidate);
+        if (!parsedCandidate.success) continue;
+        const c = parsedCandidate.data;
+        const parsedMarket = researchMarketSchema.safeParse(c.market);
+        const marketValid = parsedMarket.success;
+        const candidateMarket: ResearchMarket = marketValid
+          ? parsedMarket.data
+          : { kind: "other", label: "Unverified market" };
         const d = docs.find((s) => s.id === c.sourceId);
         const quoteVerified = !!d?.text.includes(c.quote);
         const fixtureVerified = !!d && usable(d, c.quote);
@@ -224,7 +238,9 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
             c.quote,
           );
         const independenceConfirmed = !!family && !copied && !attributed;
-        let normalized = normalizeAuthoredMarkets(bindingText(c.quote), input.fixture);
+        let normalized = marketValid
+          ? normalizeAuthoredMarkets(bindingText(c.quote), input.fixture)
+          : [];
         let authorshipContext: string | undefined;
         if (!normalized.length && d && quoteVerified && fixtureVerified) {
           const at = d.text.indexOf(c.quote);
@@ -246,8 +262,10 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
               authorshipContext,
             );
         }
-        for (const market of normalized.length ? normalized : [c.market]) {
+        for (const market of normalized.length ? normalized : [candidateMarket]) {
           const reasons: string[] = [];
+          if (!d) reasons.push("unknown_source");
+          if (!marketValid) reasons.push("invalid_market");
           if (!quoteVerified) reasons.push("quote_mismatch");
           if (!fixtureVerified) reasons.push("fixture_unverified");
           if (d?.status !== "full_or_partial_raw_text" || d.manifest.duplicateOf)
@@ -262,7 +280,7 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
             sourceId: c.sourceId,
             quote: c.quote,
             market,
-            originalMarket: c.market,
+            originalMarket: candidateMarket,
             originalRationale: c.rationale,
             ...(authorshipContext ? { authorshipContext } : {}),
             sourceDigest: d?.manifest.digest ?? "0".repeat(64),
@@ -280,7 +298,7 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
       // Bound output truthfully: overflow is a failed extraction, never silently dropped picks.
       if (result.length > 80) throw Error("invalid_extraction");
       state.candidates = result;
-      state.onlineComparisonStatus = aggregateVerifiedMarkets(result).rows.length
+      state.onlineComparisonStatus = aggregateVerifiedMarkets(result, knownSourceIds).rows.length
         ? "verified"
         : "not_verified";
       return result
@@ -299,7 +317,7 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
     },
     synthesisData: () => ({
       candidates: state.candidates,
-      markets: aggregateVerifiedMarkets(state.candidates),
+      markets: aggregateVerifiedMarkets(state.candidates, knownSourceIds),
       onlineComparisonStatus: state.onlineComparisonStatus,
     }),
     judge(raw, docs) {
