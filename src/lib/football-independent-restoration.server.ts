@@ -145,7 +145,9 @@ export function plainPreviewSections(text: string, input: FullEvidenceRunInput) 
   const fixtureBoundary = (line: string) =>
     !samePair(line) &&
     line.length <= 240 &&
-    (/\s(?:vs\.?|v\.?|at|—|–)\s/iu.test(line) || /\p{L}\s+-\s+\p{L}|\p{L}[—–]\p{L}/u.test(line));
+    // Both sides must be names: "kick-off 2026 at 19:45" is a time, not another fixture.
+    (/\p{L}\.?\s+(?:vs\.?|v\.?|at|—|–)\s+\p{L}/iu.test(line) ||
+      /\p{L}\s+-\s+\p{L}|\p{L}[—–]\p{L}/u.test(line));
   for (let i = 0; i < lines.length; i++) {
     const heading = lines[i]!.trim();
     if (!heading || heading.length > 240) continue;
@@ -159,7 +161,15 @@ export function plainPreviewSections(text: string, input: FullEvidenceRunInput) 
       searchProfileVersion: "v2_experimental",
     });
     if (pair.failures.some((v) => !["date_missing", "competition_missing"].includes(v))) continue;
-    let metadata = "";
+    // Match cards often print the date/time line just above the team heading
+    // ("08/11/26 - 19:45" then "Fiorentina - Juventus"); admit up to 3 such lines.
+    let lead = "";
+    for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+      const line = lines[j]!.trim();
+      if (boundary.test(line) || fixtureBoundary(line)) break;
+      lead = lines[j]! + "\n" + lead;
+    }
+    let metadata = lead;
     let established = false;
     let metadataEnd = i;
     for (let j = i; j < Math.min(i + 12, lines.length); j++) {

@@ -226,6 +226,21 @@ function explicitDates(text: string): { date: string; index: number }[] {
   });
   return dates;
 }
+/** A bare "4 November 2026 • 12:21 UTC" row is an article byline stamp, not a kickoff,
+ * when it is at or before the evidence cutoff and within 10 days before kickoff. */
+function isBylineStamp(line: string, kickoffUtc: string, cutoff: string) {
+  const m = line
+    .trim()
+    .match(/^(\d{1,2})\s+(\p{L}+)\.?\s+(20\d{2})\s*(?:[•·|,-]\s*)?\d{1,2}:\d{2}(?:\s*(?:utc|gmt|cet|cest))?$/iu);
+  if (!m) return false;
+  const month = monthNames.findIndex((names) =>
+    names.split("|").includes(m[2]!.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()),
+  );
+  if (month < 0) return false;
+  const at = Date.UTC(Number(m[3]), month, Number(m[1]));
+  const kick = Date.parse(kickoffUtc);
+  return at <= Date.parse(cutoff) && at < kick && kick - at <= 10 * 86_400_000;
+}
 /** All predicates are evaluated; title and URL are deliberately not fixture proof. */
 export function traceFootballFixture(
   text: string,
@@ -241,7 +256,8 @@ export function traceFootballFixture(
     .split("\n")
     .filter(
       (line) =>
-        !/min read|minute read|published|last updated|δημοσιεύ|обновлен|опубликован/iu.test(line),
+        !/min read|minute read|published|last updated|δημοσιεύ|обновлен|опубликован/iu.test(line) &&
+        !isBylineStamp(line, f.kickoffUtc, cutoff),
     )
     .join("\n");
   const t = n(fixtureContext).replace(/[«»“”]/gu, ""),
