@@ -27,6 +27,25 @@ export const restoredCandidateSchema = z
   })
   .strict();
 export type RestoredCandidate = z.infer<typeof restoredCandidateSchema>;
+const noPublishedPickPattern =
+  /\bno\b[^.!?;\n]{0,120}\b(?:published\s+)?(?:predictions?|picks?)\b|\b(?:there\s+(?:are|were)|we\s+(?:found|identified))\s+no\b[^.!?;\n]{0,120}\b(?:published\s+)?(?:predictions?|picks?)\b|δεν\s+(?:βρέθηκαν|υπάρχουν|υπήρχαν|εντοπίστηκαν)\b[^.!?;\n]{0,120}(?:προβλέψε(?:ις|ων)|προγνωστικ(?:ά|ών)|επιλογ(?:ές|ών))|(?:нет|не\s+найдено|не\s+обнаружено)\b[^.!?;\n]{0,120}(?:прогноз(?:ов|ы)?|став(?:ок|ки))/iu;
+const qualifiedNoPickPattern =
+  /\bno\s+(?:(?:independent(?:ly)?|verified|confirmed|countable|eligible|accepted)\s+){1,3}(?:published\s+)?(?:predictions?|picks?)\b|\bno\s+(?:published\s+)?(?:predictions?|picks?)\b[^.!?;\n]{0,90}\b(?:independent(?:ly)?|verified|confirmed|countable|eligible|accepted)\b|δεν\s+(?:(?:υπάρχουν|βρέθηκαν|εντοπίστηκαν)\s+)?(?:(?:ανεξάρτητ(?:ες|ων)|επαληθευμέν(?:ες|ων)|επιβεβαιωμέν(?:ες|ων)|καταμετρήσιμες|έγκυρες|αποδεκτές)\s+){1,3}(?:δημοσιευμέν(?:ες|ων)\s+)?(?:προβλέψε(?:ις|ων)|προγνωστικ(?:ά|ών)|επιλογ(?:ές|ών))|(?:нет|не\s+найдено|не\s+обнаружено)\s+(?:(?:независим(?:ых|ые)|проверенн(?:ых|ые)|подтверждённ(?:ых|ые)|учитываемых|допущенных)\s+){1,3}(?:опубликованных\s+)?(?:прогноз(?:ов|ы)?|став(?:ок|ки))/iu;
+export function contradictsPublishedPredictionEvidence(
+  text: string,
+  candidates: RestoredCandidate[],
+) {
+  const grounded = candidates.filter(
+    (c) => c.kind === "editorial" && c.quoteVerified && c.fixtureVerified,
+  );
+  if (!grounded.length) return false;
+  const sentences = text.split(/(?<=[.!?;。！？])\s+|\n+/u);
+  return sentences.some((sentence) => {
+    if (!noPublishedPickPattern.test(sentence)) return false;
+    if (grounded.some((c) => c.eligibleForConsensus)) return true;
+    return !qualifiedNoPickPattern.test(sentence);
+  });
+}
 const supportSchema = z
   .object({
     market: researchMarketSchema,

@@ -1,11 +1,15 @@
 import {
   fullEvidenceSchema,
+  fullEvidenceFailureDetailSchema,
   packFullEvidence,
   readFullEvidence,
   type FullEvidenceHit,
   type FullEvidenceReport,
 } from "./football-full-evidence.shared";
-import { footballV2PlanningMessage } from "./football-search-profiles.shared";
+import {
+  readFootballSearchProfileVersion,
+  footballV2PlanningMessage,
+} from "./football-search-profiles.shared";
 import { getRequest } from "@tanstack/react-start/server";
 import { planFootballSearchProfile } from "./football-forecast-planner.shared";
 import {
@@ -187,6 +191,7 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
       budget: ReturnType<typeof footballResearchBudget> | null;
       searches: FootballSearchReceipt[];
       fullEvidenceV2?: FullEvidenceReport;
+      fullEvidenceFailureDetail?: import("./football-full-evidence.shared").FullEvidenceFailureDetail;
       searchProfileVersion?: typeof data.searchProfileVersion;
       sourceSummary?: {
         retainedDocs: number;
@@ -461,58 +466,69 @@ export const runPrivateFootballResearch = createServerFn({ method: "POST" })
         let receipt: Awaited<ReturnType<typeof caller>>;
         if (data.searchProfileVersion === "v2_experimental") {
           failureCode = "incomplete_coverage";
-          const { runFullFootballEvidence, footballFullModelCapacity } =
+          const { runFullFootballEvidence, footballFullModelCapacity, FullCoverageError } =
             await import("./football-full-evidence.server");
-          const result = await runFullFootballEvidence({
-            restoration: true,
-            fixture: identity,
-            cutoff: evidenceCutoff,
-            runId,
-            hits: fullHits,
-            context: {
+          let result: Awaited<ReturnType<typeof runFullFootballEvidence>>;
+          try {
+            result = await runFullFootballEvidence({
+              restoration: true,
               fixture: identity,
-              providerEvidence,
-              bookmakerOddsSnapshot,
-              usableBookmakerOddsSnapshot: usableOdds(bookmakerOddsSnapshot, evidenceCutoff),
-            },
-            system: FOOTBALL_RESEARCH_SYSTEM,
-            providerUrls: providerEvidenceUrls(providerEvidence),
-            capacity: await footballFullModelCapacity(resolved.model, runSignal),
-            signal: runSignal,
-            authorize: async () => {
-              await requireFootballSuperAdmin(context.supabase);
-              const current = await resolveAiModelForUser(context.userId, "ai_tools", data.modelId);
-              if (current.provider !== resolved.provider || current.model !== resolved.model)
-                throw Error("Model authorization changed");
-            },
-            caller: (executionId) => {
-              const stageCaller = modelCaller(resolved.model, "openrouter", {
-                userId: context.userId,
-                operation: "football_research",
-                executionId,
-              });
-              return (call) =>
-                stageCaller({
-                  ...call,
-                  ...(resolved.reasoningEffort
-                    ? { reasoningEffort: resolved.reasoningEffort }
-                    : {}),
+              cutoff: evidenceCutoff,
+              runId,
+              hits: fullHits,
+              context: {
+                fixture: identity,
+                providerEvidence,
+                bookmakerOddsSnapshot,
+                usableBookmakerOddsSnapshot: usableOdds(bookmakerOddsSnapshot, evidenceCutoff),
+              },
+              system: FOOTBALL_RESEARCH_SYSTEM,
+              providerUrls: providerEvidenceUrls(providerEvidence),
+              capacity: await footballFullModelCapacity(resolved.model, runSignal),
+              signal: runSignal,
+              authorize: async () => {
+                await requireFootballSuperAdmin(context.supabase);
+                const current = await resolveAiModelForUser(
+                  context.userId,
+                  "ai_tools",
+                  data.modelId,
+                );
+                if (current.provider !== resolved.provider || current.model !== resolved.model)
+                  throw Error("Model authorization changed");
+              },
+              caller: (executionId) => {
+                const stageCaller = modelCaller(resolved.model, "openrouter", {
+                  userId: context.userId,
+                  operation: "football_research",
+                  executionId,
                 });
-            },
-            journal: async (report) => {
-              researchAudit.fullEvidenceV2 = report;
-              const aggregate = (key: "inputTokens" | "outputTokens" | "totalTokens") =>
-                report.calls.some((c) => c.usage?.[key] == null)
-                  ? null
-                  : report.calls.reduce((sum, c) => sum + (c.usage?.[key] ?? 0), 0);
-              observedUsage = {
-                inputTokens: aggregate("inputTokens"),
-                outputTokens: aggregate("outputTokens"),
-                totalTokens: aggregate("totalTokens"),
-              };
-              await journalSearch();
-            },
-          });
+                return (call) =>
+                  stageCaller({
+                    ...call,
+                    ...(resolved.reasoningEffort
+                      ? { reasoningEffort: resolved.reasoningEffort }
+                      : {}),
+                  });
+              },
+              journal: async (report) => {
+                researchAudit.fullEvidenceV2 = report;
+                const aggregate = (key: "inputTokens" | "outputTokens" | "totalTokens") =>
+                  report.calls.some((c) => c.usage?.[key] == null)
+                    ? null
+                    : report.calls.reduce((sum, c) => sum + (c.usage?.[key] ?? 0), 0);
+                observedUsage = {
+                  inputTokens: aggregate("inputTokens"),
+                  outputTokens: aggregate("outputTokens"),
+                  totalTokens: aggregate("totalTokens"),
+                };
+                await journalSearch();
+              },
+            });
+          } catch (error) {
+            if (error instanceof FullCoverageError && error.failureDetail)
+              researchAudit.fullEvidenceFailureDetail = error.failureDetail;
+            throw error;
+          }
           receipt = result.receipt;
           fullReport = result.report;
         } else {
@@ -798,6 +814,16 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         },
         row.evidence_cutoff_at,
       );
+      const usageProfile = readFootballSearchProfileVersion(row.usage);
+      const usageResearch =
+        row.usage && typeof row.usage === "object" && !Array.isArray(row.usage)
+          ? (row.usage as { research?: unknown }).research
+          : undefined;
+      const failureDetailRaw =
+        usageResearch && typeof usageResearch === "object" && !Array.isArray(usageResearch)
+          ? (usageResearch as { fullEvidenceFailureDetail?: unknown }).fullEvidenceFailureDetail
+          : undefined;
+      const checkedFailureDetail = fullEvidenceFailureDetailSchema.safeParse(failureDetailRaw);
       const eligible =
         Number.isFinite(Date.parse(row.created_at)) &&
         Date.parse(row.created_at) < Date.parse(row.kickoff_utc) &&
@@ -823,6 +849,14 @@ export const getPrivateFootballResearchHistory = createServerFn({ method: "GET" 
         evidence_cutoff_at: row.evidence_cutoff_at,
         status: row.status,
         error_code: row.status === "failed" ? row.error_code : null,
+        searchProfileVersion: usageProfile
+          ? usageProfile
+          : checked.success
+            ? checked.data.searchProfileVersion
+            : undefined,
+        fullEvidenceFailureDetail: checkedFailureDetail.success
+          ? checkedFailureDetail.data
+          : undefined,
         expertReview: (() => {
           const raw = reviewsByRun.get(row.id);
           if (!raw) return null;

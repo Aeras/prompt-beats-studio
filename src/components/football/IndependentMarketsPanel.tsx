@@ -1,14 +1,66 @@
 import { useI18n } from "@/i18n";
 import { aggregateVerifiedMarkets } from "@/lib/football-independent-restoration.shared";
 import { researchMarketLabel } from "@/lib/football-independent-markets.shared";
-import type { FullEvidenceReport } from "@/lib/football-full-evidence.shared";
+import type {
+  FullEvidenceFailureDetail,
+  FullEvidenceReport,
+} from "@/lib/football-full-evidence.shared";
+
+const failureDetails: Record<FullEvidenceFailureDetail, [string, string]> = {
+  assessment_schema_invalid: [
+    "Η τελική απάντηση της AI δεν είχε την απαιτούμενη δομή.",
+    "The AI's final assessment did not match the required structure.",
+  ],
+  unsupported_market: [
+    "Η προτεινόμενη αγορά δεν μπορούσε να επαληθευτεί με ασφάλεια.",
+    "The proposed market could not be safely verified.",
+  ],
+  unapproved_source_reference: [
+    "Η εκτίμηση παρέπεμψε σε πηγή που δεν επιβεβαιώθηκε για αυτόν τον αγώνα.",
+    "The assessment cited a source that was not verified for this match.",
+  ],
+  prohibited_claim: [
+    "Η απάντηση περιείχε μη τεκμηριωμένο ισχυρισμό.",
+    "The response included an unsupported claim.",
+  ],
+  invalid_combination: [
+    "Δεν επαληθεύτηκαν με ασφάλεια όλα τα σκέλη της συνδυαστικής επιλογής.",
+    "Not every leg of the combined selection could be safely verified.",
+  ],
+  ungrounded_combination_leg: [
+    "Ένα σκέλος της συνδυαστικής επιλογής δεν τεκμηριωνόταν από την πηγή.",
+    "One leg of the combined selection was not grounded in its cited source.",
+  ],
+  published_prediction_conflict: [
+    "Η τελική απάντηση δεν συμφωνούσε με επαληθευμένη δημοσιευμένη πρόβλεψη.",
+    "The final response conflicted with a verified published prediction.",
+  ],
+  ambiguous_source_reference: [
+    "Η πηγή της παραπομπής δεν μπορούσε να προσδιοριστεί με σαφήνεια.",
+    "The cited source version could not be identified unambiguously.",
+  ],
+  unknown_source_reference: [
+    "Η απάντηση παρέπεμψε σε μη διαθέσιμο στοιχείο.",
+    "The response referenced evidence that was not available.",
+  ],
+  assessment_validation_failed: [
+    "Η τελική εκτίμηση δεν πέρασε τους ελέγχους τεκμηρίωσης.",
+    "The final assessment did not pass evidence validation.",
+  ],
+  judgment_schema_invalid: [
+    "Η τελική απάντηση της AI δεν είχε την απαιτούμενη δομή.",
+    "The AI's final assessment did not match the required structure.",
+  ],
+};
 
 /** New version only. The legacy full-evidence panel remains the historical reader. */
 export function IndependentMarketsPanel({
   report,
+  failureDetail,
   audit,
 }: {
   report: FullEvidenceReport;
+  failureDetail?: FullEvidenceFailureDetail;
   audit: React.ReactNode;
 }) {
   const { language } = useI18n();
@@ -44,12 +96,17 @@ export function IndependentMarketsPanel({
     >
       <h3 className="font-semibold">{t("Ανεξάρτητη εκτίμηση AI", "Independent AI assessment")}</h3>
       {report.coverage !== "complete" && (
-        <p role="status" className="text-sm">
-          {t(
-            "Ατελής κάλυψη πηγών. Δεν εφαρμόζεται τελική εκτίμηση.",
-            "Source coverage incomplete. No final judgment is applied.",
+        <div role="status" className="space-y-1 text-sm">
+          <p>
+            {t(
+              "Ατελής κάλυψη πηγών. Δεν εφαρμόζεται τελική εκτίμηση.",
+              "Source coverage incomplete. No final judgment is applied.",
+            )}
+          </p>
+          {failureDetail && (
+            <p className="text-muted-foreground">{failureDetails[failureDetail][en ? 1 : 0]}</p>
           )}
-        </p>
+        </div>
       )}
       <p className="text-xs text-muted-foreground">
         {r.onlineComparisonStatus === "verified"

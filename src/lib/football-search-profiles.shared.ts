@@ -1,6 +1,15 @@
 import { z } from "zod";
 export const footballSearchProfileSchema = z.enum(["v1_current", "v2_experimental"]);
 export type FootballSearchProfileVersion = z.infer<typeof footballSearchProfileSchema>;
+export function readFootballSearchProfileVersion(usage: unknown) {
+  if (!usage || typeof usage !== "object" || Array.isArray(usage)) return undefined;
+  const research = (usage as { research?: unknown }).research;
+  if (!research || typeof research !== "object" || Array.isArray(research)) return undefined;
+  const parsed = footballSearchProfileSchema.safeParse(
+    (research as { searchProfileVersion?: unknown }).searchProfileVersion,
+  );
+  return parsed.success ? parsed.data : undefined;
+}
 export const FOOTBALL_SEARCH_PROFILES = {
   v1_current: {
     label: "Version 1 — Τρέχον",

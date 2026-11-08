@@ -18,6 +18,7 @@ import {
   FOOTBALL_SEARCH_PROFILES,
   footballProfileConsent,
   footballV2PlanningMessage,
+  readFootballSearchProfileVersion,
 } from "./football-search-profiles.shared";
 import {
   footballResearchBudget,
@@ -26,6 +27,19 @@ import {
 } from "./football-research-budget.shared";
 import { searchInspirationWeb } from "./music-inspiration-research.server";
 import { buildFootballClaimLedger } from "./football-evidence-v2.server";
+
+test("failed historical records retain their validated search profile from the usage receipt", () => {
+  expect(
+    readFootballSearchProfileVersion({ research: { searchProfileVersion: "v2_experimental" } }),
+  ).toBe("v2_experimental");
+  expect(
+    readFootballSearchProfileVersion({ research: { searchProfileVersion: "v1_current" } }),
+  ).toBe("v1_current");
+  expect(readFootballSearchProfileVersion({ research: { searchProfileVersion: "unknown" } })).toBe(
+    undefined,
+  );
+  expect(readFootballSearchProfileVersion(null)).toBe(undefined);
+});
 import {
   packFootballEvidenceV2,
   readFootballEvidenceV2,

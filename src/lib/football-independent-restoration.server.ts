@@ -15,6 +15,7 @@ import {
 import { normalizeAuthoredMarkets } from "./football-independent-normalization.shared";
 import {
   aggregateVerifiedMarkets,
+  contradictsPublishedPredictionEvidence,
   restoredAssessmentSchema,
   restorationSchema,
   type FootballRestoration,
@@ -26,6 +27,7 @@ import type {
   makeFullSources,
 } from "./football-full-evidence.server";
 import type { FullEvidenceReport } from "./football-full-evidence.shared";
+import { FullEvidenceValidationError } from "./football-full-evidence.shared";
 
 const inputCandidate = z
   .object({
@@ -301,26 +303,35 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
       onlineComparisonStatus: state.onlineComparisonStatus,
     }),
     judge(raw, docs) {
-      const a = restoredAssessmentSchema.parse(raw);
+      const parsedAssessment = restoredAssessmentSchema.safeParse(raw);
+      if (!parsedAssessment.success)
+        throw new FullEvidenceValidationError("assessment_schema_invalid");
+      const a = parsedAssessment.data;
+      const reject = (
+        detail: ConstructorParameters<typeof FullEvidenceValidationError>[0],
+      ): never => {
+        throw new FullEvidenceValidationError(detail);
+      };
       const allowed = new Set([
         ...input.providerUrls,
         ...docs.filter((d) => d.url && usable(d)).map((d) => d.url!),
       ]);
       const choices = [a.primary, a.alternative].filter((c) => !!c);
       for (const c of choices) {
+        if (c.market.kind === "other") reject("unsupported_market");
+        if (c.evidenceUrls.some((u) => !allowed.has(u))) reject("unapproved_source_reference");
         if (
-          c.market.kind === "other" ||
-          c.evidenceUrls.some((u) => !allowed.has(u)) ||
           /\+ev|%|guaranteed|sure bet|εγγυημέν|гарантир|\b(?:odds|price)\s*[:=]?\s*\d/iu.test(
             c.rationale + c.risk + (c.jointRationale ?? ""),
           )
         )
-          throw Error("invalid_judgment");
+          reject("prohibited_claim");
         if (c.market.kind === "and") {
-          if (!c.jointRationale || !c.legEvidence || !compatibleResearchLegs(c.market.legs))
-            throw Error("invalid_judgment");
+          const legEvidence = c.legEvidence;
+          if (!c.jointRationale || !legEvidence || !compatibleResearchLegs(c.market.legs))
+            throw new FullEvidenceValidationError("invalid_combination");
           for (const [i, leg] of c.market.legs.entries()) {
-            const e = c.legEvidence[i]!;
+            const e = legEvidence[i]!;
             const grounded = e.evidenceUrls.some(
               (u) =>
                 docs.some((d) => d.url === u && usable(d) && d.text.includes(e.quote)) ||
@@ -331,7 +342,7 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
               researchMarketKey(e.market) !== researchMarketKey(leg) ||
               e.evidenceUrls.some((u) => !allowed.has(u) || !c.evidenceUrls.includes(u))
             )
-              throw Error("invalid_judgment");
+              reject("ungrounded_combination_leg");
           }
           // Exclude conflicting settlements within the same comparable family.
           const [x, y] = c.market.legs;
@@ -344,7 +355,7 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
               x.kind === "htft" ||
               x.kind === "handicap")
           )
-            throw Error("invalid_judgment");
+            reject("invalid_combination");
           if (
             x.kind === "total" &&
             y.kind === "total" &&
@@ -352,18 +363,11 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
             (x.selection === y.selection ||
               (x.selection === "over" ? x.line >= y.line : y.line >= x.line))
           )
-            throw Error("invalid_judgment");
+            reject("invalid_combination");
         }
       }
-      if (
-        state.candidates.some(
-          (c) => c.kind === "editorial" && c.quoteVerified && c.fixtureVerified,
-        ) &&
-        /no (?:published )?(?:predictions?|picks?)|δεν (?:βρέθηκε|βρέθηκαν|υπάρχει|υπάρχουν).{0,35}(?:πρόβλεψη|προβλέψεις|προγνωστικ)/iu.test(
-          a.rationale,
-        )
-      )
-        throw Error("invalid_judgment");
+      if (contradictsPublishedPredictionEvidence(a.rationale, state.candidates))
+        reject("published_prediction_conflict");
       state.assessment = a;
       const evidenceUrls = [...new Set(choices.flatMap((c) => c.evidenceUrls))];
       const evidenceSourceIds = [...new Set(choices.flatMap((c) => c.evidenceSourceIds ?? []))];
@@ -373,9 +377,9 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
             !docs.some((d) => d.id === id && !!d.url && evidenceUrls.includes(d.url) && usable(d)),
         )
       )
-        throw Error("invalid_judgment");
+        reject("unknown_source_reference");
       if (/\+ev|%|guaranteed|sure bet|εγγυημέν|гарантир/iu.test(a.rationale))
-        throw Error("invalid_judgment");
+        reject("prohibited_claim");
       return {
         decision: a.decision,
         ...(a.primary ? { selection: legacyMarket(a.primary.market) } : {}),

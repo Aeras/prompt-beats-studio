@@ -106,7 +106,7 @@ async function fixture(
   holdResearch = false,
   savedProfile?: FootballSearchProfileVersion,
   failedPlanningCode?: string,
-  fullMode?: "complete" | "incomplete" | "restored",
+  fullMode?: "complete" | "incomplete" | "restored" | "invalid-judgment",
 ) {
   const token =
     [
@@ -464,9 +464,10 @@ async function fixture(
       hits.push({ ...hits[0]! });
       hits.push(h(null, "", "invalid_or_unsafe_url"));
       let report: FullEvidenceReport;
+      let failureDetail: string | undefined;
       try {
         const r = await runFullFootballEvidence({
-          restoration: fullMode === "restored",
+          restoration: fullMode === "restored" || fullMode === "invalid-judgment",
           fixture: target,
           cutoff: now,
           runId: "ae000000-0000-4000-8000-000000000001",
@@ -545,12 +546,19 @@ async function fixture(
       } catch (error) {
         if (!(error instanceof FullCoverageError)) throw error;
         report = error.report;
+        failureDetail = error.failureDetail;
       }
       result = (result as Record<string, unknown>[]).map((row) => ({
         ...row,
         fullEvidenceV2: report,
-        ...(fullMode === "incomplete"
-          ? { status: "failed", analysis: null, error_code: "incomplete_coverage" }
+        ...(failureDetail ? { fullEvidenceFailureDetail: failureDetail } : {}),
+        ...(fullMode === "incomplete" || fullMode === "invalid-judgment"
+          ? {
+              status: "failed",
+              analysis: null,
+              error_code: "incomplete_coverage",
+              searchProfileVersion: "v2_experimental",
+            }
           : {}),
       }));
     }
@@ -1112,7 +1120,7 @@ for (const [code, message] of Object.entries(FOOTBALL_V2_PLANNING_FAILURES))
   });
 
 for (const locale of ["el", "en"] as const)
-  for (const mode of ["complete", "incomplete"] as const)
+  for (const mode of ["complete", "incomplete", "invalid-judgment"] as const)
     test(`full V2 ${locale}/${mode}: three source lists, truthful coverage, exact citations and no history dispatch`, async ({
       page,
     }) => {
@@ -1141,15 +1149,40 @@ for (const locale of ["el", "en"] as const)
         name: locale === "el" ? "Ανεξάρτητη εκτίμηση AI" : "Independent AI assessment",
       });
       await expect(panel).toBeVisible();
-      if (mode === "incomplete")
+      if (mode !== "complete")
         await expect(panel.getByRole("status")).toContainText(
           locale === "el" ? "Ατελής κάλυψη" : "incomplete",
         );
+      if (mode === "invalid-judgment") {
+        await expect(panel).toContainText(
+          locale === "el"
+            ? "Η τελική απάντηση της AI δεν είχε την απαιτούμενη δομή."
+            : "did not match the required structure",
+        );
+        await expect(panel).not.toContainText("assessment_schema_invalid");
+        await expect(
+          page.getByText("Version 2 — Πειραματικό", { exact: true }).last(),
+        ).toBeVisible();
+        await expect(
+          page.getByText("Παλαιότερη ανάλυση · προφίλ μη καταγεγραμμένο", { exact: true }),
+        ).toHaveCount(0);
+      }
       for (const width of [320, 390]) {
         await page.setViewportSize({ width, height: 844 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true,
         );
+      }
+      if (mode === "invalid-judgment") {
+        expect(
+          (await new AxeBuilder({ page }).include("#football-predictions").analyze()).violations,
+        ).toEqual([]);
+        await page.screenshot({
+          path: test.info().outputPath(`full-evidence-${locale}-${mode}.png`),
+          fullPage: true,
+        });
+        expect(state.paid()).toBe(0);
+        return;
       }
       const summaries = panel.locator("summary");
       await expect(summaries).toHaveCount(3);

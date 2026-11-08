@@ -112,6 +112,25 @@ export const fullJudgmentSchema = z
     )
       c.addIssue({ code: "custom", message: "Selection needs evidence or abstention" });
   });
+export const fullEvidenceFailureDetailSchema = z.enum([
+  "assessment_schema_invalid",
+  "unsupported_market",
+  "unapproved_source_reference",
+  "prohibited_claim",
+  "invalid_combination",
+  "ungrounded_combination_leg",
+  "published_prediction_conflict",
+  "ambiguous_source_reference",
+  "unknown_source_reference",
+  "assessment_validation_failed",
+  "judgment_schema_invalid",
+]);
+export type FullEvidenceFailureDetail = z.infer<typeof fullEvidenceFailureDetailSchema>;
+export class FullEvidenceValidationError extends Error {
+  constructor(readonly detail: FullEvidenceFailureDetail) {
+    super("Full evidence validation failed");
+  }
+}
 export const fullEvidenceSchema = z
   .object({
     version: z.literal(1),
