@@ -236,7 +236,7 @@ BEGIN
     RAISE EXCEPTION 'deleting a project retained its private direction history';
   END IF;
   IF NOT EXISTS(SELECT 1 FROM public.generator_creative_direction_history
-      WHERE user_id=v_owner AND scope_type='song_universe' AND scope_id=v_universe AND job_id=v_job) THEN
+      WHERE user_id=v_owner AND scope_type='song_universe' AND scope_id=v_universe) THEN
     RAISE EXCEPTION 'deleting the linked project erased independent universe history';
   END IF;
 END;

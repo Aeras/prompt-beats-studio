@@ -2,7 +2,7 @@
 
 ## Κατάσταση
 
-Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το Regression gate πέρασε στο προηγούμενο HEAD. Το Database Replay επιβεβαίωσε ότι οι migrations εφαρμόζονται και ότι ο διορθωμένος scope helper επιτρέπει ανεξάρτητες Project/Universe αναγνώσεις, ενώ το trigger κρατά την απαίτηση paired scopes για linked Project jobs. Στο επόμενο SQL test βρέθηκαν δύο test-only κλήσεις `to_jsonb()` με untyped string literals· προστέθηκε ρητό cast σε `text`. Το Browser Quality εκτελείται ακόμη σε προηγούμενο HEAD και θα ελεγχθεί ξανά στο τελικό HEAD. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
+Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το Regression gate περνά. Το Database Replay επιβεβαίωσε migrations, scope ownership/read separation και επιτυχία των προηγούμενων SQL assertions. Εντοπίστηκε λανθασμένη προσδοκία στο τέλος του SQL fixture: το αρχικό Universe history row είχε νόμιμα απομακρυνθεί από το retention cap των 15 πριν διαγραφεί το Project. Η δοκιμή διορθώθηκε ώστε να ελέγχει ότι παραμένει Universe history, όχι ότι επιβιώνει συγκεκριμένο row που έχει ήδη λήξει από το retention. Το Browser Quality συνεχίζει να εκτελείται. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
 
 ## Συμπεριφορά
 
