@@ -54,6 +54,8 @@ export const fullSourceSchema = z
     providerCompleteness: z.literal("unknown"),
   })
   .strict();
+/** Matches the restored-evidence schema bound; 80 extracted quotes may expand to more picks. */
+export const MAX_RESTORED_CANDIDATES = 160;
 export const fullCandidateSchema = z
   .object({
     sourceId: z.string().max(80),
@@ -150,7 +152,7 @@ export const fullEvidenceSchema = z
     ]),
     mode: z.enum(["single_full_text", "staged_extraction", "not_dispatched"]),
     sources: z.array(fullSourceSchema).max(20),
-    candidates: z.array(validatedFullCandidateSchema).max(80),
+    candidates: z.array(validatedFullCandidateSchema).max(MAX_RESTORED_CANDIDATES),
     calls: z.array(fullCallSchema).max(5),
     judgment: fullJudgmentSchema.optional(),
     citedSourceIds: z.array(z.string().max(80)).max(20),

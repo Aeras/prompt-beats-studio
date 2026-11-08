@@ -13,6 +13,7 @@ import {
   researchMarketKey,
 } from "./football-independent-markets.shared";
 import { normalizeAuthoredMarkets } from "./football-independent-normalization.shared";
+import { MAX_RESTORED_CANDIDATES } from "./football-full-evidence.shared";
 import {
   aggregateVerifiedMarkets,
   contradictsPublishedPredictionEvidence,
@@ -315,8 +316,10 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
           });
         }
       }
-      // Bound output truthfully: overflow is a failed extraction, never silently dropped picks.
-      if (result.length > 80) throw Error("invalid_extraction");
+      // One quote may state several distinct picks, so up to 80 extracted quotes can expand
+      // beyond 80 normalized markets. Bound output truthfully at the stored-report limit:
+      // overflow is a failed extraction, never silently dropped picks.
+      if (result.length > MAX_RESTORED_CANDIDATES) throw Error("invalid_extraction");
       state.candidates = result;
       state.onlineComparisonStatus = aggregateVerifiedMarkets(result).rows.length
         ? "verified"
