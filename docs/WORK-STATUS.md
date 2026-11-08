@@ -1,5 +1,12 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-08 — Football fixture date_conflict regression from dotted-date parsing — CODE_COMPLETE_RELEASE_PENDING
+
+- **Evidence:** production run `145a3fd2-7bc0-43e9-810b-513b07b30ca0` (Fiorentina–Juventus, 12:10 UTC) extracted 78 candidates with `quoteVerified=true` but `fixtureVerified=false` for all 78 (`fixture_unverified`), yielding 0 editorial candidates and an abstention. Same-fixture runs at 11:31 UTC (2/58 verified) and 11:40 UTC (5/58→53 verified) preceded the publish of the dd.mm.yyyy parsing change (`885b19d9`); the 12:10 run followed it.
+- **Root cause:** the new dotted-date parsing made `date_conflict` fire on any unrelated dd.mm.yyyy date anywhere on the page (other matches, archives, footers — e.g. `30.06.2022` on stavka.tv), rejecting every source.
+- **Fix:** `explicitDates` now returns positioned matches; `date_conflict` fires only when a non-fixture date appears near a team alias (±120 chars) or the page mentions neither team. Wrong-fixture pages (wrong date near the teams, previous-encounter lines) remain rejected. No schema, quota, search, consent or V1 change.
+- **Verification:** new regression test (fixture date + unrelated dotted dates at distance → verified, no conflict); all pre-existing hard-negative tests retained, including "previous encounter" and "all failures retained". Focused 127/127 PASS; full Bun suite 2,100 PASS / 1 existing skip / 0 FAIL; strict TS PASS. Live-effect confirmation requires a new production run after Publish; direct-fetch page probes are imperfect proxies for Tavily raw text. No paid calls, DB writes, push, PR, merge or Publish.
+
 ## 2026-11-08 — Non-counted published selection distribution — CODE_COMPLETE_RELEASE_PENDING
 
 - **Baseline:** anonymous GitHub read verified main `e30c8fefe6235f879009d2ee01d06f724a393c35` matches sandbox; related historical draft PR #524 remains open. No remote mutation performed.
