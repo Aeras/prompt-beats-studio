@@ -247,11 +247,19 @@ export function traceFootballFixture(
     reversed = home.some((h) => away.some((a) => pair(a, h) || at(h, a)));
   add("venue_unknown", !forward && !reversed);
   add("reversed_venue", reversed);
-  const dates = explicitDates(t);
+  const dated = explicitDates(t);
+  const dates = [...new Set(dated.map((d) => d.date))];
   add("date_missing", !dates.length || !local.date);
-  // Conflict only when the page states dates but none is the fixture date; unrelated
-  // extra dates (other matches, footer, older articles) must not reject a correct page.
-  add("date_conflict", !!local.date && dates.length > 0 && !dates.includes(local.date));
+  // A conflicting date rejects the page only when it appears in fixture context (near a
+  // team name); unrelated dates elsewhere (other matches, archives, footers) are ignored.
+  const nearTeam = (index: number) => {
+    const window = t.slice(Math.max(0, index - 120), index + 120);
+    return [...home, ...away].some((a) => has(window, a));
+  };
+  add(
+    "date_conflict",
+    !!local.date && dated.some((d) => d.date !== local.date && nearTeam(d.index)),
+  );
   const weekday = local.date
     ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
         .format(new Date(local.date + "T12:00:00Z"))
