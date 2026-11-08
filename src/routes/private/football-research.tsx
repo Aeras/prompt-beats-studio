@@ -315,8 +315,10 @@ function PrivateFootballResearchPage() {
     setWorking(true);
     setProgress({ done: 0, total: ids.length });
     setBatchError("");
+    let failed = 0;
     try {
       // Foreground sequential dispatch is deliberate: do not masquerade as a durable background job.
+      // One failed fixture must not stop the remaining approved fixtures.
       for (let i = 0; i < ids.length; i++) {
         try {
           await runPrivateFootballResearch({
@@ -345,11 +347,11 @@ function PrivateFootballResearchPage() {
             approved.profile === "v2_experimental" && error instanceof Error
               ? footballV2PlanningMessage(error.message)
               : undefined;
+          failed += 1;
           setBatchError(
             planningMessage ??
-              "Κάποια ανάλυση απέτυχε ή απορρίφθηκε. Η συγκεκριμένη προσπάθεια καταχωρίστηκε και δεν επαναλαμβάνεται αυτόματα.",
+              `${failed} ανάλυση/εις απέτυχαν ή απορρίφθηκαν. Οι υπόλοιπες συνεχίστηκαν κανονικά. Οι αποτυχημένες δεν επαναλαμβάνονται αυτόματα.`,
           );
-          break;
         } finally {
           setProgress({ done: i + 1, total: ids.length });
           await history.refetch();
