@@ -1,5 +1,6 @@
--- Keep the history scope canonical when a Project is already linked to a Song Universe.
--- Forward-only correction: the initial feature migration remains immutable.
+-- Keep job scopes canonical without restricting independent history reads.
+-- Read RPCs may request a single Project or Song Universe scope; job admission
+-- requires a linked Project's paired Universe to be persisted on the job.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.generator_creative_direction_scopes_owned(_user_id uuid, _scopes jsonb)
@@ -57,12 +58,53 @@ BEGIN
     SELECT 1 FROM public.song_universe_projects m
     WHERE m.project_id = v_project AND m.universe_id = v_universe
   ) THEN RETURN false; END IF;
-  IF v_project IS NOT NULL AND v_universe IS NULL AND EXISTS (
-    SELECT 1 FROM public.song_universe_projects m WHERE m.project_id = v_project
-  ) THEN RETURN false; END IF;
   RETURN true;
 EXCEPTION WHEN invalid_text_representation THEN
   RETURN false;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.guard_generator_creative_direction_history_job()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE v_config jsonb;
+BEGIN
+  IF NEW.input_payload IS NULL OR jsonb_typeof(NEW.input_payload) <> 'object'
+     OR NOT (NEW.input_payload ? 'creativeDirectionHistory') THEN RETURN NEW; END IF;
+  v_config := NEW.input_payload->'creativeDirectionHistory';
+  IF jsonb_typeof(v_config) <> 'object'
+     OR (v_config - ARRAY['version','scopes']::text[]) <> '{}'::jsonb
+     OR NOT (v_config ?& ARRAY['version','scopes'])
+     OR v_config->>'version' <> '1'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.user_roles r
+       WHERE r.user_id = NEW.user_id AND r.role = 'super_admin'::public.app_role
+         AND r.moderation_status = 'active'
+     )
+     OR NEW.input_payload->>'operation' IS DISTINCT FROM 'generate'
+     OR NEW.input_payload#>>'{inputSnapshot,generatorMode}' IS DISTINCT FROM 'advanced'
+     OR NOT public.generator_creative_direction_scopes_owned(NEW.user_id, v_config->'scopes') THEN
+    RAISE EXCEPTION 'creative direction history is not allowed for this generation';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_config->'scopes') AS requested(value)
+    JOIN public.song_universe_projects membership
+      ON membership.project_id = (requested.value->>'id')::uuid
+    WHERE requested.value->>'type' = 'project'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(v_config->'scopes') AS paired(value)
+        WHERE paired.value->>'type' = 'song_universe'
+          AND paired.value->>'id' = membership.universe_id::text
+      )
+  ) THEN
+    RAISE EXCEPTION 'linked Project history requires its Song Universe scope';
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
@@ -70,5 +112,7 @@ REVOKE ALL ON FUNCTION public.generator_creative_direction_scopes_owned(uuid,jso
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.generator_creative_direction_scopes_owned(uuid,jsonb)
   TO service_role;
+REVOKE ALL ON FUNCTION public.guard_generator_creative_direction_history_job()
+  FROM PUBLIC, anon, authenticated, service_role;
 
 COMMIT;

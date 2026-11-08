@@ -2,7 +2,7 @@
 
 ## Κατάσταση
 
-Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Διορθώθηκε το PostgreSQL JSON validation στις δύο νέες migrations και η server-side admission δέχεται πλέον ανεξάρτητο Universe scope, ενώ ελέγχει αυστηρά τα συνδυασμένα Project–Universe scopes. Διορθώθηκαν επίσης τρεις regression-test αστοχίες (εύθραυστη assertion μορφοποίησης και δύο test harness bindings). Το τελευταίο Regression run έφτασε στο changed-source lint και εντόπισε 130 Prettier-only διαφορές σε τέσσερα αρχεία· εφαρμόστηκαν οι ακριβείς προτεινόμενες αλλαγές από τα CI diagnostics. Build/typecheck δεν έτρεξαν ακόμη σε εκείνο το run. Τα Database Replay και Browser Quality προηγούμενου HEAD ακυρώθηκαν πριν ολοκληρωθούν. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
+Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το Regression gate πέρασε στο HEAD `ed377cc5a47fea79756e2ca40f2188ee49daab65`. Το Database Replay ολοκλήρωσε επιτυχώς την εφαρμογή όλων των migrations, αλλά το SQL test εντόπισε ότι η linked-Project guard απαγόρευε λανθασμένα την ανάγνωση ιστορικού από μεμονωμένο Project scope. Η διόρθωση διαχωρίζει τον γενικό έλεγχο ownership (για read RPCs) από τον αυστηρό έλεγχο canonical paired scopes μόνο κατά την εισαγωγή/ενημέρωση generation job. Το Browser Quality εκτελείται ακόμη στο προηγούμενο HEAD και θα ξανατρέξει στο διορθωμένο HEAD. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
 
 ## Συμπεριφορά
 
