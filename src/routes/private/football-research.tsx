@@ -104,6 +104,8 @@ const FAILURE_REASON: Record<string, string> = {
   inconsistent_market_probabilities: "Οι εκτιμήσεις πιθανοτήτων ήταν ασυνεπείς.",
   persistence_failed: "Η αποθήκευση του αποτελέσματος απέτυχε.",
   provider_failed: "Η επικοινωνία με το μοντέλο AI απέτυχε.",
+  interrupted:
+    "Η ανάλυση διακόπηκε πριν ολοκληρωθεί (η σύνδεση χάθηκε). Μπορείς να την εκκαθαρίσεις και να ξεκινήσεις νέα.",
   research_unavailable: "Η έρευνα δεν ήταν διαθέσιμη ή δεν ολοκληρώθηκε.",
   provider_or_persistence_failed: "Η προηγούμενη αποτυχία δεν έχει λεπτομερέστερη διάγνωση.",
 };

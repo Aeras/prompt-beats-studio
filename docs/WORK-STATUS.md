@@ -1,5 +1,11 @@
 # PromptBeats — Work Status (authoritative workflow ledger)
 
+## 2026-11-08 — Inter–Como: stuck "processing" run and page-level fixture proof — CODE_COMPLETE_RELEASE_PENDING
+- **Evidence:** run `eb50711f` (13:08 UTC) stayed `processing` after its worker was lost, so "Clear all" skipped it; run `06a54a3e` (13:40 UTC) failed `incomplete_coverage` with 37/39 candidates `fixture_unverified`.
+- **Root cause:** fixture proof required date + competition inside one team-heading section; real previews put them near the title and the picks after H2H/stat blocks.
+- **Fix:** added page-level proof (directed pair line with exact fixture date in its own card, target competition on page, quote outside H2H/past-results/comments/other-fixture blocks, no contradicting date/weekday/venue near the quote). History and clearing mark runs still `processing` after 15 minutes as `failed`/`interrupted`.
+- **Verification:** offline replay of the run's real articles: 13/16 matched quotes now verify (was 1/16). New positive and wrong-fixture tests; full Bun suite 2,114 PASS / 1 skip / 0 FAIL; strict TS PASS. Live run after Publish not yet observed. No paid calls, DB writes, push, PR, merge or Publish.
+
 ## Football V2 fixture verification rejected genuine previews — CODE_COMPLETE_RELEASE_PENDING (2026-11-08)
 
 - **Evidence:** runs `145a3fd2`, `e0626248`, `bcc7157e` (Fiorentina–Juventus): 162/166 extracted picks `fixtureVerified=false`; offline replay of the same public articles (footballpredictions.com, footballwhispers.com) reproduced the rejection.

@@ -211,6 +211,128 @@ function plainPreviewSections(text: string, input: FullEvidenceRunInput) {
   }
   return sections;
 }
+/** Page-level fixture proof for articles whose layout does not put date and competition
+ * under a team heading. The page must (1) name the directed pair on a short line whose
+ * nearby lines state exactly the fixture's local date with no other match date, and
+ * (2) name the target competition. The quote must then sit outside H2H/past-result/
+ * comment/other-fixture blocks and its own neighbourhood must not contradict the fixture.
+ * Title and URL are still never used as proof. */
+export function pageFixtureScope(text: string, quote: string, input: FullEvidenceRunInput) {
+  const opts = { searchProfileVersion: "v2_experimental" as const };
+  const home = evidenceTeamAliases(input.fixture.homeTeam, "v2_experimental");
+  const away = evidenceTeamAliases(input.fixture.awayTeam, "v2_experimental");
+  const fold = (v: string) => v.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
+  const samePair = (line: string) => {
+    const v = fold(line);
+    return home.some((a) => v.includes(a)) && away.some((a) => v.includes(a));
+  };
+  const whole = traceFootballFixture(text, input.fixture, input.cutoff, opts);
+  if (
+    whole.failures.some((f) =>
+      [
+        "competition_missing",
+        "home_missing",
+        "away_missing",
+        "same_team",
+        "after_kickoff",
+      ].includes(f),
+    )
+  )
+    return false;
+  const otherPair =
+    /^\p{L}[\p{L}.'’ ]{0,30}?(?:\s+(?:vs\.?|v\.?|-)\s+|\s*[—–]\s*)\p{L}[\p{L}.'’ ]{1,30}$/u;
+  const venueOrLeague =
+    /serie a|premier league|la liga|bundesliga|ligue 1|super league|eredivisie|primeira liga|champions league|europa league|conference league|stadio|stadium|arena|σουπερ λιγκ|серия а/iu;
+  const isOtherPair = (raw: string) => {
+    const line = raw.trim();
+    return (
+      line.length <= 120 && !samePair(line) && otherPair.test(line) && !venueOrLeague.test(line)
+    );
+  };
+  const lines = text.split("\n");
+  const anchored = lines.some((line, i) => {
+    if (line.trim().length > 240 || !samePair(line)) return false;
+    const head = traceFootballFixture(line, input.fixture, input.cutoff, opts);
+    if (head.failures.includes("venue_unknown") || head.failures.includes("reversed_venue"))
+      return false;
+    // The date must belong to this pair: never read across another fixture's line.
+    let from = i,
+      to = i;
+    while (from > Math.max(0, i - 3) && !isOtherPair(lines[from - 1]!)) from--;
+    while (to < Math.min(lines.length - 1, i + 6) && !isOtherPair(lines[to + 1]!)) to++;
+    const window = lines
+      .slice(from, to + 1)
+      .join("\n")
+      .slice(0, 2000);
+    const t = traceFootballFixture(window, input.fixture, input.cutoff, opts);
+    return !t.failures.some((f) =>
+      [
+        "date_missing",
+        "date_conflict",
+        "weekday_conflict",
+        "reversed_venue",
+        "qualified_team",
+      ].includes(f),
+    );
+  });
+  if (!anchored) return false;
+  const at = text.indexOf(quote);
+  if (at < 0) return false;
+  // Walk back from the quote to the nearest heading-like line.
+  const before = text.slice(0, at).split("\n");
+  const blocked =
+    /^(?:#{1,4}\s*)?(?:head.to.head|h2h|related (?:matches|predictions)|comments|reader comments|discussion|личные встречи|комментарии|σχόλια|προϊστορία)(?=$|[^\p{L}])/iu;
+  const topical =
+    /(?:head.to.head|\bh2h\b|past results|previous (?:meetings|results)|\bstandings\b|line-?ups|injuries|where to watch|latest predictions|related (?:matches|predictions)|προϊστορία|βαθμολογία|личные встречи)/iu;
+  // A short prediction heading ("Prediction", "Correct Score Prediction", "Прогноз на матч")
+  // opens the authored pick block of this article, even after an H2H section.
+  const pickHeading =
+    /(?:^|[^\p{L}])(?:predictions?|tips?|picks?|verdict|we say|best bet|прогноз|ставк|πρόβλεψ|προγνωστικ)(?=$|[^\p{L}])/iu;
+  let stop = 0;
+  for (let j = before.length - 2; j >= 0 && j >= before.length - 400; j--) {
+    const line = before[j]!.trim();
+    if (!line || line.length > 120) continue;
+    if (samePair(line)) {
+      if (topical.test(line) && !pickHeading.test(line)) return false;
+      stop = j;
+      break;
+    }
+    if (isOtherPair(line)) return false;
+    if (line.length <= 60 && pickHeading.test(line) && !topical.test(line)) {
+      stop = j;
+      break;
+    }
+    if (blocked.test(line)) return false;
+  }
+  // The quote's own neighbourhood: up to two preceding non-empty lines inside its block.
+  const prev = before
+    .slice(stop, -1)
+    .filter((l) => l.trim())
+    .slice(-2)
+    .join("\n")
+    .slice(-600);
+  const after = text
+    .slice(at + quote.length)
+    .split("\n")
+    .slice(0, 2)
+    .join("\n")
+    .slice(0, 300);
+  const near = prev + "\n" + (before[before.length - 1] ?? "") + quote + after;
+  const local = traceFootballFixture(near, input.fixture, input.cutoff, opts);
+  if (
+    local.failures.some((f) =>
+      ["date_conflict", "weekday_conflict", "reversed_venue", "qualified_team"].includes(f),
+    )
+  )
+    return false;
+  const date = fixtureLocalDate(input.fixture).date;
+  const expected = date
+    ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
+        .format(new Date(date + "T12:00:00Z"))
+        .toLowerCase()
+    : null;
+  return explicitNarrativeWeekdays(near).every((day) => day === expected);
+}
 export function createRestorationPolicy(input: FullEvidenceRunInput) {
   const state: FootballRestoration = {
     version: 2,
@@ -220,37 +342,40 @@ export function createRestorationPolicy(input: FullEvidenceRunInput) {
   const scope = (text: string, quote?: string) => {
     const canonical = bindingText(text);
     const q = quote ? bindingText(quote) : undefined;
-    return plainPreviewSections(canonical, input).some((s) => {
-      if (q && !s.text.includes(q)) return false;
-      const trace = traceFootballFixture(s.binding, input.fixture, input.cutoff, {
-        searchProfileVersion: "v2_experimental",
-      });
-      const date = fixtureLocalDate(input.fixture).date;
-      const expected = date
-        ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
-            .format(new Date(date + "T12:00:00Z"))
-            .toLowerCase()
-        : null;
-      const narrative = s.text
-        .split("\n")
-        .filter((line) => !/published|last updated|δημοσιεύ|опубликован|обновлен/iu.test(line))
-        .join("\n");
-      const statedDays = explicitNarrativeWeekdays(narrative);
-      const contentTrace = traceFootballFixture(s.text, input.fixture, input.cutoff, {
-        searchProfileVersion: "v2_experimental",
-      });
-      const fatal = contentTrace.failures.some((v) =>
-        [
-          "date_conflict",
-          "weekday_conflict",
-          "timestamp_conflict",
-          "reversed_venue",
-          "qualified_team",
-          "multi_fixture",
-        ].includes(v),
-      );
-      return trace.status === "verified" && !fatal && statedDays.every((day) => day === expected);
-    });
+    return (
+      plainPreviewSections(canonical, input).some((s) => {
+        if (q && !s.text.includes(q)) return false;
+        const trace = traceFootballFixture(s.binding, input.fixture, input.cutoff, {
+          searchProfileVersion: "v2_experimental",
+        });
+        const date = fixtureLocalDate(input.fixture).date;
+        const expected = date
+          ? new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" })
+              .format(new Date(date + "T12:00:00Z"))
+              .toLowerCase()
+          : null;
+        const narrative = s.text
+          .split("\n")
+          .filter((line) => !/published|last updated|δημοσιεύ|опубликован|обновлен/iu.test(line))
+          .join("\n");
+        const statedDays = explicitNarrativeWeekdays(narrative);
+        const contentTrace = traceFootballFixture(s.text, input.fixture, input.cutoff, {
+          searchProfileVersion: "v2_experimental",
+        });
+        const fatal = contentTrace.failures.some((v) =>
+          [
+            "date_conflict",
+            "weekday_conflict",
+            "timestamp_conflict",
+            "reversed_venue",
+            "qualified_team",
+            "multi_fixture",
+          ].includes(v),
+        );
+        return trace.status === "verified" && !fatal && statedDays.every((day) => day === expected);
+      }) ||
+      (!!q && pageFixtureScope(canonical, q, input))
+    );
   };
   const usable = (d: ReturnType<typeof makeFullSources>[number], quote?: string) =>
     !!d.text &&

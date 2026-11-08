@@ -750,3 +750,59 @@ test("a dated match card for another fixture still cannot lend its date", () => 
   );
   expect(c?.fixtureVerified).toBe(false);
 });
+
+// Real 2026-11-08 Inter–Como page shapes (incident run 06a54a3e): the article states the
+// pair, date and competition near its title, but its picks follow H2H/stat blocks, so no
+// single heading section held all proof. Page-level proof must accept them.
+function verifyOne(text: string, quote: string) {
+  const s = setup();
+  const { policy } = createRestorationPolicy(s.input);
+  const docs = makeFullSources([hit(text)]);
+  policy.prepareDocs?.(docs);
+  return policy.verify(
+    [{ sourceId: docs[0]!.id, quote, kind: "editorial", market: over, rationale: "test" }],
+    docs,
+    fixture,
+    cutoff,
+  )[0]!;
+}
+const menu = "Premier League Predictions\nLa Liga Predictions\nChampions League Predictions\n";
+test.each([
+  [
+    "prediction heading after H2H block",
+    menu +
+      "Fiorentina vs Juventus Live Stream\nFiorentina\nJuventus\n2026-11-08 19:45:00\nSerie A\nForm guide\nFiorentina are unbeaten in two.\nJuventus lost away last week.\nTeam news\nNo new injuries.\nHead to head\nPast meetings since 23/12/2024 favour Juventus.\nPrediction\nOur pick: Over 2.5",
+  ],
+  [
+    "match card with league - stadium line",
+    menu +
+      "Fiorentina-Juventus prediction – 08/11/2026\n08/11/26 - 19:45\nFiorentina - Juventus\nItaly Serie A - Stadio Artemio Franchi\nOur predictions\nOur pick: Over 2.5",
+  ],
+  [
+    "FAQ article",
+    menu +
+      "Fiorentina vs Juventus Questions\nFiorentina vs Juventus kicks off on Sunday 8 November 2026 in the 2026/27 Serie A.\nWhat is our prediction?\nOur pick: Over 2.5",
+  ],
+])("real page shape is fixture-verified: %s", (_name: string, text: string) => {
+  expect(verifyOne(text, "Our pick: Over 2.5").fixtureVerified).toBe(true);
+});
+test.each([
+  [
+    "quote inside a same-pair past results block",
+    "Fiorentina vs Juventus Prediction\n8 November 2026\nSerie A\nFiorentina vs Juventus Past Results\n21 April 2026\nOur pick: Over 2.5",
+  ],
+  [
+    "page dates the pair on another day",
+    "Fiorentina vs Juventus Prediction\n12 April 2026\nSerie A\nPrediction\nOur pick: Over 2.5",
+  ],
+  [
+    "quote under another fixture heading",
+    "Fiorentina vs Juventus Prediction\n8 November 2026\nSerie A\nNapoli vs Lazio\nOur pick: Over 2.5",
+  ],
+  [
+    "reversed fixture",
+    "Juventus vs Fiorentina Prediction\n8 November 2026\nSerie A\nPrediction\nOur pick: Over 2.5",
+  ],
+])("wrong-fixture page shape stays unverified: %s", (_name: string, text: string) => {
+  expect(verifyOne(text, "Our pick: Over 2.5").fixtureVerified).toBe(false);
+});
