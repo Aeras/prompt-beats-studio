@@ -218,17 +218,20 @@ BEGIN
       'openai','offline-test',1);
   END LOOP;
   -- Accept the full 200-character-per-field / 1,000-character envelope.
-  INSERT INTO public.generator_creative_direction_history(user_id,scope_type,scope_id,job_id,direction)
-  VALUES(v_owner,'session',v_session,v_session_job,jsonb_build_object(
+  UPDATE public.generator_creative_direction_history
+  SET direction=jsonb_build_object(
     'coreIdea',repeat('a',200),'narrator',repeat('b',200),
     'emotionalApproach',repeat('c',200),'hookIdentity',repeat('d',200),
-    'sonicIdentity',repeat('e',200)));
+    'sonicIdentity',repeat('e',200))
+  WHERE job_id=v_session_job AND scope_type='session' AND scope_id=v_session;
+  IF NOT FOUND THEN RAISE EXCEPTION 'maximum-size direction row was not found'; END IF;
   v_blocked := false;
   BEGIN
-    INSERT INTO public.generator_creative_direction_history(user_id,scope_type,scope_id,job_id,direction)
-    VALUES(v_owner,'session',v_session_two,v_session_two_job,jsonb_build_object(
+    UPDATE public.generator_creative_direction_history
+    SET direction=jsonb_build_object(
       'coreIdea',repeat('a',201),'narrator','b','emotionalApproach','c',
-      'hookIdentity','d','sonicIdentity','e'));
+      'hookIdentity','d','sonicIdentity','e')
+    WHERE job_id=v_session_two_job AND scope_type='session' AND scope_id=v_session_two;
   EXCEPTION WHEN check_violation THEN v_blocked := true;
   END;
   IF NOT v_blocked THEN RAISE EXCEPTION 'database accepted a direction field over 200 characters'; END IF;
