@@ -120,10 +120,24 @@ test("model metadata is extracted privately while the user song remains four fie
   expect(parsed!.creativeDirection).toEqual(direction);
 });
 
-test("long, multiline, lyric-copy, and missing metadata are rejected", () => {
+test("creative direction accepts the expanded limits and rejects overflow", () => {
+  const maxFieldDirection = {
+    coreIdea: "a".repeat(200),
+    narrator: "b".repeat(200),
+    emotionalApproach: "c".repeat(200),
+    hookIdentity: "d".repeat(200),
+    sonicIdentity: "e".repeat(200),
+  };
+  expect(creativeDirectionSchema.parse(maxFieldDirection)).toEqual(maxFieldDirection);
   expect(() =>
-    creativeDirectionSchema.parse({ ...direction, coreIdea: "x".repeat(141) }),
+    creativeDirectionSchema.parse({ ...direction, coreIdea: "x".repeat(201) }),
   ).toThrow();
+  expect(() =>
+    creativeDirectionSchema.parse({ ...maxFieldDirection, sonicIdentity: "e".repeat(201) }),
+  ).toThrow();
+});
+
+test("multiline, lyric-copy, and missing metadata are rejected", () => {
   const song = {
     title: "Song",
     tags: "Folk",
