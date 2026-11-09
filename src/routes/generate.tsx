@@ -1152,9 +1152,15 @@ function GeneratePage() {
     null,
   );
   const [creativeDirectionHistoryEnabled, setCreativeDirectionHistoryEnabled] = useState(false);
+  // Keep the initial render deterministic: session UUIDs are created only in the browser.
   const [creativeDirectionSessionId, setCreativeDirectionSessionId] = useState(
-    () => freshSession ?? search.session ?? crypto.randomUUID(),
+    () => freshSession ?? search.session ?? "",
   );
+  useEffect(() => {
+    if (!creativeDirectionSessionId && !freshSession && !search.session) {
+      setCreativeDirectionSessionId(window.crypto.randomUUID());
+    }
+  }, [creativeDirectionSessionId, freshSession, search.session]);
   const creativeDirectionOwnerRef = useRef(user?.id);
   useEffect(() => {
     const ownerChanged = creativeDirectionOwnerRef.current !== user?.id;
@@ -1164,7 +1170,7 @@ function GeneratePage() {
       setCreativeDirectionUniverseId(null);
       setCreativeDirectionHistoryEnabled(false);
       if (ownerChanged && !freshSession && !search.session) {
-        setCreativeDirectionSessionId(crypto.randomUUID());
+        setCreativeDirectionSessionId(window.crypto.randomUUID());
       }
     }
   }, [freshSession, moderation.isSuperAdmin, search.session, user?.id]);

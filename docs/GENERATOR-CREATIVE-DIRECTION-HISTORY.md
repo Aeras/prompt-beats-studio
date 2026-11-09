@@ -2,7 +2,7 @@
 
 ## Κατάσταση
 
-Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το Regression gate περνά. Το Database Replay επιβεβαίωσε migrations, scope ownership/read separation και επιτυχία των προηγούμενων SQL assertions. Εντοπίστηκε λανθασμένη προσδοκία στο τέλος του SQL fixture: το αρχικό Universe history row είχε νόμιμα απομακρυνθεί από το retention cap των 15 πριν διαγραφεί το Project. Η δοκιμή διορθώθηκε ώστε να ελέγχει ότι παραμένει Universe history, όχι ότι επιβιώνει συγκεκριμένο row που έχει ήδη λήξει από το retention. Το Browser Quality συνεχίζει να εκτελείται. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
+Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Το Regression gate περνά. Το Database Replay επιβεβαίωσε migrations, scope ownership/read separation και επιτυχία των προηγούμενων SQL assertions. Εντοπίστηκε λανθασμένη προσδοκία στο τέλος του SQL fixture: το αρχικό Universe history row είχε νόμιμα απομακρυνθεί από το retention cap των 15 πριν διαγραφεί το Project. Η δοκιμή διορθώθηκε ώστε να ελέγχει ότι παραμένει Universe history, όχι ότι επιβιώνει συγκεκριμένο row που έχει ήδη λήξει από το retention. Το Browser Quality run #1393 ακυρώθηκε στο όριο των 25 λεπτών και κατέγραψε γενικά SSR 500 χωρίς stack trace ή artifact. Στον έλεγχο κώδικα εντοπίστηκε UUID generation μέσα σε `useState` initializer της σελίδας Generator, άρα εκτελούνταν και κατά το SSR. Η δημιουργία UUID μεταφέρθηκε σε browser-only effect. Η αιτιώδης σύνδεση θα επιβεβαιωθεί ή θα απορριφθεί από το επόμενο exact-HEAD Browser Quality run. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
 
 ## Συμπεριφορά
 
