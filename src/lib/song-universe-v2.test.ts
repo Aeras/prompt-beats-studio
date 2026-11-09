@@ -9,6 +9,7 @@ import {
 import { nextSongBriefSchema, projectUniverseSummarySchema } from "./song-universe-planner.shared";
 import {
   buildSongUniverseContextText,
+  resolveSongUniverseHandoffProjectId,
   songUniverseCreativeBibleSchema,
   songUniverseSongSetupHandoffSchema,
   songUniverseStoryBibleSchema,
@@ -117,6 +118,28 @@ describe("Song Universe 2 end-to-end contracts", () => {
     expect(context).toContain(
       "explicit current-song instructions override Universe recommendations",
     );
+  });
+
+  test("Universe handoff includes only an authorized Project that belongs to its project list", async () => {
+    const projects = [
+      { projectId: "00000000-0000-4000-8000-000000000002" },
+      { projectId: "00000000-0000-4000-8000-000000000003" },
+    ];
+    expect(resolveSongUniverseHandoffProjectId(true, projects[0]!.projectId, projects)).toBe(
+      projects[0]!.projectId,
+    );
+    expect(resolveSongUniverseHandoffProjectId(true, "", projects)).toBeNull();
+    expect(resolveSongUniverseHandoffProjectId(true, "not-a-member", projects)).toBeNull();
+    expect(resolveSongUniverseHandoffProjectId(true, "", [projects[0]!])).toBe(
+      projects[0]!.projectId,
+    );
+    expect(resolveSongUniverseHandoffProjectId(false, projects[0]!.projectId, projects)).toBeNull();
+
+    const planner = await source("src/components/promptbeats/SongUniverseNextSongPlanner.tsx");
+    expect(planner).toContain("resolveSongUniverseHandoffProjectId(");
+    expect(planner).toContain("projectId: selectedProjectId");
+    expect(planner).toContain("if (moderation.isLoading) return;");
+    expect(planner).toContain("disabled={busy !== null || moderation.isLoading}");
   });
 
   test("near-duplicate guard detects a strongly repeated premise", () => {

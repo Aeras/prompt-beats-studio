@@ -20,6 +20,7 @@ import { durableAiJobInput, runLyricsSectionEdit, runSongGeneration } from "@/li
 import { withAdvancedSunoEnrichmentInstruction } from "@/lib/advanced-suno-enrichment";
 import { fitMusicStyleToPlatform } from "@/lib/music-style-limits";
 import { buildProjectRevisionVersionMetadata } from "@/lib/project-version-history.shared";
+import { creativeDirectionHistoryEntriesSchema } from "@/lib/creative-direction-history.shared";
 
 /** Pre-provider claims are safe to reclaim after this shorter timeout. */
 const STALE_UNSTARTED_MS = 15 * 60 * 1000;
@@ -233,6 +234,28 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     // existing Additional Instructions channel so the same provider call is
     // explicitly told to enrich Music Style from useful Producer's Note cues.
     const runtimeInput = withAdvancedSunoEnrichmentInstruction(input);
+    let runContext: import("./ai-execution.server").ExecutionContext = executionContext;
+    if (input.creativeDirectionHistory) {
+      const { data: isSuperAdmin, error: roleError } = await db.rpc("_has_role_internal", {
+        _user_id: job.user_id,
+        _role: "super_admin",
+      });
+      if (roleError || isSuperAdmin !== true || input.inputSnapshot?.generatorMode !== "advanced") {
+        throw new Error("Creative direction history is no longer authorized for this generation.");
+      }
+      const { data: rawHistory, error: historyError } = await db.rpc(
+        "read_generator_creative_direction_history",
+        {
+          _user_id: job.user_id,
+          _scopes: input.creativeDirectionHistory.scopes,
+        },
+      );
+      const history = creativeDirectionHistoryEntriesSchema.safeParse(rawHistory);
+      if (historyError || !history.success) {
+        throw new Error("Creative direction history could not be retrieved safely.");
+      }
+      runContext = { ...executionContext, creativeDirectionHistory: history.data };
+    }
     const out = await runSongGeneration(
       runtimeInput,
       job.user_id,
@@ -240,7 +263,7 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       cancellationController.signal,
       recordUpstreamCancellation,
       recordRemoteOperation,
-      executionContext,
+      runContext,
     );
     const enforceAdvancedSunoStyleLimit =
       input.operation === "generate" &&
@@ -307,20 +330,41 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
       await checkCancellation();
       if (cancellationController.signal.aborted)
         throw new Error("Generation cancellation requested.");
-      await db
-        .from("ai_generation_jobs")
-        .update({
-          status: "completed",
-          result: songResult,
-          provider: out.provider,
-          model: out.model,
-          error: null,
-          attempts: (job.attempts ?? 0) + 1,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", job.id)
-        .eq("status", "processing")
-        .is("cancel_requested_at", null);
+      if (input.creativeDirectionHistory) {
+        if (!out.creativeDirection) {
+          throw new Error("The AI did not return valid internal creative direction metadata.");
+        }
+        const { data: finalized, error: finalizeError } = await db.rpc(
+          "complete_generation_with_creative_direction_history",
+          {
+            _job_id: job.id,
+            _user_id: job.user_id,
+            _result: songResult,
+            _direction: out.creativeDirection,
+            _provider: out.provider,
+            _model: out.model,
+            _attempts: (job.attempts ?? 0) + 1,
+          },
+        );
+        if (finalizeError || finalized !== true) {
+          throw new Error("The generation could not be finalized with its creative direction.");
+        }
+      } else {
+        await db
+          .from("ai_generation_jobs")
+          .update({
+            status: "completed",
+            result: songResult,
+            provider: out.provider,
+            model: out.model,
+            error: null,
+            attempts: (job.attempts ?? 0) + 1,
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", job.id)
+          .eq("status", "processing")
+          .is("cancel_requested_at", null);
+      }
     }
   } catch (err) {
     // Resolve a cancellation/marker race even if the periodic poll has not yet

@@ -32,6 +32,10 @@ import {
 } from "@/lib/lyrics-workspace.shared";
 import { parseLyricsSections } from "@/lib/lyrics-sections";
 import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
+import {
+  creativeDirectionHistoryConfigSchema,
+  type CreativeDirectionHistoryConfig,
+} from "@/lib/creative-direction-history.shared";
 
 const jobInput = z.object({
   idempotencyKey: z.string().guid(),
@@ -63,6 +67,7 @@ const jobInput = z.object({
     })
     .nullish(),
   inputSnapshot: generatorInputSnapshotSchema.nullish(),
+  creativeDirectionHistory: creativeDirectionHistoryConfigSchema.optional(),
 });
 
 const revisionMetaShape = z.object({
@@ -106,12 +111,83 @@ const songInputShape = z.object({
   operation: z.enum(["generate", "revision"]).default("generate"),
   revision: revisionJobContextSchema.nullish(),
   inputSnapshot: generatorInputSnapshotSchema.nullish(),
+  creativeDirectionHistory: creativeDirectionHistoryConfigSchema.optional(),
 });
 
 const inputShape = z.union([songInputShape, lyricsSectionEditJobSchema]);
 
 export type GenerationContext = z.infer<typeof songInputShape>;
 export type DurableGenerationJobInput = z.infer<typeof inputShape>;
+
+async function validateCreativeDirectionHistoryRequest(
+  supabase: any,
+  userId: string,
+  config: CreativeDirectionHistoryConfig | undefined,
+  input: { advanced?: boolean; operation?: string; inputSnapshot?: unknown },
+): Promise<CreativeDirectionHistoryConfig | undefined> {
+  if (!config) return undefined;
+  if (input.operation !== "generate" || input.advanced !== true) {
+    throw new Error("Creative direction history is available only for Advanced generation.");
+  }
+  const snapshot = generatorInputSnapshotSchema.safeParse(input.inputSnapshot);
+  if (!snapshot.success || snapshot.data.generatorMode !== "advanced") {
+    throw new Error("Creative direction history requires Advanced Generator mode.");
+  }
+  const { data: isSuperAdmin, error: roleError } = await supabase.rpc(
+    "current_user_is_super_admin",
+  );
+  if (roleError || isSuperAdmin !== true) {
+    throw new Error("Creative direction history is restricted to Super Admin.");
+  }
+
+  const project = config.scopes.find((scope) => scope.type === "project");
+  const universe = config.scopes.find((scope) => scope.type === "song_universe");
+  let linkedUniverseId: string | null = null;
+  if (project) {
+    const { data, error } = await supabase
+      .from("prompt_projects")
+      .select("id")
+      .eq("id", project.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error || !data) throw new Error("The selected creative history project is unavailable.");
+    const { data: membership, error: membershipError } = await supabase
+      .from("song_universe_projects")
+      .select("universe_id")
+      .eq("project_id", project.id)
+      .maybeSingle();
+    if (membershipError) throw new Error("The Project's Song Universe could not be verified.");
+    linkedUniverseId = membership?.universe_id ?? null;
+    if (linkedUniverseId) {
+      const { data: linkedUniverse, error: linkedUniverseError } = await supabase
+        .from("song_universes")
+        .select("id")
+        .eq("id", linkedUniverseId)
+        .eq("owner_id", userId)
+        .maybeSingle();
+      if (linkedUniverseError || !linkedUniverse) {
+        throw new Error("The Project's Song Universe is unavailable.");
+      }
+    }
+  }
+  if (universe) {
+    const { data, error } = await supabase
+      .from("song_universes")
+      .select("id")
+      .eq("id", universe.id)
+      .eq("owner_id", userId)
+      .maybeSingle();
+    if (error || !data) throw new Error("The selected creative history universe is unavailable.");
+  }
+  if (universe && project && linkedUniverseId !== universe.id) {
+    throw new Error("The selected project does not belong to the selected Song Universe.");
+  }
+  const scopes =
+    project && linkedUniverseId
+      ? [project, { type: "song_universe" as const, id: linkedUniverseId }]
+      : config.scopes;
+  return creativeDirectionHistoryConfigSchema.parse({ version: 1, scopes });
+}
 
 type JobRow = {
   id: string;
@@ -186,6 +262,12 @@ export const startGenerationJob = createServerFn({ method: "POST" })
     const { getModelForUser } = await import("@/lib/ai-provider.server");
     const { data: isAdmin } = await supabase.rpc("current_user_is_admin_level");
     assertGenerationInputLimits(data, isAdmin === true);
+    const validatedCreativeDirectionHistory = await validateCreativeDirectionHistoryRequest(
+      supabase,
+      context.userId,
+      data.creativeDirectionHistory,
+      data,
+    );
     // prettier-ignore
     if (data.promptVersion === "v2" || data.promptVersion === "v3" || data.promptVersion === "v4_beta" || data.promptVersion === "v5_beta_1" || data.promptVersion === "registry" || data.registryPromptId) {
       const { data: isSuperAdmin, error: roleError } = await supabase.rpc(
@@ -209,6 +291,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       baseMusicStyle: _baseMusicStyle,
       instruments: _instruments,
       revision: clientRevision,
+      creativeDirectionHistory: _clientCreativeDirectionHistory,
       ...basePayload
     } = data;
 
@@ -217,6 +300,9 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       generationModel: selectedModel,
       operation: "generate",
       revision: null,
+      ...(validatedCreativeDirectionHistory
+        ? { creativeDirectionHistory: validatedCreativeDirectionHistory }
+        : {}),
     };
 
     if (data.operation === "revision") {

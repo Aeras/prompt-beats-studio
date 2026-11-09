@@ -1,4 +1,31 @@
+## 2026-11-09 — PR #526 changed-source lint correction — IN_PROGRESS
+
+- **Evidence:** Regression run on `4d9b82fba5797fb518aca8a37c8a1327c4ef314a` passed the full Bun suite (2,126 passed / 1 skipped / 0 failed) and the Agent contract gate, then stopped at changed-source ESLint because Prettier required a different wrapping for the two new Playwright `.poll()` assertions.
+- **Correction prepared:** normalize both assertions to the repository's Prettier layout; no behavioral change to the strict overflow condition.
+- **Next verification:** one fresh consolidated set of Regression, Browser Quality and Database Replay on the final exact HEAD. The Browser Quality and Database Replay runs for the current intermediate HEAD are still in progress; their results will be inspected before final push.
+
+## 2026-11-09 — PR #526 workflow contract metadata — IN_PROGRESS
+
+- **Finding:** the first exact-HEAD Regression run stopped at the repository's Agent contract gate because the PR description used section labels that did not match the four required headings. This was a workflow metadata failure, not a source/test failure.
+- **Correction:** normalized the existing PR description headings to the required contract labels without changing its technical content. A fresh synchronize event is required so GitHub Actions receives the corrected PR event payload.
+- **Verification:** the next consolidated CI run must pass all three mandatory gates on one exact HEAD. No merge or production release.
+
+## 2026-11-09 — PR #526 responsive viewport assertion — IN_PROGRESS
+
+- **Live state:** PR #526 remains open on `codex/creative-direction-history-20261108`, HEAD `1e13c32b08f0d50e6870fe6f5ed1e57e692e48c7`. Regression and Database Replay pass on this HEAD; Browser Quality fails only in the Project-scope selector viewport check at 320px.
+- **Finding:** the test changes the viewport and reads `scrollWidth` immediately. The shared AppShell has a 200ms responsive padding transition, so the assertion can observe an intermediate layout. The same immediate assertion appears in the neighboring history-toggle viewport test.
+- **Prepared correction:** both checks poll the actual document overflow until the responsive layout settles. The assertion remains strict (`scrollWidth - innerWidth <= 1`); persistent overflow still fails with a viewport-specific diagnostic. No application CSS is hidden or clipped to mask overflow.
+- **Verification:** pending one consolidated PR update and fresh Regression, Browser Quality and Database Replay gates on the exact resulting HEAD. No branch update or CI run has been triggered for this correction.
+
 # PromptBeats — Work Status (authoritative workflow ledger)
+
+## 2026-11-08 — Generator creative-direction history — IN_PROGRESS
+
+- **Baseline/ownership:** `main` remains `af8b4c5e835c742373f4ae19ea4f3d511aab3295`. PR [#526](https://github.com/Aeras/prompt-beats-studio/pull/526) is open from `codex/creative-direction-history-20261108`; verified HEAD before this documentation-only update: `ed6012a5ac574f2375f0b489b942089c202c9170`. Related open PR overlap was reviewed (#478 Music Inspiration; #373 Generation worker; #75 Generator route); none implements this feature.
+- **Implementation:** Super Admin Advanced-only, OFF by default. Project, Song Universe and isolated per-user Session scopes are validated server-side; linked Project+Universe scopes are canonicalized. Direction metadata is generated in the existing AI call and stored atomically only after successful, uncancelled completion. Public job result remains exactly four fields. History is idempotent and capped at 15 entries per scope. See [technical note](GENERATOR-CREATIVE-DIRECTION-HISTORY.md).
+- **Resolved CI findings:** PostgreSQL JSON validation, migration scope validation, SQL fixture typing, retention assertion and the Music Inspiration Playwright request-body fixture were corrected in this PR. Browser Quality's earlier 189-test cascade was traced to parsing bodyless `_serverFn` POSTs; decoding is now limited to Music Inspiration routes. The separate browser-only UUID initialization remains an SSR-safety improvement, not the Browser Quality root cause.
+- **Verification on exact HEAD `ed6012a5ac574f2375f0b489b942089c202c9170`:** Regression run [42581310645](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310645) — **PASS** (full Bun suite, changed-source lint, build and strict TypeScript); Database Replay [42581310669](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310669) — **PASS** (fresh local database migration replay and creative-history SQL invariants); Browser Quality [42581310640](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310640) — **PASS**. The earlier failed Browser Quality run `42578319581` is historical and resolved by the fixture correction.
+- **Remaining:** this feature remains `IN_PROGRESS` until the PR receives the required review and is merged; production migration/deployment and post-release verification are separate steps. No production migration, merge, deployment, AI call or publish has occurred. The current PR has no recorded independent review approval; branch-protection requirements could not be read because GitHub returned 403.
 
 ## 2026-11-08 — Inter–Como: stuck "processing" run and page-level fixture proof — CODE_COMPLETE_RELEASE_PENDING
 - **Evidence:** run `eb50711f` (13:08 UTC) stayed `processing` after its worker was lost, so "Clear all" skipped it; run `06a54a3e` (13:40 UTC) failed `incomplete_coverage` with 37/39 candidates `fixture_unverified`.

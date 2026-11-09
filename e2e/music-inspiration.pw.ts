@@ -98,6 +98,7 @@ async function fixture(
     plannerUnavailable?: boolean;
     setup?: "success" | "failure";
     archivedPrompt?: boolean;
+    creativeHistoryProject?: boolean;
   } = {},
 ) {
   const user = {
@@ -251,7 +252,18 @@ async function fixture(
       });
       return;
     }
-    if (name.includes("generateSongSetup")) {
+    if (name.includes("listPromptProjects")) {
+      result = {
+        projects: options.creativeHistoryProject
+          ? [
+              {
+                id: "cd520000-0000-4000-8000-000000000001",
+                name: "Creative history project",
+              },
+            ]
+          : [],
+      };
+    } else if (name.includes("generateSongSetup")) {
       if (options.setup === "failure")
         return route.fulfill({ status: 500, body: "SECRET provider Zod payload" });
       result = {
@@ -1566,7 +1578,9 @@ test("V5 research candidate selector follows V4, uses server default, and never 
 }) => {
   const f = await fixture(page, { superAdmin: true });
   const selector = page.locator("#generator-prompt-version");
+  const historyToggle = page.locator("#generator-creative-direction-history");
   await expect(selector).toBeVisible();
+  await expect(page.getByLabel("Prompt")).toBeVisible();
   await expect(selector).toHaveValue("default");
   await expect(selector.locator("option")).toHaveText([
     "Production default (server-selected)",
@@ -1576,21 +1590,70 @@ test("V5 research candidate selector follows V4, uses server default, and never 
     "Prompt Version 4 BETA — Unified Master (R3.1)",
     "Prompt Version 5 BETA 1 — Creative Master",
   ]);
+  await expect(historyToggle).toBeVisible();
+  await expect(historyToggle).toHaveAttribute("aria-checked", "false");
   await selector.selectOption("v5_beta_1");
   await expect(selector).toHaveValue("v5_beta_1");
-  await expect(page.getByText(/not a proven superior prompt/)).toBeVisible();
+  await expect(page.getByText(/not a proven superior prompt/)).toHaveCount(0);
+  await historyToggle.click();
+  await expect(historyToggle).toHaveAttribute("aria-checked", "true");
   await page.locator("button[data-generator-mode=basic]").click();
   await expect(selector).toHaveCount(0);
+  await expect(historyToggle).toHaveCount(0);
   await page.locator("button[data-generator-mode=advanced]").click();
   await expect(selector).toHaveValue("v5_beta_1");
+  await expect(historyToggle).toHaveAttribute("aria-checked", "false");
+  await historyToggle.click();
+  await page.locator("button[data-generator-mode=revision]").click();
+  await expect(historyToggle).toHaveCount(0);
+  await page.locator("button[data-generator-mode=advanced]").click();
+  await expect(historyToggle).toHaveAttribute("aria-checked", "false");
   expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
-    true,
-  );
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(historyToggle).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth), {
+        message: `Horizontal overflow should be absent after the responsive layout settles at ${width}px`,
+      })
+      .toBeLessThanOrEqual(1);
+  }
+});
+
+test("creative history Project scope selector is optional, opt-in and keyboard accessible", async ({
+  page,
+}) => {
+  const f = await fixture(page, { superAdmin: true, creativeHistoryProject: true });
+  const historyToggle = page.locator("#generator-creative-direction-history");
+  const projectScope = page.locator("#generator-creative-direction-project-scope");
+  await expect(projectScope).toHaveCount(0);
+  await historyToggle.focus();
+  await expect(historyToggle).toBeFocused();
+  await historyToggle.click();
+  await expect(projectScope).toBeVisible();
+  await expect(projectScope.locator("option")).toHaveText([
+    "Independent session",
+    "Creative history project",
+  ]);
+  await projectScope.selectOption("cd520000-0000-4000-8000-000000000001");
+  await expect(projectScope).toHaveValue("cd520000-0000-4000-8000-000000000001");
+  await historyToggle.click();
+  await expect(projectScope).toHaveCount(0);
+  expect(f.calls.filter((call) => call.name.includes("startGenerationJob"))).toHaveLength(0);
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(historyToggle).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth), {
+        message: `Horizontal overflow should be absent after the responsive layout settles at ${width}px`,
+      })
+      .toBeLessThanOrEqual(1);
+  }
 });
 test("ordinary accounts never see restricted V5 selector", async ({ page }) => {
   const f = await fixture(page, { generatorRole: "user" });
   await expect(page.locator("#generator-prompt-version")).toHaveCount(0);
+  await expect(page.locator("#generator-creative-direction-history")).toHaveCount(0);
   expect(f.calls.filter((c) => c.name.includes("startGenerationJob"))).toHaveLength(0);
 });
 

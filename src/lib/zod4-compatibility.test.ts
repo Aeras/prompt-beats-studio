@@ -10,6 +10,7 @@ import { songBlueprintSchema } from "./song-blueprint.shared";
 import { generatorInputSnapshotSchema } from "./generator-revision.shared";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "./ai-target-platforms";
 import { getSafeExternalUrl } from "./safe-external-url";
+import { creativeDirectionHistoryConfigSchema } from "./creative-direction-history.shared";
 import {
   compatibleUtcDateTimePattern,
   compatibleOffsetDateTimePattern,
@@ -56,6 +57,7 @@ const generation = evaluate<{ schema: z.ZodType<Record<string, unknown>> }>(
     songBlueprintSchema,
     generatorInputSnapshotSchema,
     atlasHandoffSchema,
+    creativeDirectionHistoryConfigSchema,
   },
 ).schema;
 const createUniverse = evaluate<{ schema: z.ZodType<Record<string, unknown>> }>(

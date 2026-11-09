@@ -1,6 +1,12 @@
 import { atlasHandoffSchema } from "./song-atlas.shared";
 import { promptBindingSchema } from "./prompt-registry.shared";
 import { generationOutput, parseSections } from "./generation-result.shared";
+import {
+  buildCreativeDirectionHistoryPrompt,
+  creativeDirectionHistoryConfigSchema,
+  parseCreativeDirectionModelResponse,
+  type CreativeDirection,
+} from "./creative-direction-history.shared";
 import { AI_DISABLED_MESSAGE } from "./global-ai-usage.server";
 import {
   safeErrorType,
@@ -67,6 +73,7 @@ const generateInput = z.object({
   operation: z.enum(["generate", "revision"]).default("generate"),
   revision: revisionJobContextSchema.nullish(),
   inputSnapshot: generatorInputSnapshotSchema.nullish(),
+  creativeDirectionHistory: creativeDirectionHistoryConfigSchema.optional(),
 });
 
 const savedInput = z.object({
@@ -133,6 +140,31 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
   .handler(async ({ context }) => usageFor(context.supabase, context.userId));
 
 const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
+
+const CREATIVE_DIRECTION_SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string, "creativeDirection": {"coreIdea": string, "narrator": string, "emotionalApproach": string, "hookIdentity": string, "sonicIdentity": string}}. The creativeDirection object is private internal metadata; never put it into title, tags, lyrics, or note. Describe the direction briefly in your own words, do not quote or reproduce lyrics, and use an empty string for an aspect that is not meaningful.`;
+
+function creativeDirectionSongSchema(schema: Record<string, unknown>) {
+  const properties = schema["properties"];
+  const required = schema["required"];
+  return {
+    ...schema,
+    properties: {
+      ...(properties && typeof properties === "object" ? properties : {}),
+      creativeDirection: {
+        type: "OBJECT",
+        properties: {
+          coreIdea: { type: "STRING", minLength: 1, maxLength: 140 },
+          narrator: { type: "STRING", maxLength: 140 },
+          emotionalApproach: { type: "STRING", maxLength: 140 },
+          hookIdentity: { type: "STRING", maxLength: 140 },
+          sonicIdentity: { type: "STRING", maxLength: 140 },
+        },
+        required: ["coreIdea", "narrator", "emotionalApproach", "hookIdentity", "sonicIdentity"],
+      },
+    },
+    required: [...(Array.isArray(required) ? required : []), "creativeDirection"],
+  };
+}
 
 export function buildSongBlueprintPrompt(
   blueprintInput: z.infer<typeof songBlueprintSchema>,
@@ -1952,8 +1984,24 @@ export async function runSongGeneration(
     remoteId: string,
   ) => void | Promise<void>,
   executionContext?: import("./ai-execution.server").ExecutionContext,
-): Promise<{ result: z.infer<typeof generationOutput>; provider: string; model: string }> {
+): Promise<{
+  result: z.infer<typeof generationOutput>;
+  provider: string;
+  model: string;
+  creativeDirection?: CreativeDirection;
+}> {
   assertGenerationRequestBudget(data);
+  if (
+    data.creativeDirectionHistory &&
+    (data.operation !== "generate" || data.inputSnapshot?.generatorMode !== "advanced")
+  ) {
+    throw new Error(
+      "Creative direction history is available only for Super Admin Advanced generation.",
+    );
+  }
+  if (data.creativeDirectionHistory && !executionContext?.creativeDirectionHistory) {
+    throw new Error("Creative direction history could not be loaded for this generation.");
+  }
   if (data.atlasOrigin) {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.rpc(
@@ -1988,13 +2036,21 @@ export async function runSongGeneration(
             : data.promptVersion === "v2" || data.promptVersion === "v3"
               ? buildAdvancedGeneratorPromptV2(buildPrompt(data))
               : buildPrompt(data);
+    const promptBase =
+      !isRevision && data.promptVersion === "v3" ? withV3MusicalPlanning(basePrompt) : basePrompt;
+    const prompt = data.creativeDirectionHistory
+      ? `${promptBase}\n\n${buildCreativeDirectionHistoryPrompt(executionContext?.creativeDirectionHistory ?? [])}\n\nINTERNAL METADATA OUTPUT RULE: Return the five JSON keys required by the system schema. The creativeDirection object is internal metadata only; the user-facing song result remains title, tags, lyrics and note.`
+      : promptBase;
     generated = await call({
-      system: isRevision ? REVISION_SYSTEM_PROMPT : SYSTEM_PROMPT,
+      system: isRevision
+        ? REVISION_SYSTEM_PROMPT
+        : data.creativeDirectionHistory
+          ? CREATIVE_DIRECTION_SYSTEM_PROMPT
+          : SYSTEM_PROMPT,
       ...(abortSignal ? { abortSignal } : {}),
       ...(onCancellationResult ? { onCancellationResult } : {}),
       ...(onRemoteOperationCreated ? { onRemoteOperationCreated } : {}),
-      prompt:
-        !isRevision && data.promptVersion === "v3" ? withV3MusicalPlanning(basePrompt) : basePrompt,
+      prompt,
       // Keep the historical 8K cap for all other providers/models. These two
       // OpenRouter models exhausted exactly 8192 completion tokens during V4
       // generation; allow extra headroom without a second paid request.
@@ -2003,7 +2059,9 @@ export async function runSongGeneration(
         (model === "aion-labs/aion-3.0" || model === "qwen/qwen3.8-max-0902")
           ? 16384
           : 8192,
-      schema: schemas.song,
+      schema: data.creativeDirectionHistory
+        ? creativeDirectionSongSchema(schemas.song)
+        : schemas.song,
       // MiMo-V2.6-Flash spent 8191/8192 output tokens on reasoning
       // and returned an empty response. For songwriting, disable thinking
       // explicitly rather than allocating more completion tokens.
@@ -2056,7 +2114,13 @@ export async function runSongGeneration(
     );
   }
 
-  const result = generationOutput.safeParse(parseSections(raw));
+  const privateResponse = data.creativeDirectionHistory
+    ? parseCreativeDirectionModelResponse(raw)
+    : null;
+  const creativeDirection: CreativeDirection | undefined = privateResponse?.creativeDirection;
+  const result = generationOutput.safeParse(
+    data.creativeDirectionHistory ? privateResponse?.result : parseSections(raw),
+  );
   if (!result.success) {
     // Record the shape of invalid responses without logging user lyrics or prompts.
     // This distinguishes malformed JSON from missing or oversized song fields.
@@ -2101,7 +2165,12 @@ export async function runSongGeneration(
 
   await flushUsage(userId, generationId, records);
   console.log(`[ai] generation served by model=${generated.model}`);
-  return { result: result.data, provider: generated.provider, model: generated.model };
+  return {
+    result: result.data,
+    provider: generated.provider,
+    model: generated.model,
+    ...(creativeDirection ? { creativeDirection } : {}),
+  };
 }
 
 export async function runLyricsSectionEdit(
