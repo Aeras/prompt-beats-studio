@@ -219,7 +219,7 @@ async function fixture(
     const url = new URL(route.request().url());
     const name = Buffer.from(url.pathname.split("/_serverFn/")[1] ?? "", "base64url").toString();
     let data: Record<string, unknown> = {};
-    if (route.request().method() === "POST") {
+    if (route.request().method() === "POST" && name.includes("MusicInspiration")) {
       const body: unknown = route.request().postDataJSON();
       const wire = body as { t?: WireNode; data?: Record<string, unknown> };
       data = wire.t
