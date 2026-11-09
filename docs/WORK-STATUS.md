@@ -1,3 +1,9 @@
+## 2026-11-09 — PR #526 workflow contract metadata — IN_PROGRESS
+
+- **Finding:** the first exact-HEAD Regression run stopped at the repository's Agent contract gate because the PR description used section labels that did not match the four required headings. This was a workflow metadata failure, not a source/test failure.
+- **Correction:** normalized the existing PR description headings to the required contract labels without changing its technical content. A fresh synchronize event is required so GitHub Actions receives the corrected PR event payload.
+- **Verification:** the next consolidated CI run must pass all three mandatory gates on one exact HEAD. No merge or production release.
+
 ## 2026-11-09 — PR #526 responsive viewport assertion — IN_PROGRESS
 
 - **Live state:** PR #526 remains open on `codex/creative-direction-history-20261108`, HEAD `1e13c32b08f0d50e6870fe6f5ed1e57e692e48c7`. Regression and Database Replay pass on this HEAD; Browser Quality fails only in the Project-scope selector viewport check at 320px.
