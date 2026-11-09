@@ -1085,6 +1085,44 @@ export type Database = {
           },
         ]
       }
+      generator_creative_direction_history: {
+        Row: {
+          created_at: string
+          direction: Json
+          id: string
+          job_id: string
+          scope_id: string
+          scope_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction: Json
+          id?: string
+          job_id: string
+          scope_id: string
+          scope_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: Json
+          id?: string
+          job_id?: string
+          scope_id?: string
+          scope_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generator_creative_direction_history_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generator_prompt_audit: {
         Row: {
           action: string
@@ -5011,6 +5049,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      complete_generation_with_creative_direction_history: {
+        Args: {
+          _attempts: number
+          _direction: Json
+          _job_id: string
+          _model: string
+          _provider: string
+          _result: Json
+          _user_id: string
+        }
+        Returns: boolean
+      }
       consume_admin_account_deletion: {
         Args: { _operation_id: string }
         Returns: string
@@ -5312,6 +5362,10 @@ export type Database = {
       }
       flush_ai_usage_outbox: { Args: { _limit?: number }; Returns: number }
       follow_creator: { Args: { _target_user_id: string }; Returns: Json }
+      generator_creative_direction_scopes_owned: {
+        Args: { _scopes: Json; _user_id: string }
+        Returns: boolean
+      }
       generator_prompt_catalog: { Args: never; Returns: Json }
       generator_prompt_for_job_internal: {
         Args: { _job_id: string; _user_id: string }
@@ -5541,6 +5595,10 @@ export type Database = {
       }
       read_ai_execution_internal: {
         Args: { _job_id: string; _quality_action_id: string; _user_id: string }
+        Returns: Json
+      }
+      read_generator_creative_direction_history: {
+        Args: { _scopes: Json; _user_id: string }
         Returns: Json
       }
       read_music_inspiration_usage_internal: {
