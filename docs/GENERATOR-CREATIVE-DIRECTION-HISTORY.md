@@ -4,7 +4,7 @@
 
 Η αρχική υλοποίηση του ιστορικού μουσικών κατευθύνσεων έχει συγχωνευθεί μέσω του PR [#526](https://github.com/Aeras/prompt-beats-studio/pull/526) στις 2026-11-09. Το merge commit είναι `8a94d15a0cd3bd871e12e6d933827d93dd4dda02` και τα τρία υποχρεωτικά gates πέρασαν σε αυτό: Regression `42593146368`, Database Replay `42593146342`, Browser Quality `42593146486`.
 
-Η επέκταση χωρητικότητας βρίσκεται στο PR [#527](https://github.com/Aeras/prompt-beats-studio/pull/527), ανοικτό και Draft. Αυξάνει τα όρια από 140/560 σε 200 χαρακτήρες ανά πεδίο / 1.000 συνολικά. Στο exact HEAD `679f5bbdd0c82a14cce70e9602a4bec1ab0544bd` πέρασαν και τα τρία gates: Regression `42622680043`, Database Replay `42622680125`, Browser Quality `42622680167`.
+Η επέκταση χωρητικότητας βρίσκεται στο PR [#527](https://github.com/Aeras/prompt-beats-studio/pull/527), ανοικτό και Draft. Αυξάνει τα όρια από 140/560 σε 200 χαρακτήρες ανά πεδίο / 1.000 συνολικά. Μετά την τελική συμφωνία του μητρώου και της τεχνικής σημείωσης, στο exact final HEAD `16936f857195def738c239dffd4096fff3175294` πέρασαν και τα τρία gates: Regression `42630301719`, Browser Quality `42630301567`, Database Replay `42630301781`.
 
 Οι migrations του ιστορικού και της επέκτασης δεν έχουν εφαρμοστεί στην παραγωγή. Δεν έχει γίνει production deployment ή publish· αυτά απαιτούν ξεχωριστή έγκριση.
 
@@ -41,7 +41,7 @@
 
 Το προηγούμενο Browser Quality failure `42578319581` ήταν fixture regression από αποκωδικοποίηση bodyless `_serverFn` POST requests. Η διόρθωση περιορίζει την ανάγνωση payload στα Music Inspiration POST routes και το επόμενο Browser Quality gate πέρασε. Η αλλαγή UUID παραμένει ανεξάρτητη SSR-safety βελτίωση.
 
-Οι τοπικές εκτελέσεις είχαν περιοριστεί από ελλείποντα εργαλεία/dependencies και το pnpm symlink EPERM· αυτό δεν αναιρεί τα επιτυχημένα υποχρεωτικά CI gates. Οι migrations του ιστορικού, του linked-scope guard και της επέκτασης χωρητικότητας δεν έχουν εφαρμοστεί στην παραγωγή. Το αρχικό PR #526 έχει συγχωνευθεί. Η επέκταση χωρητικότητας παραμένει στο ανοικτό Draft PR #527 μέχρι να ολοκληρωθεί το review. Κάθε production migration/deployment απαιτεί ξεχωριστή έγκριση.
+Οι τοπικές εκτελέσεις είχαν περιοριστεί από ελλείποντα εργαλεία/dependencies και το pnpm symlink EPERM· αυτό δεν αναιρεί τα επιτυχημένα υποχρεωτικά CI gates. Οι migrations του ιστορικού, του linked-scope guard και της επέκτασης χωρητικότητας δεν έχουν εφαρμοστεί στην παραγωγή. Το αρχικό PR #526 έχει συγχωνευθεί. Η επέκταση χωρητικότητας παραμένει στο ανοικτό PR #527 μέχρι να ολοκληρωθεί το review. Όλα τα υποχρεωτικά gates έχουν περάσει στο exact final HEAD. Κάθε production migration/deployment απαιτεί ξεχωριστή έγκριση.
 
 
 ## 2026-11-09 — Responsive viewport regression check
@@ -66,4 +66,4 @@ The follow-up to merged PR #526 increases the private direction metadata limits 
 
 ## 2026-11-09 — Επέκταση χωρητικότητας ιστορικού
 
-Το PR #527 αυξάνει τα ιδιωτικά πεδία κατεύθυνσης από 140 σε 200 χαρακτήρες ανά πεδίο και το συνολικό όριο από 560 σε 1.000. Τα Regression `42622680043`, Database Replay `42622680125` και Browser Quality `42622680167` πέρασαν στο ίδιο exact HEAD `679f5bbdd0c82a14cce70e9602a4bec1ab0544bd`. Το PR παραμένει ανοικτό και Draft. Η νέα migration δεν έχει εφαρμοστεί στην παραγωγή.
+Το PR #527 αυξάνει τα ιδιωτικά πεδία κατεύθυνσης από 140 σε 200 χαρακτήρες ανά πεδίο και το συνολικό όριο από 560 σε 1.000. Τα Regression `42622680043`, Database Replay `42622680125` και Browser Quality `42622680167` πέρασαν στο ίδιο exact HEAD `679f5bbdd0c82a14cce70e9602a4bec1ab0544bd`. Το PR παραμένει ανοικτό. Η νέα migration δεν έχει εφαρμοστεί στην παραγωγή.
