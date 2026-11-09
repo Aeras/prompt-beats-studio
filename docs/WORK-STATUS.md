@@ -1,3 +1,9 @@
+## 2026-11-09 — PR #526 changed-source lint correction — IN_PROGRESS
+
+- **Evidence:** Regression run on `4d9b82fba5797fb518aca8a37c8a1327c4ef314a` passed the full Bun suite (2,126 passed / 1 skipped / 0 failed) and the Agent contract gate, then stopped at changed-source ESLint because Prettier required a different wrapping for the two new Playwright `.poll()` assertions.
+- **Correction prepared:** normalize both assertions to the repository's Prettier layout; no behavioral change to the strict overflow condition.
+- **Next verification:** one fresh consolidated set of Regression, Browser Quality and Database Replay on the final exact HEAD. The Browser Quality and Database Replay runs for the current intermediate HEAD are still in progress; their results will be inspected before final push.
+
 ## 2026-11-09 — PR #526 workflow contract metadata — IN_PROGRESS
 
 - **Finding:** the first exact-HEAD Regression run stopped at the repository's Agent contract gate because the PR description used section labels that did not match the four required headings. This was a workflow metadata failure, not a source/test failure.

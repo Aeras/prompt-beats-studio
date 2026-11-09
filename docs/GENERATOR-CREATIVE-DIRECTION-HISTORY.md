@@ -55,3 +55,8 @@ The Browser Quality failure on PR #526 occurred after switching the viewport to 
 ## 2026-11-09 — PR workflow contract metadata
 
 The initial Regression run on the first correction commit stopped at the Agent contract gate because the existing PR description headings did not match the required repository labels. The PR description has been normalized without changing its technical content. Fresh all-gate verification is required on the next synchronized PR HEAD.
+
+
+## 2026-11-09 — Changed-source lint correction
+
+The Regression gate passed the full Bun suite (2,126 passed, 1 skipped, 0 failed) and the Agent contract gate, then identified Prettier-only formatting differences in the two new Playwright poll assertions. Their formatting is normalized without changing the overflow check. Fresh all-gate verification is pending.
