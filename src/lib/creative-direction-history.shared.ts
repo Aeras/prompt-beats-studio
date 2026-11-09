@@ -33,11 +33,11 @@ export const creativeDirectionHistoryConfigSchema = z
     }
   });
 
-const directionField = z.string().trim().max(140);
+const directionField = z.string().trim().max(200);
 
 export const creativeDirectionSchema = z
   .object({
-    coreIdea: z.string().trim().min(1).max(140),
+    coreIdea: z.string().trim().min(1).max(200),
     narrator: directionField,
     emotionalApproach: directionField,
     hookIdentity: directionField,
@@ -49,7 +49,7 @@ export const creativeDirectionSchema = z
     if (values.some((value) => /[\r\n]/u.test(value))) {
       ctx.addIssue({ code: "custom", message: "Creative direction fields must be single-line." });
     }
-    if (values.reduce((sum, value) => sum + value.length, 0) > 560) {
+    if (values.reduce((sum, value) => sum + value.length, 0) > 1000) {
       ctx.addIssue({ code: "custom", message: "Creative direction is too long." });
     }
   });
