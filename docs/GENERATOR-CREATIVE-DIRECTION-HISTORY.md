@@ -60,3 +60,8 @@ The initial Regression run on the first correction commit stopped at the Agent c
 ## 2026-11-09 — Changed-source lint correction
 
 The Regression gate passed the full Bun suite (2,126 passed, 1 skipped, 0 failed) and the Agent contract gate, then identified Prettier-only formatting differences in the two new Playwright poll assertions. Their formatting is normalized without changing the overflow check. Fresh all-gate verification is pending.
+
+
+## 2026-11-09 — Creative-direction history capacity expansion
+
+The follow-up to merged PR #526 increases the private direction metadata limits from 140 to 200 characters per field and from 560 to 1,000 characters combined. The five-field contract, single-line restriction, lyric-copy rejection, private storage, 15-entry retention, scopes and public four-field song result remain unchanged. A forward-only migration updates the database CHECK constraint; application and SQL boundary tests cover the new limits. The change is in progress pending exact-HEAD Regression, Browser Quality and Database Replay. No production migration or deployment is authorized by this change.
