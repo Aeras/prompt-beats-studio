@@ -1187,7 +1187,7 @@ async function callXai(model: string, call: ModelCall): Promise<ModelResult> {
   return { text, stopReason, usage, provider: "xai", model };
 }
 
-function toOpenAiJsonSchema(value: unknown): unknown {
+export function toOpenAiJsonSchema(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(toOpenAiJsonSchema);
   if (!value || typeof value !== "object") return value;
 

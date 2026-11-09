@@ -46,6 +46,14 @@ function safeErrorMessage(err: unknown): string {
   if (raw === "The AI provider authentication was rejected. Please contact support.") return raw;
   if (raw === "The account is no longer available.") return raw;
   if (raw === "This account is not allowed to use AI services.") return raw;
+  if (
+    raw === "Creative direction history is no longer authorized for this generation." ||
+    raw === "Creative direction history could not be retrieved safely." ||
+    raw === "The AI did not return valid internal creative direction metadata." ||
+    raw === "The generation could not be finalized with its creative direction."
+  ) {
+    return raw;
+  }
   return "The AI provider is temporarily unavailable. Please try again later.";
 }
 

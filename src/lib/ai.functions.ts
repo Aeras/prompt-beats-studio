@@ -141,7 +141,7 @@ export const getGenerationUsage = createServerFn({ method: "GET" })
 
 const SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string}.`;
 
-const CREATIVE_DIRECTION_SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string, "creativeDirection": {"coreIdea": string, "narrator": string, "emotionalApproach": string, "hookIdentity": string, "sonicIdentity": string}}. The creativeDirection object is private internal metadata; never put it into title, tags, lyrics, or note. Describe the direction briefly in your own words, do not quote or reproduce lyrics, and use an empty string for an aspect that is not meaningful.`;
+const CREATIVE_DIRECTION_SYSTEM_PROMPT = `You are a top-tier music producer and expert in composition and orchestration. You output STRICT JSON ONLY — never markdown fences, never conversational text, never anything outside the JSON object. The response must parse with JSON.parse and contain exactly these keys: {"title": string, "tags": string, "lyrics": string, "note": string, "creativeDirection": {"coreIdea": string, "narrator": string, "emotionalApproach": string, "hookIdentity": string, "sonicIdentity": string}}. The creativeDirection object is private internal metadata; never put it into title, tags, lyrics, or note. Describe the direction briefly in your own words, do not quote or reproduce lyrics, and use an empty string for an aspect that is not meaningful. Each string field in creativeDirection must be a single line without carriage returns or newlines, must not exceed 200 characters, and the combined creativeDirection text must remain under 1,000 characters.`;
 
 function creativeDirectionSongSchema(schema: Record<string, unknown>) {
   const properties = schema["properties"];
@@ -153,11 +153,11 @@ function creativeDirectionSongSchema(schema: Record<string, unknown>) {
       creativeDirection: {
         type: "OBJECT",
         properties: {
-          coreIdea: { type: "STRING", minLength: 1, maxLength: 140 },
-          narrator: { type: "STRING", maxLength: 140 },
-          emotionalApproach: { type: "STRING", maxLength: 140 },
-          hookIdentity: { type: "STRING", maxLength: 140 },
-          sonicIdentity: { type: "STRING", maxLength: 140 },
+          coreIdea: { type: "STRING" },
+          narrator: { type: "STRING" },
+          emotionalApproach: { type: "STRING" },
+          hookIdentity: { type: "STRING" },
+          sonicIdentity: { type: "STRING" },
         },
         required: ["coreIdea", "narrator", "emotionalApproach", "hookIdentity", "sonicIdentity"],
       },

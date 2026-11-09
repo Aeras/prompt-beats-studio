@@ -44,6 +44,10 @@ DECLARE
   v_linked_project_only uuid := 'cd550000-0000-4000-8000-000000000005';
   v_project_two_job uuid := 'cd550000-0000-4000-8000-000000000006';
   v_session_two_job uuid := 'cd550000-0000-4000-8000-000000000007';
+  v_capacity_job uuid := 'cd550000-0000-4000-8000-000000000008';
+  v_field_overflow_job uuid := 'cd550000-0000-4000-8000-000000000009';
+  v_total_overflow_job uuid := 'cd550000-0000-4000-8000-000000000010';
+  v_multiline_job uuid := 'cd550000-0000-4000-8000-000000000011';
   v_job_id uuid;
   v_result jsonb := '{"title":"Song","tags":"Indie","lyrics":"Full lyrics stay in the job result only","note":"Production note"}'::jsonb;
   v_direction jsonb := '{"coreIdea":"A traveler learning to leave a familiar city","narrator":"First person, reflective","emotionalApproach":"Hope held beside grief","hookIdentity":"A rising phrase about the open road","sonicIdentity":"Warm folk guitar with restrained percussion"}'::jsonb;
@@ -235,6 +239,77 @@ BEGIN
   EXCEPTION WHEN check_violation THEN v_blocked := true;
   END;
   IF NOT v_blocked THEN RAISE EXCEPTION 'database accepted a direction field over 200 characters'; END IF;
+
+  -- Verify complete_generation_with_creative_direction_history accepts exact 200/1000 envelope.
+  INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload)
+  VALUES(v_capacity_job,v_owner,gen_random_uuid(),'processing',jsonb_build_object(
+    'operation','generate','inputSnapshot',jsonb_build_object('generatorMode','advanced'),
+    'creativeDirectionHistory',jsonb_build_object('version',1,'scopes',jsonb_build_array(
+      jsonb_build_object('type','session','id',v_session::text)))));
+  IF public.complete_generation_with_creative_direction_history(
+       v_capacity_job,v_owner,v_result,
+       jsonb_build_object(
+         'coreIdea',repeat('a',200),'narrator',repeat('b',200),
+         'emotionalApproach',repeat('c',200),'hookIdentity',repeat('d',200),
+         'sonicIdentity',repeat('e',200)),
+       'gemini','gemini-4-argon',1) IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'completion function rejected 200-char-per-field / 1000-char aggregate direction';
+  END IF;
+
+  -- Verify completion function rejects field exceeding 200 characters.
+  INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload)
+  VALUES(v_field_overflow_job,v_owner,gen_random_uuid(),'processing',jsonb_build_object(
+    'operation','generate','inputSnapshot',jsonb_build_object('generatorMode','advanced'),
+    'creativeDirectionHistory',jsonb_build_object('version',1,'scopes',jsonb_build_array(
+      jsonb_build_object('type','session','id',v_session::text)))));
+  v_blocked := false;
+  BEGIN
+    PERFORM public.complete_generation_with_creative_direction_history(
+      v_field_overflow_job,v_owner,v_result,
+      jsonb_build_object(
+        'coreIdea',repeat('a',201),'narrator','b','emotionalApproach','c',
+        'hookIdentity','d','sonicIdentity','e'),
+      'gemini','gemini-4-argon',1);
+  EXCEPTION WHEN OTHERS THEN v_blocked := true;
+  END;
+  IF NOT v_blocked THEN RAISE EXCEPTION 'completion function accepted direction field over 200 characters'; END IF;
+
+  -- Verify completion function rejects aggregate length exceeding 1000 characters.
+  INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload)
+  VALUES(v_total_overflow_job,v_owner,gen_random_uuid(),'processing',jsonb_build_object(
+    'operation','generate','inputSnapshot',jsonb_build_object('generatorMode','advanced'),
+    'creativeDirectionHistory',jsonb_build_object('version',1,'scopes',jsonb_build_array(
+      jsonb_build_object('type','session','id',v_session::text)))));
+  v_blocked := false;
+  BEGIN
+    PERFORM public.complete_generation_with_creative_direction_history(
+      v_total_overflow_job,v_owner,v_result,
+      jsonb_build_object(
+        'coreIdea',repeat('a',200),'narrator',repeat('b',200),
+        'emotionalApproach',repeat('c',200),'hookIdentity',repeat('d',200),
+        'sonicIdentity',repeat('e',201)),
+      'gemini','gemini-4-argon',1);
+  EXCEPTION WHEN OTHERS THEN v_blocked := true;
+  END;
+  IF NOT v_blocked THEN RAISE EXCEPTION 'completion function accepted aggregate direction over 1000 characters'; END IF;
+
+  -- Verify completion function rejects multiline direction with newlines.
+  INSERT INTO public.ai_generation_jobs(id,user_id,idempotency_key,status,input_payload)
+  VALUES(v_multiline_job,v_owner,gen_random_uuid(),'processing',jsonb_build_object(
+    'operation','generate','inputSnapshot',jsonb_build_object('generatorMode','advanced'),
+    'creativeDirectionHistory',jsonb_build_object('version',1,'scopes',jsonb_build_array(
+      jsonb_build_object('type','session','id',v_session::text)))));
+  v_blocked := false;
+  BEGIN
+    PERFORM public.complete_generation_with_creative_direction_history(
+      v_multiline_job,v_owner,v_result,
+      jsonb_build_object(
+        'coreIdea','line 1' || chr(10) || 'line 2','narrator','b','emotionalApproach','c',
+        'hookIdentity','d','sonicIdentity','e'),
+      'gemini','gemini-4-argon',1);
+  EXCEPTION WHEN OTHERS THEN v_blocked := true;
+  END;
+  IF NOT v_blocked THEN RAISE EXCEPTION 'completion function accepted multiline direction'; END IF;
 
   IF (SELECT count(*) FROM public.generator_creative_direction_history
       WHERE user_id=v_owner AND scope_type='project' AND scope_id=v_project) <> 15 THEN

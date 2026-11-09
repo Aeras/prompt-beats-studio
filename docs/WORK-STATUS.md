@@ -1,3 +1,20 @@
+## 2026-11-09 — Creative-direction history completion alignment and error transparency — IN_PROGRESS
+
+- **Baseline:** post-#527 merged `main` at `57cab88c0b8e159e62aad85491790a89070b6a79`. Work isolated on `fix/creative-direction-history-completion-alignment`.
+- **Confirmed defects:**
+  1. Database completion RPC `public.complete_generation_with_creative_direction_history` retained 140/560 bounds, causing database exceptions on valid 141–200 character entries.
+  2. `creativeDirectionSongSchema` retained unsupported `minLength: 1` and `maxLength: 140` keywords, breaking OpenAI and xAI structured outputs under strict schema mode with HTTP 400.
+  3. Worker `safeErrorMessage` masked finalization and metadata validation failures as deceptive `The AI provider is temporarily unavailable. Please try again later.` errors.
+  4. `CREATIVE_DIRECTION_SYSTEM_PROMPT` lacked explicit single-line (no CR/LF) and 200-character constraints.
+- **Implementation:**
+  1. Forward-only migration `20261109233000_align_generator_creative_direction_completion_function.sql` synchronizes `complete_generation_with_creative_direction_history` to 200 characters per field and 1,000 aggregate, preserving all authorization, locking, retention, and four-field result checks.
+  2. `creativeDirectionSongSchema` properties simplified to canonical `{ type: "STRING" }`, ensuring compatibility across Gemini, OpenAI, xAI, and OpenRouter without unsupported keywords.
+  3. `CREATIVE_DIRECTION_SYSTEM_PROMPT` updated with explicit single-line and 200-character bounds.
+  4. `safeErrorMessage` explicitly allows creative direction and finalization errors through without masking as provider downtime.
+  5. SQL replay test suite extended with 200/1,000 success and 201/1,001/multiline rejections on the RPC. Unit tests verify schema compatibility, OpenAI JSON schema conversion, multiline rejection, and worker error classification.
+- **Local verification:** strict TypeScript PASS (`bunx tsc --noEmit`); ESLint & Prettier PASS; full Bun test suite 2,131 PASS / 1 SKIP / 0 FAIL (34,688 assertions across 240 files); production `vite build` PASS.
+- **Release boundary:** local changes only; no remote migration applied, no remote push or PR mutation without AGENTS §7 approval.
+
 ## 2026-11-09 — Creative-direction history capacity expansion — IN_PROGRESS
 
 - **Baseline:** PR #526 is merged; its merge commit and the live `main` baseline are `8a94d15a0cd3bd871e12e6d933827d93dd4dda02`. This is a focused follow-up, not a reopening of PR #526.
@@ -16,6 +33,7 @@
 - **Remaining release work:** the code is merged, but the two feature migrations have not been applied to production. Production migration, deployment and post-release verification remain separate release steps; this entry is not marked CLOSED.
 
 ## 2026-11-08 — Inter–Como: stuck "processing" run and page-level fixture proof — CODE_COMPLETE_RELEASE_PENDING
+
 - **Evidence:** run `eb50711f` (13:08 UTC) stayed `processing` after its worker was lost, so "Clear all" skipped it; run `06a54a3e` (13:40 UTC) failed `incomplete_coverage` with 37/39 candidates `fixture_unverified`.
 - **Root cause:** fixture proof required date + competition inside one team-heading section; real previews put them near the title and the picks after H2H/stat blocks.
 - **Fix:** added page-level proof (directed pair line with exact fixture date in its own card, target competition on page, quote outside H2H/past-results/comments/other-fixture blocks, no contradicting date/weekday/venue near the quote). History and clearing mark runs still `processing` after 15 minutes as `failed`/`interrupted`.

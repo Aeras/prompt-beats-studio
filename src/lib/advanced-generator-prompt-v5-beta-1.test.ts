@@ -599,7 +599,7 @@ test("Generator admission persists resolved Project+Universe scopes through work
   ).toHaveLength(1);
 });
 
-function workerFixture(input: any, allowed = true, roleError = false) {
+function workerFixture(input: any, allowed = true, roleError = false, completionFails = false) {
   let state = "pending",
     dispatches = 0;
   const patches: any[] = [];
@@ -644,6 +644,7 @@ function workerFixture(input: any, allowed = true, roleError = false) {
         };
       }
       if (name === "complete_generation_with_creative_direction_history") {
+        if (completionFails) return { data: null, error: { message: "constraint error" } };
         state = "completed";
         patches.push({ status: "completed", result: args._result });
         return { data: true, error: null };
@@ -789,6 +790,15 @@ test("opted-in worker reads private history once and atomically saves metadata w
   expect(complete?.args._direction.coreIdea).toBe("A traveler leaving at dawn");
   expect(Object.keys(complete!.args._result)).toEqual(["title", "tags", "lyrics", "note"]);
   expect(worker.patches.some((patch) => patch.result?.creativeDirection)).toBe(false);
+
+  const failedWorker = workerFixture(input, true, false, true);
+  await failedWorker.run();
+  const failedPatch = failedWorker.patches.find((p) => p.status === "failed");
+  expect(failedPatch).toBeDefined();
+  expect(failedPatch.error).toBe(
+    "The generation could not be finalized with its creative direction.",
+  );
+  expect(failedPatch.error).not.toContain("provider is temporarily unavailable");
 });
 
 test("registry-pinned production defaults run without experimental privilege while unavailable bindings fail before provider marking", async () => {
