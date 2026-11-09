@@ -1612,9 +1612,12 @@ test("V5 research candidate selector follows V4, uses server default, and never 
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await expect(historyToggle).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
-      true,
-    );
+    await expect
+      .poll(
+        () => page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+        { message: `Horizontal overflow should be absent after the responsive layout settles at ${width}px` },
+      )
+      .toBeLessThanOrEqual(1);
   }
 });
 
@@ -1641,9 +1644,12 @@ test("creative history Project scope selector is optional, opt-in and keyboard a
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await expect(historyToggle).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
-      true,
-    );
+    await expect
+      .poll(
+        () => page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+        { message: `Horizontal overflow should be absent after the responsive layout settles at ${width}px` },
+      )
+      .toBeLessThanOrEqual(1);
   }
 });
 test("ordinary accounts never see restricted V5 selector", async ({ page }) => {

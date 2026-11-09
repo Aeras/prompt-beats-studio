@@ -45,3 +45,8 @@
 Το προηγούμενο Browser Quality failure `42578319581` ήταν fixture regression από αποκωδικοποίηση bodyless `_serverFn` POST requests. Η διόρθωση περιορίζει την ανάγνωση payload στα Music Inspiration POST routes και το επόμενο Browser Quality gate πέρασε. Η αλλαγή UUID παραμένει ανεξάρτητη SSR-safety βελτίωση.
 
 Οι τοπικές εκτελέσεις είχαν περιοριστεί από ελλείποντα εργαλεία/dependencies και το pnpm symlink EPERM· αυτό δεν αναιρεί τα επιτυχημένα υποχρεωτικά CI gates. Οι δύο forward-only migrations δεν έχουν εφαρμοστεί στην παραγωγή. Το PR παραμένει ανοικτό μέχρι να ολοκληρωθεί το απαιτούμενο review και να ληφθεί ξεχωριστή απόφαση για merge/release.
+
+
+## 2026-11-09 — Responsive viewport regression check
+
+The Browser Quality failure on PR #526 occurred after switching the viewport to 320px and immediately reading the document's scroll width. The shared AppShell applies a 200ms responsive padding transition. Both responsive checks now poll the real overflow measurement until it settles, while retaining the strict no-horizontal-overflow condition. Persistent overflow remains a failure; the test does not hide or clip content. Fresh CI verification on the resulting PR HEAD is pending.

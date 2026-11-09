@@ -1,3 +1,10 @@
+## 2026-11-09 — PR #526 responsive viewport assertion — IN_PROGRESS
+
+- **Live state:** PR #526 remains open on `codex/creative-direction-history-20261108`, HEAD `1e13c32b08f0d50e6870fe6f5ed1e57e692e48c7`. Regression and Database Replay pass on this HEAD; Browser Quality fails only in the Project-scope selector viewport check at 320px.
+- **Finding:** the test changes the viewport and reads `scrollWidth` immediately. The shared AppShell has a 200ms responsive padding transition, so the assertion can observe an intermediate layout. The same immediate assertion appears in the neighboring history-toggle viewport test.
+- **Prepared correction:** both checks poll the actual document overflow until the responsive layout settles. The assertion remains strict (`scrollWidth - innerWidth <= 1`); persistent overflow still fails with a viewport-specific diagnostic. No application CSS is hidden or clipped to mask overflow.
+- **Verification:** pending one consolidated PR update and fresh Regression, Browser Quality and Database Replay gates on the exact resulting HEAD. No branch update or CI run has been triggered for this correction.
+
 # PromptBeats — Work Status (authoritative workflow ledger)
 
 ## 2026-11-08 — Generator creative-direction history — IN_PROGRESS
