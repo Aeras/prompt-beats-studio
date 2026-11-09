@@ -2,7 +2,14 @@
 
 ## Κατάσταση
 
-Η εργασία συνεχίζεται στο PR #526 (`codex/creative-direction-history-20261108`). Στο προηγούμενο exact HEAD, Regression (`42578319531`) και Database Replay (`42578319529`) πέρασαν. Το Browser Quality (`42578319581`) απέτυχε με 189 αποτυχίες, 327 επιτυχίες και 3 skips. Η κύρια εξαίρεση ήταν `TypeError: Cannot read properties of null (reading 't')` στο `e2e/music-inspiration.pw.ts`: ο fixture handler διάβαζε το σώμα όλων των POST κλήσεων `_serverFn`, ενώ ορισμένες bodyless κλήσεις επιστρέφουν `null` από `postDataJSON()`. Η αποτυχία του handler προκαλούσε αλυσιδωτές αποτυχίες στα tests. Η διόρθωση περιορίζει την αποκωδικοποίηση σε POST routes του Music Inspiration, όπως ακριβώς στο `main`· το `listPromptProjects` δεν χρειάζεται request data. Η ξεχωριστή μεταφορά του UUID generation σε browser-only effect παραμένει ορθή βελτίωση SSR safety, αλλά δεν ήταν η αιτία που τεκμηρίωσαν τα logs. Τα τρία υποχρεωτικά gates πρέπει να περάσουν ξανά στο νέο exact HEAD. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
+Η υλοποίηση βρίσκεται στο PR #526, branch `codex/creative-direction-history-20261108`. Το προηγούμενο Browser Quality failure (`42578319581`, 189 failures) διορθώθηκε: ο fixture handler αποκωδικοποιεί πλέον μόνο POST routes του Music Inspiration, επειδή ορισμένα `_serverFn` requests δεν έχουν body. Η μεταφορά UUID σε browser-only effect είναι ανεξάρτητη βελτίωση SSR safety, όχι η αιτία της αποτυχίας.
+
+Στο επαληθευμένο HEAD `ed6012a5ac574f2375f0b489b942089c202c9170` πέρασαν και τα τρία υποχρεωτικά gates:
+- Regression `42581310645` — PASS.
+- Database Replay `42581310669` — PASS.
+- Browser Quality `42581310640` — PASS.
+
+Το PR παραμένει ανοικτό και δεν υπάρχει καταγεγραμμένη ανεξάρτητη έγκριση review. Δεν έχει γίνει production migration, merge, deployment, AI κλήση ή publish.
 
 ## Συμπεριφορά
 
@@ -30,4 +37,11 @@
 
 ## Επαλήθευση
 
-Τα offline tests καλύπτουν σχεδιαστικά το μοντέλο δεδομένων, το prompt context, το τετραπεδίο αποτέλεσμα, το Super Admin admission, τη διαδρομή durable job → worker, τα handoffs, την απομόνωση scopes, αποτυχία/ακύρωση, retention 15 και concurrency. Σε αυτή τη συνέχιση δεν μπόρεσαν να εκτελεστούν, επειδή λείπουν Bun και dependencies. Το `git diff --check` πέρασε. TypeScript, ESLint, Prettier, build και Playwright μπλοκαρίστηκαν πριν από την εκτέλεση: το `pnpm` απέτυχε να δημιουργήσει το απαιτούμενο symlink στο store (`EPERM`). Το Supabase CLI και το `psql` λείπουν, ενώ το Docker daemon δεν είναι διαθέσιμο· έτσι Database Replay, migration validation και concurrency SQL tests παραμένουν μπλοκαρισμένα. Η δημιουργία migration μέσω `supabase migration new` επίσης δεν ήταν δυνατή: το CLI λείπει και το npm registry επέστρεψε `ENOTFOUND`. Το forward-only migration γράφτηκε τοπικά και δεν εφαρμόστηκε. Αναλυτικά αποτελέσματα και ακριβείς εντολές καταγράφονται στο `docs/WORK-STATUS.md`. Η εργασία παραμένει `IN_PROGRESS`.
+Τα υποχρεωτικά CI gates πέρασαν στο exact HEAD `ed6012a5ac574f2375f0b489b942089c202c9170`:
+- **Regression** [42581310645](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310645): PASS — πλήρες Bun suite, changed-source lint, build και strict TypeScript.
+- **Database Replay** [42581310669](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310669): PASS — replay όλων των migrations σε φρέσκια τοπική βάση και έλεγχοι του creative-direction-history SQL test.
+- **Browser Quality** [42581310640](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310640): PASS.
+
+Το προηγούμενο Browser Quality failure `42578319581` ήταν fixture regression από αποκωδικοποίηση bodyless `_serverFn` POST requests. Η διόρθωση περιορίζει την ανάγνωση payload στα Music Inspiration POST routes και το επόμενο Browser Quality gate πέρασε. Η αλλαγή UUID παραμένει ανεξάρτητη SSR-safety βελτίωση.
+
+Οι τοπικές εκτελέσεις είχαν περιοριστεί από ελλείποντα εργαλεία/dependencies και το pnpm symlink EPERM· αυτό δεν αναιρεί τα επιτυχημένα υποχρεωτικά CI gates. Οι δύο forward-only migrations δεν έχουν εφαρμοστεί στην παραγωγή. Το PR παραμένει ανοικτό μέχρι να ολοκληρωθεί το απαιτούμενο review και να ληφθεί ξεχωριστή απόφαση για merge/release.
