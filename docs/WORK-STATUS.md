@@ -1,3 +1,11 @@
+## 2026-11-09 — Creative-direction history capacity expansion — IN_PROGRESS
+
+- **Baseline:** PR #526 is merged; the live main baseline for this follow-up is 8a94d15a0cd3bd871e12e6d933827d93dd4dda02. This task is a focused follow-up, not a reopening of the completed PR.
+- **Finding:** the shared Zod contract and production table CHECK both enforced 140 characters per field / 560 total. This prevented longer but otherwise valid direction summaries from being retained.
+- **Implementation in this PR:** increase each of the five fields to 200 characters and the combined limit to 1,000; keep strict field names, single-line validation, lyric-copy rejection, private storage, history count, and prompt behavior unchanged. Add a forward-only migration replacing the database CHECK, plus shared-schema and SQL boundary tests.
+- **Acceptance:** Regression, Browser Quality and Database Replay all PASS on the exact final PR HEAD; verify existing rows remain valid and access controls are unchanged. No production migration, merge, publish, provider call or deployment is included in this approval.
+- **Status:** code and exact-head CI pending. Keep IN_PROGRESS until all gates and review are complete; production migration and post-release smoke verification remain separate.
+
 ## 2026-11-09 — PR #526 changed-source lint correction — IN_PROGRESS
 
 - **Evidence:** Regression run on `4d9b82fba5797fb518aca8a37c8a1327c4ef314a` passed the full Bun suite (2,126 passed / 1 skipped / 0 failed) and the Agent contract gate, then stopped at changed-source ESLint because Prettier required a different wrapping for the two new Playwright `.poll()` assertions.
