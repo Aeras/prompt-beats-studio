@@ -67,3 +67,10 @@ The follow-up to merged PR #526 increases the private direction metadata limits 
 ## 2026-11-09 — Ευθυγράμμιση συνάρτησης ολοκλήρωσης και συμβατότητα AI παρόχων
 
 Η follow-up διόρθωση συγχρονίζει τη stored procedure `public.complete_generation_with_creative_direction_history` με τα νέα όρια 200 χαρακτήρων ανά πεδίο / 1.000 συνολικά μέσω της νέας forward-only migration `20261109233000_align_generator_creative_direction_completion_function.sql`. Επιπλέον, το `creativeDirectionSongSchema` απλοποιείται σε `{ type: "STRING" }` χωρίς μη υποστηριζόμενα `minLength`/`maxLength`, διασφαλίζοντας πλήρη συμβατότητα με Gemini, OpenAI Structured Outputs και xAI. Το `CREATIVE_DIRECTION_SYSTEM_PROMPT` καθορίζει ρητά μονογραμμικά πεδία έως 200 χαρακτήρες, και το `safeErrorMessage` του worker διαχωρίζει τα σφάλματα αποθήκευσης/επικύρωσης από πραγματικές αποτυχίες παρόχου.
+
+Τα υποχρεωτικά CI gates πέρασαν επιτυχώς στο exact HEAD `85802bd6daf323f704e855a421f3eb82cf828be6`:
+- **Regression** [42730509728](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509728): PASS
+- **Database Replay** [42730509937](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509937): PASS
+- **Browser Quality** [42730509872](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509872): PASS
+
+Το PR [#528](https://github.com/Aeras/prompt-beats-studio/pull/528) παραμένει ανοικτό ως Draft. Η νέα migration δεν έχει εφαρμοστεί στην παραγωγή και απαιτεί ξεχωριστή έγκριση.

@@ -13,7 +13,11 @@
   4. `safeErrorMessage` explicitly allows creative direction and finalization errors through without masking as provider downtime.
   5. SQL replay test suite extended with 200/1,000 success and 201/1,001/multiline rejections on the RPC. Unit tests verify schema compatibility, OpenAI JSON schema conversion, multiline rejection, and worker error classification.
 - **Local verification:** strict TypeScript PASS (`bunx tsc --noEmit`); ESLint & Prettier PASS; full Bun test suite 2,131 PASS / 1 SKIP / 0 FAIL (34,688 assertions across 240 files); production `vite build` PASS.
-- **Release boundary:** local changes only; no remote migration applied, no remote push or PR mutation without AGENTS §7 approval.
+- **Exact-final-HEAD verification:** branch successfully pushed and Draft PR [#528](https://github.com/Aeras/prompt-beats-studio/pull/528) opened. All three mandatory CI gates passed on exact HEAD `85802bd6daf323f704e855a421f3eb82cf828be6`:
+  - Regression Gate: **PASS** ([Run 42730509728](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509728))
+  - Database Replay Gate: **PASS** ([Run 42730509937](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509937))
+  - Browser Quality Gate: **PASS** ([Run 42730509872](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509872))
+- **Status & Release boundary:** PR [#528](https://github.com/Aeras/prompt-beats-studio/pull/528) remains open and Draft, with all mandatory gates passing and review outstanding. The forward-only migration has not been applied to production; production migration and deployment require separate approval.
 
 ## 2026-11-09 — Creative-direction history capacity expansion — IN_PROGRESS
 
