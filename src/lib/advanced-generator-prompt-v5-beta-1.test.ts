@@ -14,6 +14,7 @@ import * as platforms from "./ai-target-platforms";
 import { generationOutput, parseSections } from "./generation-result.shared";
 import * as registry from "./prompt-registry.shared";
 import * as creativeHistory from "./creative-direction-history.shared";
+import * as languageIntelligence from "./language-intelligence";
 import {
   buildAdvancedGeneratorPromptV4Beta,
   normalizeV4Platform,
@@ -87,6 +88,7 @@ const contractGlobals = {
   ...platforms,
   ...registry,
   ...creativeHistory,
+  ...languageIntelligence,
 };
 function generationSchema() {
   return evaluate(
@@ -196,6 +198,7 @@ test("actual dispatch selects V5 independently, preserving V1–V4 and revision 
   const calls: any[] = [];
   let usage = 0;
   const run = evaluate(codeParts("src/lib/ai.functions.ts", ["runSongGeneration"]), {
+    ...languageIntelligence,
     assertGenerationRequestBudget: limits.assertGenerationRequestBudget,
     activeCaller: async () => ({
       model: "offline",
@@ -264,6 +267,7 @@ test("opted-in history uses the same single model call and returns only four son
   const run = evaluate(
     codeParts("src/lib/ai.functions.ts", ["runSongGeneration", "creativeDirectionSongSchema"]),
     {
+      ...languageIntelligence,
       assertGenerationRequestBudget: limits.assertGenerationRequestBudget,
       activeCaller: async () => ({
         model: "offline",
@@ -372,6 +376,7 @@ function admissionFixture() {
       if (name.includes("lyrics-sections")) return sections;
       if (name.includes("song-blueprint.shared")) return blueprint;
       if (name.includes("creative-direction-history.shared")) return creativeHistory;
+      if (name.includes("language-intelligence")) return languageIntelligence;
       if (name.includes("ai-provider.server"))
         return { getModelForUser: async () => "offline-model" };
       throw Error("Unexpected admission import " + name);
@@ -695,6 +700,7 @@ function workerFixture(input: any, allowed = true, roleError = false, completion
       assertGenerationRequestBudget: limits.assertGenerationRequestBudget,
       AI_DISABLED_MESSAGE: "AI disabled",
       AI_UNAVAILABLE_MESSAGE: "AI unavailable",
+      isLanguageIntelligenceKillSwitchActive: () => false,
       safeErrorType: () => "Error",
       runSongGeneration: async (
         data: any,

@@ -1,3 +1,25 @@
+## 2026-11-10 — Language Intelligence v1.2 — IN_PROGRESS
+
+- **Baseline:** `main` commit `d87c5ecc4597c0a7aa3af9f29462f1557ac5c712`. Local work isolated on branch `feat/language-intelligence-v1-2`.
+- **Scope & Architecture:**
+  1. Standalone domain engine in `src/lib/language-intelligence/` with 10 research-backed language profiles (v1.2): English (`en`), German (`de`), Russian (`ru`), Greek (`el`), French (`fr`), Spanish (`es`), Portuguese (`pt-BR` and `pt-PT` strictly isolated), Chinese (`zh-cmn` Mandarin with Hans/Hant script and `zh-yue` Cantonese), Turkish (`tr`), and Italian (`it`).
+  2. Pure composer and adapter that structure the transient prompt block (`promptLanguageBlock`) injected server-side during prompt assembly across V1, V2, V3, V4 Beta, V5 Beta 1, and Prompt Registry.
+  3. Clean Language Invariant strictly preserved: client and worker schemas (`data.language` max 40/80 chars, `inputSnapshot.language`, `input_payload`, saved prompts, project versions, history, QC, and library search) never store or leak enriched prompt text.
+  4. Triple-tier authorization and feature controls: Super Admin Advanced-only (off by default), server function validation, worker defense-in-depth recheck via `_has_role_internal`, and central emergency kill switch (`PROMPTBEATS_LANGUAGE_INTELLIGENCE_DISABLED`).
+  5. UI integration: Radix UI Switch ("Language Intelligence — Experimental Mode" / "Language Intelligence — Πειραματική Λειτουργία") inside the Language SectionHeader of Advanced Generator, visible only to Super Admins in non-revision Advanced mode, reset on mode/user switch.
+  6. Evaluation provenance: structured JSON diagnostic logging with SHA-256 digests of assembled and master prompt templates, model, provider, and pair role for non-intrusive A/B testing.
+- **Local Remediation & Verification:**
+  - Audit finding remediation: Sandbox bindings updated in `advanced-generator-v3-review.test.ts`, `audit-final-verification.test.ts`, and `zod4-compatibility.test.ts` for isolated VM evaluation; cosmetic version fallback in `ai.functions.ts` aligned to `"1.2"`.
+  - Dedicated unit & integration test suite (`src/lib/language-intelligence/__tests__/language-intelligence.test.ts`): 29/29 tests **PASS** (111 assertions).
+  - Core Generator regression test suite (`song-languages.test.ts`, `advanced-generator-prompt-v4-beta.test.ts`, `advanced-generator-prompt-v5-beta-1.test.ts`, `prompt-registry.test.ts`): 43/43 tests **PASS** (1,387 assertions).
+  - Remediated AST sandbox test suites: 41/41 tests **PASS** (162 assertions).
+  - Full local repository test suite: 2,160 tests **PASS**, 1 skipped, 0 failed across all 241 test files (34,818 assertions).
+  - TypeScript strict check (`tsc --noEmit`): **PASS** (0 errors).
+  - ESLint check (`eslint`): **PASS** (0 errors across modified and new files).
+  - Git whitespace check (`git diff --check`): **PASS** (clean).
+  - OFF Parity: 100% byte-for-byte identical prompt assembly and behavior verified when toggle is OFF or kill switch is active.
+- **Status:** Local remediation and full-suite verification complete on branch `feat/language-intelligence-v1-2`. No remote commits, no git push, no PR created, no remote workflows triggered. Awaiting explicit user review and approval before any remote action.
+
 ## 2026-11-09 — Creative-direction history completion alignment and error transparency — CODE_COMPLETE_RELEASE_PENDING
 
 - **Baseline:** post-#527 merged `main` at `57cab88c0b8e159e62aad85491790a89070b6a79`. Work isolated on `fix/creative-direction-history-completion-alignment`.

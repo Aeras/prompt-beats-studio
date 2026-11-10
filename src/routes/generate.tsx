@@ -338,12 +338,14 @@ function SectionHeader({
   onClear,
   optionsOpen,
   onToggleOptions,
+  extra,
 }: {
   title: string;
   hint?: string;
   onClear?: () => void;
   optionsOpen?: boolean;
   onToggleOptions?: () => void;
+  extra?: React.ReactNode;
 }) {
   const { t } = useI18n();
   return (
@@ -357,6 +359,7 @@ function SectionHeader({
           {hint}
         </span>
       )}
+      {extra && <div className="ml-auto flex items-center gap-2">{extra}</div>}
       {onToggleOptions && (
         <button
           type="button"
@@ -1152,6 +1155,7 @@ function GeneratePage() {
     null,
   );
   const [creativeDirectionHistoryEnabled, setCreativeDirectionHistoryEnabled] = useState(false);
+  const [languageIntelligenceEnabled, setLanguageIntelligenceEnabled] = useState(false);
   // Keep the initial render deterministic: session UUIDs are created only in the browser.
   const [creativeDirectionSessionId, setCreativeDirectionSessionId] = useState(
     () => freshSession ?? search.session ?? "",
@@ -1169,6 +1173,7 @@ function GeneratePage() {
       setCreativeDirectionProjectId(null);
       setCreativeDirectionUniverseId(null);
       setCreativeDirectionHistoryEnabled(false);
+      setLanguageIntelligenceEnabled(false);
       if (ownerChanged && !freshSession && !search.session) {
         setCreativeDirectionSessionId(window.crypto.randomUUID());
       }
@@ -2767,6 +2772,9 @@ function GeneratePage() {
                 return history ? { creativeDirectionHistory: history } : {};
               })()
             : {}),
+          ...(moderation.isSuperAdmin && advanced && !revisionMode && languageIntelligenceEnabled
+            ? { languageIntelligence: { enabled: true } }
+            : {}),
           revision: revisionMode
             ? {
                 projectId: revisionProjectId || null,
@@ -3184,6 +3192,7 @@ function GeneratePage() {
     setRequiredValidationAttempted(false);
     if (mode === "revision") {
       setCreativeDirectionHistoryEnabled(false);
+      setLanguageIntelligenceEnabled(false);
       setRevisionMode(true);
       setAdvanced(true);
       setResult(null);
@@ -3202,7 +3211,10 @@ function GeneratePage() {
     }
 
     const nextAdvanced = mode === "advanced";
-    if (!nextAdvanced) setCreativeDirectionHistoryEnabled(false);
+    if (!nextAdvanced) {
+      setCreativeDirectionHistoryEnabled(false);
+      setLanguageIntelligenceEnabled(false);
+    }
     syncSharedFieldsForMode(nextAdvanced);
     setRevisionMode(false);
     setAdvanced(nextAdvanced);
@@ -4412,6 +4424,37 @@ function GeneratePage() {
                       setLanguageVariant("");
                       setCustomLanguage("");
                     }}
+                    extra={
+                      moderation.isSuperAdmin && advanced && !revisionMode ? (
+                        <div className="flex items-center gap-1.5">
+                          <label
+                            htmlFor="generator-language-intelligence-toggle"
+                            className="cursor-pointer text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                          >
+                            {appLanguage === "el"
+                              ? "Language Intelligence — Πειραματική Λειτουργία"
+                              : "Language Intelligence — Experimental Mode"}
+                          </label>
+                          <Switch
+                            id="generator-language-intelligence-toggle"
+                            aria-label={
+                              appLanguage === "el"
+                                ? "Language Intelligence — Πειραματική Λειτουργία"
+                                : "Language Intelligence — Experimental Mode"
+                            }
+                            checked={languageIntelligenceEnabled}
+                            disabled={busy || Boolean(jobId)}
+                            onCheckedChange={setLanguageIntelligenceEnabled}
+                            className="scale-75 origin-right"
+                          />
+                          {languageIntelligenceEnabled && (
+                            <span className="rounded bg-accent/20 px-1 py-0.5 text-[9px] font-bold text-accent">
+                              LI Active
+                            </span>
+                          )}
+                        </div>
+                      ) : null
+                    }
                   />
                   <LanguagePicker
                     value={language}

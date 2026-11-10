@@ -33,6 +33,11 @@ import {
 import { parseLyricsSections } from "@/lib/lyrics-sections";
 import { songBlueprintSchema } from "@/lib/song-blueprint.shared";
 import {
+  languageIntelligenceConfigSchema,
+  type LanguageIntelligenceConfig,
+  isLanguageIntelligenceKillSwitchActive,
+} from "@/lib/language-intelligence";
+import {
   creativeDirectionHistoryConfigSchema,
   type CreativeDirectionHistoryConfig,
 } from "@/lib/creative-direction-history.shared";
@@ -68,6 +73,7 @@ const jobInput = z.object({
     .nullish(),
   inputSnapshot: generatorInputSnapshotSchema.nullish(),
   creativeDirectionHistory: creativeDirectionHistoryConfigSchema.optional(),
+  languageIntelligence: languageIntelligenceConfigSchema.optional(),
 });
 
 const revisionMetaShape = z.object({
@@ -118,6 +124,31 @@ const inputShape = z.union([songInputShape, lyricsSectionEditJobSchema]);
 
 export type GenerationContext = z.infer<typeof songInputShape>;
 export type DurableGenerationJobInput = z.infer<typeof inputShape>;
+
+async function validateLanguageIntelligenceRequest(
+  supabase: any,
+  config: LanguageIntelligenceConfig | undefined,
+  input: { advanced?: boolean; operation?: string; inputSnapshot?: unknown },
+): Promise<LanguageIntelligenceConfig | undefined> {
+  if (!config || !config.enabled) return undefined;
+  if (isLanguageIntelligenceKillSwitchActive()) {
+    return { ...config, enabled: false };
+  }
+  if (input.operation !== "generate" || input.advanced !== true) {
+    throw new Error("Language Intelligence is available only for Advanced generation.");
+  }
+  const snapshot = generatorInputSnapshotSchema.safeParse(input.inputSnapshot);
+  if (!snapshot.success || snapshot.data.generatorMode !== "advanced") {
+    throw new Error("Language Intelligence requires Advanced Generator mode.");
+  }
+  const { data: isSuperAdmin, error: roleError } = await supabase.rpc(
+    "current_user_is_super_admin",
+  );
+  if (roleError || isSuperAdmin !== true) {
+    throw new Error("Language Intelligence is restricted to Super Admin.");
+  }
+  return config;
+}
 
 async function validateCreativeDirectionHistoryRequest(
   supabase: any,
@@ -268,6 +299,11 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       data.creativeDirectionHistory,
       data,
     );
+    const validatedLanguageIntelligence = await validateLanguageIntelligenceRequest(
+      supabase,
+      data.languageIntelligence,
+      data,
+    );
     // prettier-ignore
     if (data.promptVersion === "v2" || data.promptVersion === "v3" || data.promptVersion === "v4_beta" || data.promptVersion === "v5_beta_1" || data.promptVersion === "registry" || data.registryPromptId) {
       const { data: isSuperAdmin, error: roleError } = await supabase.rpc(
@@ -292,6 +328,7 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       instruments: _instruments,
       revision: clientRevision,
       creativeDirectionHistory: _clientCreativeDirectionHistory,
+      languageIntelligence: _clientLanguageIntelligence,
       ...basePayload
     } = data;
 
@@ -302,6 +339,9 @@ export const startGenerationJob = createServerFn({ method: "POST" })
       revision: null,
       ...(validatedCreativeDirectionHistory
         ? { creativeDirectionHistory: validatedCreativeDirectionHistory }
+        : {}),
+      ...(validatedLanguageIntelligence
+        ? { languageIntelligence: validatedLanguageIntelligence }
         : {}),
     };
 
