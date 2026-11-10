@@ -35,6 +35,7 @@
 ## Επαλήθευση
 
 Τα υποχρεωτικά CI gates πέρασαν στο exact HEAD `ed6012a5ac574f2375f0b489b942089c202c9170`:
+
 - **Regression** [42581310645](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310645): PASS — πλήρες Bun suite, changed-source lint, build και strict TypeScript.
 - **Database Replay** [42581310669](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310669): PASS — replay όλων των migrations σε φρέσκια τοπική βάση και έλεγχοι του creative-direction-history SQL test.
 - **Browser Quality** [42581310640](https://github.com/Aeras/prompt-beats-studio/actions/runs/42581310640): PASS.
@@ -43,27 +44,33 @@
 
 Οι τοπικές εκτελέσεις είχαν περιοριστεί από ελλείποντα εργαλεία/dependencies και το pnpm symlink EPERM· αυτό δεν αναιρεί τα επιτυχημένα υποχρεωτικά CI gates. Οι migrations του ιστορικού, του linked-scope guard και της επέκτασης χωρητικότητας δεν έχουν εφαρμοστεί στην παραγωγή. Το αρχικό PR #526 έχει συγχωνευθεί. Η επέκταση χωρητικότητας παραμένει στο ανοικτό PR #527 μέχρι να ολοκληρωθεί το review. Όλα τα υποχρεωτικά gates έχουν περάσει στο exact final HEAD. Κάθε production migration/deployment απαιτεί ξεχωριστή έγκριση.
 
-
 ## 2026-11-09 — Responsive viewport regression check
 
 The Browser Quality failure on PR #526 occurred after switching the viewport to 320px and immediately reading the document's scroll width. The shared AppShell applies a 200ms responsive padding transition. Both responsive checks now poll the real overflow measurement until it settles, while retaining the strict no-horizontal-overflow condition. Persistent overflow remains a failure; the test does not hide or clip content. Fresh CI verification on the resulting PR HEAD is pending.
-
 
 ## 2026-11-09 — PR workflow contract metadata
 
 The initial Regression run on the first correction commit stopped at the Agent contract gate because the existing PR description headings did not match the required repository labels. The PR description has been normalized without changing its technical content. Fresh all-gate verification is required on the next synchronized PR HEAD.
 
-
 ## 2026-11-09 — Changed-source lint correction
 
 The Regression gate passed the full Bun suite (2,126 passed, 1 skipped, 0 failed) and the Agent contract gate, then identified Prettier-only formatting differences in the two new Playwright poll assertions. Their formatting is normalized without changing the overflow check. Fresh all-gate verification is pending.
-
 
 ## 2026-11-09 — Creative-direction history capacity expansion
 
 The follow-up to merged PR #526 increases the private direction metadata limits from 140 to 200 characters per field and from 560 to 1,000 characters combined. The five-field contract, single-line restriction, lyric-copy rejection, private storage, 15-entry retention, scopes and public four-field song result remain unchanged. A forward-only migration updates the database CHECK constraint; application and SQL boundary tests cover the new limits. The change is in progress pending exact-HEAD Regression, Browser Quality and Database Replay. No production migration or deployment is authorized by this change.
 
-
 ## 2026-11-09 — Επέκταση χωρητικότητας ιστορικού
 
 Το PR #527 αυξάνει τα ιδιωτικά πεδία κατεύθυνσης από 140 σε 200 χαρακτήρες ανά πεδίο και το συνολικό όριο από 560 σε 1.000. Τα Regression `42622680043`, Database Replay `42622680125` και Browser Quality `42622680167` πέρασαν στο ίδιο exact HEAD `679f5bbdd0c82a14cce70e9602a4bec1ab0544bd`. Το PR παραμένει ανοικτό. Η νέα migration δεν έχει εφαρμοστεί στην παραγωγή.
+
+## 2026-11-09 — Ευθυγράμμιση συνάρτησης ολοκλήρωσης και συμβατότητα AI παρόχων
+
+Η follow-up διόρθωση συγχρονίζει τη stored procedure `public.complete_generation_with_creative_direction_history` με τα νέα όρια 200 χαρακτήρων ανά πεδίο / 1.000 συνολικά μέσω της νέας forward-only migration `20261109233000_align_generator_creative_direction_completion_function.sql`. Επιπλέον, το `creativeDirectionSongSchema` απλοποιείται σε `{ type: "STRING" }` χωρίς μη υποστηριζόμενα `minLength`/`maxLength`, διασφαλίζοντας πλήρη συμβατότητα με Gemini, OpenAI Structured Outputs και xAI. Το `CREATIVE_DIRECTION_SYSTEM_PROMPT` καθορίζει ρητά μονογραμμικά πεδία έως 200 χαρακτήρες, και το `safeErrorMessage` του worker διαχωρίζει τα σφάλματα αποθήκευσης/επικύρωσης από πραγματικές αποτυχίες παρόχου.
+
+Τα υποχρεωτικά CI gates πέρασαν επιτυχώς στο exact HEAD `85802bd6daf323f704e855a421f3eb82cf828be6`:
+- **Regression** [42730509728](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509728): PASS
+- **Database Replay** [42730509937](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509937): PASS
+- **Browser Quality** [42730509872](https://github.com/Aeras/prompt-beats-studio/actions/runs/42730509872): PASS
+
+Το PR [#528](https://github.com/Aeras/prompt-beats-studio/pull/528) παραμένει ανοικτό ως Draft. Η νέα migration δεν έχει εφαρμοστεί στην παραγωγή και απαιτεί ξεχωριστή έγκριση.

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "bun:test";
 
 import { generationOutput, parseSections } from "./generation-result.shared";
+import { SONG_SCHEMA, toOpenAiJsonSchema } from "./ai-provider.server";
 import {
   buildCreativeDirectionHistoryPrompt,
   creativeDirectionHistoryConfigSchema,
@@ -188,4 +189,86 @@ test("server wiring reads history only for opt-in and keeps the legacy completio
     "setCreativeDirectionProjectId(inspirationWallHandoff.connectedProjectId)",
   );
   expect(route).toContain('id="generator-creative-direction-project-scope"');
+});
+
+test("multiline fields with \r or \n in any direction field are strictly rejected", () => {
+  for (const field of [
+    "coreIdea",
+    "narrator",
+    "emotionalApproach",
+    "hookIdentity",
+    "sonicIdentity",
+  ] as const) {
+    expect(
+      creativeDirectionSchema.safeParse({ ...direction, [field]: "line 1\nline 2" }).success,
+    ).toBe(false);
+    expect(
+      creativeDirectionSchema.safeParse({ ...direction, [field]: "line 1\rline 2" }).success,
+    ).toBe(false);
+  }
+});
+
+test("provider schema omits unsupported keywords and produces valid OpenAI/xAI strict schemas", () => {
+  const aiCode = readFileSync("src/lib/ai.functions.ts", "utf8");
+  expect(aiCode).not.toContain('coreIdea: { type: "STRING", minLength');
+  expect(aiCode).not.toContain("maxLength: 140");
+  expect(aiCode).toContain('coreIdea: { type: "STRING" }');
+
+  // Construct creativeDirectionSongSchema as defined in ai.functions.ts
+  const schema = {
+    ...SONG_SCHEMA,
+    properties: {
+      ...(SONG_SCHEMA["properties"] as Record<string, unknown>),
+      creativeDirection: {
+        type: "OBJECT",
+        properties: {
+          coreIdea: { type: "STRING" },
+          narrator: { type: "STRING" },
+          emotionalApproach: { type: "STRING" },
+          hookIdentity: { type: "STRING" },
+          sonicIdentity: { type: "STRING" },
+        },
+        required: ["coreIdea", "narrator", "emotionalApproach", "hookIdentity", "sonicIdentity"],
+      },
+    },
+    required: [...(SONG_SCHEMA["required"] as string[]), "creativeDirection"],
+  };
+
+  const converted = toOpenAiJsonSchema(schema) as any;
+  expect(converted.type).toBe("object");
+  expect(converted.additionalProperties).toBe(false);
+  expect(converted.required).toContain("creativeDirection");
+  const dirProps = converted.properties.creativeDirection;
+  expect(dirProps.type).toBe("object");
+  expect(dirProps.additionalProperties).toBe(false);
+  for (const key of [
+    "coreIdea",
+    "narrator",
+    "emotionalApproach",
+    "hookIdentity",
+    "sonicIdentity",
+  ]) {
+    expect(dirProps.properties[key].type).toBe("string");
+    expect(dirProps.properties[key].minLength).toBeUndefined();
+    expect(dirProps.properties[key].maxLength).toBeUndefined();
+  }
+});
+
+test("system prompt contains explicit single-line and length guidance", () => {
+  const aiCode = readFileSync("src/lib/ai.functions.ts", "utf8");
+  expect(aiCode).toContain(
+    "Each string field in creativeDirection must be a single line without carriage returns or newlines",
+  );
+  expect(aiCode).toContain("must not exceed 200 characters");
+  expect(aiCode).toContain("combined creativeDirection text must remain under 1,000 characters");
+});
+
+test("worker error handler preserves creative direction errors without masking as provider failures", () => {
+  const worker = readFileSync("src/lib/generation-jobs.server.ts", "utf8");
+  expect(worker).toContain('"The generation could not be finalized with its creative direction."');
+  expect(worker).toContain('"The AI did not return valid internal creative direction metadata."');
+  expect(worker).toContain('"Creative direction history could not be retrieved safely."');
+  expect(worker).toContain(
+    '"Creative direction history is no longer authorized for this generation."',
+  );
 });
