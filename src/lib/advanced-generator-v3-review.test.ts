@@ -8,8 +8,8 @@ import { assertGenerationRequestBudget } from "./generator-input-limits";
 import {
   resolveLanguageIntelligencePrompt,
   isLanguageIntelligenceKillSwitchActive,
-  buildLanguageIntelligenceProvenance,
 } from "./language-intelligence";
+import { buildLanguageIntelligenceProvenance } from "./language-intelligence/provenance.server";
 
 describe("V3 adaptive musical planning", () => {
   test("preserves V2 and adds phrasing rather than post-edit guidance", () => {

@@ -8,17 +8,25 @@
   4. Triple-tier authorization and feature controls: Super Admin Advanced-only (off by default), server function validation, worker defense-in-depth recheck via `_has_role_internal`, and central emergency kill switch (`PROMPTBEATS_LANGUAGE_INTELLIGENCE_DISABLED`).
   5. UI integration: Radix UI Switch ("Language Intelligence — Experimental Mode" / "Language Intelligence — Πειραματική Λειτουργία") inside the Language SectionHeader of Advanced Generator, visible only to Super Admins in non-revision Advanced mode, reset on mode/user switch.
   6. Evaluation provenance: structured JSON diagnostic logging with SHA-256 digests of assembled and master prompt templates, model, provider, and pair role for non-intrusive A/B testing.
-- **Local Remediation & Verification:**
-  - Audit finding remediation: Sandbox bindings updated in `advanced-generator-v3-review.test.ts`, `audit-final-verification.test.ts`, and `zod4-compatibility.test.ts` for isolated VM evaluation; cosmetic version fallback in `ai.functions.ts` aligned to `"1.2"`.
-  - Dedicated unit & integration test suite (`src/lib/language-intelligence/__tests__/language-intelligence.test.ts`): 29/29 tests **PASS** (111 assertions).
-  - Core Generator regression test suite (`song-languages.test.ts`, `advanced-generator-prompt-v4-beta.test.ts`, `advanced-generator-prompt-v5-beta-1.test.ts`, `prompt-registry.test.ts`): 43/43 tests **PASS** (1,387 assertions).
-  - Remediated AST sandbox test suites: 41/41 tests **PASS** (162 assertions).
-  - Full local repository test suite: 2,160 tests **PASS**, 1 skipped, 0 failed across all 241 test files (34,818 assertions).
-  - TypeScript strict check (`tsc --noEmit`): **PASS** (0 errors).
-  - ESLint check (`eslint`): **PASS** (0 errors across modified and new files).
-  - Git whitespace check (`git diff --check`): **PASS** (clean).
-  - OFF Parity: 100% byte-for-byte identical prompt assembly and behavior verified when toggle is OFF or kill switch is active.
-- **Status:** Local remediation and full-suite verification complete on branch `feat/language-intelligence-v1-2`. No remote commits, no git push, no PR created, no remote workflows triggered. Awaiting explicit user review and approval before any remote action.
+- **Browser Quality Gate Remediation & Verification:**
+  - Root cause: `provenance.ts` had a top-level `import { createHash } from "node:crypto"`, which was re-exported through the shared facade `src/lib/language-intelligence/index.ts`. Because client routes (`/generate`, `/library`) import `ai.functions.ts` / `generation-jobs.functions.ts`, Vite pulled `node:crypto` into the browser bundle, throwing `Cannot access "node:crypto.createHash" in client code` and triggering the root Error Boundary (`This page didn't load`). This caused cascading 30.1s Playwright timeouts in `e2e/music-inspiration.pw.ts` (waiting for `button[data-generator-mode=advanced]`) and failures in `e2e/pb012-entry.pw.ts` (`project is unavailable` and Last Work writes).
+  - Architectural fix: Renamed `provenance.ts` to `provenance.server.ts`, removed its re-export from `index.ts` so the shared facade remains 100% browser-safe, and used dynamic server-only import (`await import("@/lib/language-intelligence/provenance.server")`) inside `ai.functions.ts` `runSongGeneration`.
+  - Regression tests added & updated:
+    - Test 28 updated: golden SHA-256 digest assertions for generated metadata.
+    - Test 30 added: deterministic golden SHA-256 digest expectations for empty string, English, Greek, Russian, and Chinese UTF-8 strings.
+    - Test 31 added: architectural boundary protection asserting that `buildLanguageIntelligenceProvenance` and `sha256Digest` are not exported by the shared facade.
+  - Verification results:
+    - Dedicated Language Intelligence suite (`src/lib/language-intelligence/__tests__/language-intelligence.test.ts`): 31/31 tests **PASS** (123 assertions).
+    - AST Sandbox suite (`src/lib/advanced-generator-v3-review.test.ts`): 4/4 tests **PASS** (22 assertions).
+    - Playwright `e2e/pb012-entry.pw.ts`: 4/4 tests **PASS** (20.6s).
+    - Playwright `e2e/music-inspiration.pw.ts` (Mirage and batch cases): 7/7 targeted tests **PASS** (15.4s + 29.5s).
+    - Full local repository test suite: 2,162 tests **PASS**, 1 skipped, 0 failed across all 241 test files (34,830 assertions).
+    - TypeScript strict check (`tsc --noEmit`): **PASS** (0 errors).
+    - ESLint on changed files: **PASS** (0 errors).
+    - Git whitespace check (`git diff --check`): **PASS** (clean).
+    - Production build (`bun run build`): **PASS** (.output built in 1.61s).
+    - Browser bundle inspection: verified 0 occurrences of `node:crypto` or `provenance.server` in `.output/public/**/*.js`.
+- **Status:** Browser Quality Gate remediation complete and locally verified on branch `feat/language-intelligence-v1-2`. Remote CI, merge and production deployment remain pending. Awaiting explicit user review and approval before any remote push or action.
 
 ## 2026-11-09 — Creative-direction history completion alignment and error transparency — CODE_COMPLETE_RELEASE_PENDING
 

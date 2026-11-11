@@ -6,7 +6,6 @@ export * from "./types";
 export * from "./repository";
 export * from "./resolver";
 export * from "./composer";
-export * from "./provenance";
 export * from "./adapters";
 
 /**

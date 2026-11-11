@@ -42,7 +42,6 @@ import {
   languageIntelligenceConfigSchema,
   resolveLanguageIntelligencePrompt,
   isLanguageIntelligenceKillSwitchActive,
-  buildLanguageIntelligenceProvenance,
 } from "@/lib/language-intelligence";
 import {
   lyricsSectionEditJobSchema,
@@ -2079,6 +2078,8 @@ export async function runSongGeneration(
             : data.promptVersion === "registry"
               ? "registry-bound-template"
               : "advanced-generator-prompt-v1";
+      const { buildLanguageIntelligenceProvenance } =
+        await import("@/lib/language-intelligence/provenance.server");
       const provMeta = buildLanguageIntelligenceProvenance({
         enabled: Boolean(data.languageIntelligence?.enabled),
         applied: liResolution.applied,

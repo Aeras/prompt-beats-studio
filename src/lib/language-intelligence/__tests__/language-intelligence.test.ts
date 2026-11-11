@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import * as sharedFacade from "../index";
 import {
   resolveLanguageProfile,
   resolveLanguageIntelligencePrompt,
   composeLanguagePromptBlock,
   injectPromptLanguage,
-  buildLanguageIntelligenceProvenance,
-  sha256Digest,
   isLanguageIntelligenceKillSwitchActive,
   getLanguageProfile,
   LANGUAGE_PROFILES,
 } from "../index";
+import { buildLanguageIntelligenceProvenance, sha256Digest } from "../provenance.server";
 import { buildPrompt } from "../../ai.functions";
 import { buildAdvancedGeneratorPromptV4Beta } from "../../advanced-generator-prompt-v4-beta";
 import { buildAdvancedGeneratorPromptV5Beta1 } from "../../advanced-generator-prompt-v5-beta-1";
@@ -386,6 +386,13 @@ describe("Language Intelligence v1.2 — Provenance & Clean Language Invariant",
     expect(prov.pairRole).toBe("treatment");
     expect(prov.profileId).toBe("el");
     expect(prov.profileVersion).toBe("1.2");
+    // Deterministic golden digest expectations:
+    expect(prov.promptDigest).toBe(
+      "3d4bf3637e0c049b1825658af0a4b9f02a4feb56635ba573e64c8785c6831922",
+    );
+    expect(prov.masterPromptDigest).toBe(
+      "57b2acbc2dd5225f8182783141b5176883a34db15a08c89d403ed97e362e77aa",
+    );
     expect(prov.promptDigest).toBe(sha256Digest("Assembled prompt content test"));
     expect(prov.masterPromptDigest).toBe(sha256Digest("Master prompt template test"));
     expect(prov.provider).toBe("google");
@@ -418,5 +425,31 @@ describe("Language Intelligence v1.2 — Provenance & Clean Language Invariant",
     expect(res.cleanLanguage).toBe(originalLanguage);
     expect(snapshot.language).toBe(originalLanguage);
     expect(snapshot.language.length).toBeLessThanOrEqual(40);
+  });
+
+  // Test 30: Deterministic golden digests for multilingual UTF-8 inputs
+  test("30. sha256Digest deterministic golden digests for multilingual UTF-8", () => {
+    expect(sha256Digest("")).toBe(
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    );
+    expect(sha256Digest("Ελληνικό κείμενο δοκιμής")).toBe(
+      "965baaa32007e8a1dd92a6bd42de49e7b11458563dd39bb9499d99667b659b3b",
+    );
+    expect(sha256Digest("Русский текст")).toBe(
+      "71a631c26669714ea79a98c183253778f2b4488f41ef08fe79cdbe4939b91b6e",
+    );
+    expect(sha256Digest("中文测试")).toBe(
+      "e350545d18735c5dd2dec50dcb971f3eb4cdda24b95a79bdb6b553f6a01ceb87",
+    );
+  });
+
+  // Test 31: Architectural boundary protection - shared facade does not export server provenance or node:crypto
+  test("31. Shared Language Intelligence facade does not export server provenance or node:crypto", () => {
+    expect("buildLanguageIntelligenceProvenance" in sharedFacade).toBe(false);
+    expect("sha256Digest" in sharedFacade).toBe(false);
+    expect(typeof sharedFacade.resolveLanguageIntelligencePrompt).toBe("function");
+    expect(typeof sharedFacade.resolveLanguageProfile).toBe("function");
+    expect(typeof sharedFacade.composeLanguagePromptBlock).toBe("function");
+    expect(typeof sharedFacade.injectPromptLanguage).toBe("function");
   });
 });
