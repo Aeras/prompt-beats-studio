@@ -8,8 +8,14 @@ import {
   isLanguageIntelligenceKillSwitchActive,
   getLanguageProfile,
   LANGUAGE_PROFILES,
+  RESEARCH_VERSION,
+  PROFILE_VERSION,
 } from "../index";
-import { buildLanguageIntelligenceProvenance, sha256Digest } from "../provenance.server";
+import {
+  buildLanguageIntelligenceProvenance,
+  sha256Digest,
+  resolveMasterPromptTemplate,
+} from "../provenance.server";
 import { buildPrompt } from "../../ai.functions";
 import { buildAdvancedGeneratorPromptV4Beta } from "../../advanced-generator-prompt-v4-beta";
 import { buildAdvancedGeneratorPromptV5Beta1 } from "../../advanced-generator-prompt-v5-beta-1";
@@ -39,53 +45,59 @@ describe("Language Intelligence v1.2 — Core Engine & Profile Resolution", () =
     }
   });
 
-  // Test 2: English returns profile en with version 1.2
-  test("2. English returns profile en with version 1.2", () => {
+  // Test 2: English returns profile en with profileVersion 1.2 and researchVersion 1.1
+  test("2. English returns profile en with profileVersion 1.2 and researchVersion 1.1", () => {
     const res = resolveLanguageProfile("English");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("en");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
     expect(res?.content.length).toBeGreaterThan(100);
   });
 
-  // Test 3: German returns profile de with version 1.2
-  test("3. German returns profile de with version 1.2", () => {
+  // Test 3: German returns profile de with profileVersion 1.2 and researchVersion 1.1
+  test("3. German returns profile de with profileVersion 1.2 and researchVersion 1.1", () => {
     const res = resolveLanguageProfile("German");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("de");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
   });
 
-  // Test 4: Russian returns profile ru with version 1.2
-  test("4. Russian returns profile ru with version 1.2", () => {
+  // Test 4: Russian returns profile ru with profileVersion 1.2 and researchVersion 1.1
+  test("4. Russian returns profile ru with profileVersion 1.2 and researchVersion 1.1", () => {
     const res = resolveLanguageProfile("Russian");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("ru");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
   });
 
-  // Test 5: Greek returns profile el with version 1.2
-  test("5. Greek returns profile el with version 1.2", () => {
+  // Test 5: Greek returns profile el with profileVersion 1.2 and researchVersion 1.1
+  test("5. Greek returns profile el with profileVersion 1.2 and researchVersion 1.1", () => {
     const res = resolveLanguageProfile("Greek");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("el");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
   });
 
-  // Test 6: French returns profile fr with version 1.2
-  test("6. French returns profile fr with version 1.2", () => {
+  // Test 6: French returns profile fr with profileVersion 1.2 and researchVersion 1.1
+  test("6. French returns profile fr with profileVersion 1.2 and researchVersion 1.1", () => {
     const res = resolveLanguageProfile("French");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("fr");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
   });
 
-  // Test 7: Spanish returns profile es with version 1.2
-  test("7. Spanish returns profile es with version 1.2", () => {
+  // Test 7: Spanish returns profile es with profileVersion 1.2 and researchVersion 1.1
+  test("7. Spanish returns profile es with profileVersion 1.2 and researchVersion 1.1", () => {
     const res = resolveLanguageProfile("Spanish");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("es");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
   });
 
   // Test 8: Portuguese with pt-BR resolves to pt-BR
@@ -93,7 +105,8 @@ describe("Language Intelligence v1.2 — Core Engine & Profile Resolution", () =
     const res = resolveLanguageProfile("Portuguese", "pt-BR");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("pt-BR");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
     expect(res?.content).toContain("Brazilian Portuguese");
   });
 
@@ -102,7 +115,8 @@ describe("Language Intelligence v1.2 — Core Engine & Profile Resolution", () =
     const res = resolveLanguageProfile("Portuguese", "pt-PT");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("pt-PT");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
     expect(res?.content).toContain("European Portuguese");
   });
 
@@ -137,20 +151,22 @@ describe("Language Intelligence v1.2 — Core Engine & Profile Resolution", () =
     expect(res?.content).toContain("Cantonese");
   });
 
-  // Test 14: Turkish returns profile tr with version 1.2
-  test("14. Turkish returns profile tr with version 1.2", () => {
+  // Test 14: Turkish returns profile tr with profileVersion 1.2 and researchVersion 1.1
+  test("14. Turkish returns profile tr with profileVersion 1.2 and researchVersion 1.1", () => {
     const res = resolveLanguageProfile("Turkish");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("tr");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
   });
 
-  // Test 15: Italian returns profile it with version 1.2
-  test("15. Italian returns profile it with version 1.2", () => {
+  // Test 15: Italian returns profile it with profileVersion 1.2 and researchVersion 1.1
+  test("15. Italian returns profile it with profileVersion 1.2 and researchVersion 1.1", () => {
     const res = resolveLanguageProfile("Italian");
     expect(res).not.toBeNull();
     expect(res?.profileId).toBe("it");
-    expect(res?.researchVersion).toBe("1.2");
+    expect(res?.profileVersion).toBe("1.2");
+    expect(res?.researchVersion).toBe("1.1");
   });
 
   // Test 16: Unsupported language returns null
@@ -386,6 +402,8 @@ describe("Language Intelligence v1.2 — Provenance & Clean Language Invariant",
     expect(prov.pairRole).toBe("treatment");
     expect(prov.profileId).toBe("el");
     expect(prov.profileVersion).toBe("1.2");
+    expect(prov.researchVersion).toBe("1.1");
+    expect(prov.masterPromptTemplate).toBe("Master prompt template test");
     // Deterministic golden digest expectations:
     expect(prov.promptDigest).toBe(
       "3d4bf3637e0c049b1825658af0a4b9f02a4feb56635ba573e64c8785c6831922",
@@ -451,5 +469,108 @@ describe("Language Intelligence v1.2 — Provenance & Clean Language Invariant",
     expect(typeof sharedFacade.resolveLanguageProfile).toBe("function");
     expect(typeof sharedFacade.composeLanguagePromptBlock).toBe("function");
     expect(typeof sharedFacade.injectPromptLanguage).toBe("function");
+  });
+  // Test 32: Profile research metadata & phase version consistency across all 12 profiles
+  test("32. Profile research metadata & phase version consistency across all 12 profiles", () => {
+    expect(RESEARCH_VERSION).toBe("1.1");
+    expect(PROFILE_VERSION).toBe("1.2");
+
+    const profileKeys = Object.keys(LANGUAGE_PROFILES) as Array<keyof typeof LANGUAGE_PROFILES>;
+    expect(profileKeys).toHaveLength(12);
+
+    for (const key of profileKeys) {
+      const asset = LANGUAGE_PROFILES[key];
+      expect(asset.researchVersion).toBe("1.1");
+      expect(asset.profileVersion).toBe("1.2");
+      expect(asset.content).toContain("**Research version:** 1.1");
+      expect(asset.content).toContain("PromptBeats Language Intelligence phase (v1.2)");
+    }
+  });
+
+  // Test 33: Master prompt template identity resolution across all generator versions
+  test("33. Master prompt template identity resolution across all generator versions", () => {
+    // V1
+    expect(resolveMasterPromptTemplate("v1")).toBe("advanced-generator-prompt-v1");
+    expect(resolveMasterPromptTemplate(undefined)).toBe("advanced-generator-prompt-v1");
+    expect(resolveMasterPromptTemplate("")).toBe("advanced-generator-prompt-v1");
+
+    // V2
+    expect(resolveMasterPromptTemplate("v2")).toBe("advanced-generator-prompt-v2");
+
+    // V3 (standard vs revision)
+    expect(resolveMasterPromptTemplate("v3", false)).toBe(
+      "advanced-generator-prompt-v2+v3-musical-planning",
+    );
+    expect(resolveMasterPromptTemplate("v3", true)).toBe("advanced-generator-revision-prompt");
+
+    // V4 Beta
+    expect(resolveMasterPromptTemplate("v4_beta")).toBe("advanced-generator-prompt-v4-beta");
+
+    // V5 Beta 1
+    expect(resolveMasterPromptTemplate("v5_beta_1")).toBe("advanced-generator-prompt-v5-beta-1");
+
+    // Registry
+    expect(resolveMasterPromptTemplate("registry")).toBe("registry-bound-template");
+
+    // Revisions (isRevision === true always takes precedence)
+    expect(resolveMasterPromptTemplate("v1", true)).toBe("advanced-generator-revision-prompt");
+    expect(resolveMasterPromptTemplate("v2", true)).toBe("advanced-generator-revision-prompt");
+    expect(resolveMasterPromptTemplate("v3", true)).toBe("advanced-generator-revision-prompt");
+    expect(resolveMasterPromptTemplate("v4_beta", true)).toBe("advanced-generator-revision-prompt");
+    expect(resolveMasterPromptTemplate("v5_beta_1", true)).toBe(
+      "advanced-generator-revision-prompt",
+    );
+    expect(resolveMasterPromptTemplate("registry", true)).toBe(
+      "advanced-generator-revision-prompt",
+    );
+    expect(resolveMasterPromptTemplate(undefined, true)).toBe("advanced-generator-revision-prompt");
+  });
+
+  // Test 34: Provenance digests and master prompt template tracking across all generator prompt versions
+  test("34. Provenance digests and master prompt template tracking across all generator prompt versions", () => {
+    const resolved = resolveLanguageProfile("German")!;
+    expect(resolved.profileId).toBe("de");
+    expect(resolved.profileVersion).toBe("1.2");
+    expect(resolved.researchVersion).toBe("1.1");
+
+    // Golden SHA-256 digests for each authoritative template identity
+    const goldenTemplateDigests = {
+      "advanced-generator-prompt-v1":
+        "1f8a3d48d5e64c377cb34d7a8f59096317c16221b416e845c1cb0fab657633c0",
+      "advanced-generator-prompt-v2":
+        "cc5a2277687d16b9d1c7c42fd19de4db2fc295c36428a13a1acd31225ed202cb",
+      "advanced-generator-prompt-v2+v3-musical-planning":
+        "38e22be70bbda709afde34e82fc37655abfc25b4fc7d8ff723ad36c413b1cfbe",
+      "advanced-generator-prompt-v4-beta":
+        "980fb64eb962e10f256a804e66372bff96537c91d68437dace0bcc9c4c938d10",
+      "advanced-generator-prompt-v5-beta-1":
+        "aff982217f06b7c0d41a04caeacd1a87243223c220808c90e32171d788f3f887",
+      "registry-bound-template": "1bd34f9d73dd8134b2dd66c7cd3127e4cc91309e4aa2025e84bf2c1e2906fba6",
+      "advanced-generator-revision-prompt":
+        "659c52793d1917cb452b0f44be56d3c96ddd66a5d89b55326403fa4cb051e1a8",
+    };
+
+    for (const [templateName, expectedDigest] of Object.entries(goldenTemplateDigests)) {
+      expect(sha256Digest(templateName)).toBe(expectedDigest);
+
+      const prov = buildLanguageIntelligenceProvenance({
+        enabled: true,
+        applied: true,
+        resolved,
+        promptVersion: "custom",
+        assembledPrompt: "Assembled test prompt for " + templateName,
+        masterPromptTemplate: templateName,
+        provider: "anthropic",
+        model: "claude-3-7-sonnet",
+      });
+
+      expect(prov.masterPromptTemplate).toBe(templateName);
+      expect(prov.masterPromptDigest).toBe(expectedDigest);
+      expect(prov.masterPromptDigest).toBe(sha256Digest(templateName));
+      expect(prov.promptDigest).toBe(sha256Digest("Assembled test prompt for " + templateName));
+      expect(prov.profileId).toBe("de");
+      expect(prov.profileVersion).toBe("1.2");
+      expect(prov.researchVersion).toBe("1.1");
+    }
   });
 });

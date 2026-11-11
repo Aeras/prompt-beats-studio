@@ -25,6 +25,7 @@ export function resolveLanguageIntelligencePrompt(
       applied: false,
       profileId: null,
       profileVersion: null,
+      researchVersion: null,
       cleanLanguage: clean,
       promptLanguageBlock: clean,
     };
@@ -40,6 +41,7 @@ export function resolveLanguageIntelligencePrompt(
       applied: false,
       profileId: null,
       profileVersion: null,
+      researchVersion: null,
       cleanLanguage: clean,
       promptLanguageBlock: clean,
     };
@@ -51,7 +53,8 @@ export function resolveLanguageIntelligencePrompt(
     active: true,
     applied: true,
     profileId: resolved.profileId,
-    profileVersion: resolved.researchVersion,
+    profileVersion: resolved.profileVersion,
+    researchVersion: resolved.researchVersion,
     cleanLanguage: clean,
     promptLanguageBlock: block,
     ...(resolved.script ? { script: resolved.script } : {}),

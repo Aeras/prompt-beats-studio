@@ -2070,16 +2070,9 @@ export async function runSongGeneration(
       : promptBase;
 
     if (data.languageIntelligence?.enabled || data.languageIntelligence?.pairRole) {
-      const masterPromptTemplate =
-        data.promptVersion === "v5_beta_1"
-          ? "advanced-generator-prompt-v5-beta-1"
-          : data.promptVersion === "v4_beta"
-            ? "advanced-generator-prompt-v4-beta"
-            : data.promptVersion === "registry"
-              ? "registry-bound-template"
-              : "advanced-generator-prompt-v1";
-      const { buildLanguageIntelligenceProvenance } =
+      const { buildLanguageIntelligenceProvenance, resolveMasterPromptTemplate } =
         await import("@/lib/language-intelligence/provenance.server");
+      const masterPromptTemplate = resolveMasterPromptTemplate(data.promptVersion, isRevision);
       const provMeta = buildLanguageIntelligenceProvenance({
         enabled: Boolean(data.languageIntelligence?.enabled),
         applied: liResolution.applied,
@@ -2089,7 +2082,8 @@ export async function runSongGeneration(
           liResolution.applied && liResolution.profileId
             ? {
                 profileId: liResolution.profileId,
-                researchVersion: liResolution.profileVersion ?? "1.2",
+                profileVersion: liResolution.profileVersion ?? "1.2",
+                researchVersion: liResolution.researchVersion ?? "1.1",
                 cleanLanguage: liResolution.cleanLanguage,
                 variantId: data.inputSnapshot?.languageVariant ?? null,
                 script: liResolution.script,

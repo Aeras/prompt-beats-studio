@@ -1,5 +1,5 @@
 import type { ChineseScript, LanguageProfileId, ResolvedLanguageProfile } from "./types";
-import { getLanguageProfile, RESEARCH_VERSION } from "./repository";
+import { getLanguageProfile } from "./repository";
 
 /**
  * Resolves the appropriate Language Intelligence v1.2 profile based on language and variant.
@@ -29,7 +29,8 @@ export function resolveLanguageProfile(
     if (!profile) return null;
     return {
       profileId: "en",
-      researchVersion: RESEARCH_VERSION,
+      researchVersion: profile.researchVersion,
+      profileVersion: profile.profileVersion,
       cleanLanguage: normalizedLang,
       variantId: normalizedVariant || null,
       content: profile.content,
@@ -45,7 +46,8 @@ export function resolveLanguageProfile(
     if (!profile) return null;
     return {
       profileId: "de",
-      researchVersion: RESEARCH_VERSION,
+      researchVersion: profile.researchVersion,
+      profileVersion: profile.profileVersion,
       cleanLanguage: normalizedLang,
       variantId: normalizedVariant || null,
       content: profile.content,
@@ -58,7 +60,8 @@ export function resolveLanguageProfile(
     if (!profile) return null;
     return {
       profileId: "ru",
-      researchVersion: RESEARCH_VERSION,
+      researchVersion: profile.researchVersion,
+      profileVersion: profile.profileVersion,
       cleanLanguage: normalizedLang,
       variantId: null,
       content: profile.content,
@@ -74,7 +77,8 @@ export function resolveLanguageProfile(
     if (!profile) return null;
     return {
       profileId: "el",
-      researchVersion: RESEARCH_VERSION,
+      researchVersion: profile.researchVersion,
+      profileVersion: profile.profileVersion,
       cleanLanguage: normalizedLang,
       variantId: normalizedVariant || null,
       content: profile.content,
@@ -90,7 +94,8 @@ export function resolveLanguageProfile(
     if (!profile) return null;
     return {
       profileId: "fr",
-      researchVersion: RESEARCH_VERSION,
+      researchVersion: profile.researchVersion,
+      profileVersion: profile.profileVersion,
       cleanLanguage: normalizedLang,
       variantId: normalizedVariant || null,
       content: profile.content,
@@ -106,7 +111,8 @@ export function resolveLanguageProfile(
     if (!profile) return null;
     return {
       profileId: "es",
-      researchVersion: RESEARCH_VERSION,
+      researchVersion: profile.researchVersion,
+      profileVersion: profile.profileVersion,
       cleanLanguage: normalizedLang,
       variantId: normalizedVariant || null,
       content: profile.content,
@@ -134,7 +140,8 @@ export function resolveLanguageProfile(
       if (!profile) return null;
       return {
         profileId: "pt-BR",
-        researchVersion: RESEARCH_VERSION,
+        researchVersion: profile.researchVersion,
+        profileVersion: profile.profileVersion,
         cleanLanguage: normalizedLang,
         variantId: normalizedVariant || "br",
         content: profile.content,
@@ -146,7 +153,8 @@ export function resolveLanguageProfile(
       if (!profile) return null;
       return {
         profileId: "pt-PT",
-        researchVersion: RESEARCH_VERSION,
+        researchVersion: profile.researchVersion,
+        profileVersion: profile.profileVersion,
         cleanLanguage: normalizedLang,
         variantId: normalizedVariant || "pt",
         content: profile.content,
@@ -174,7 +182,8 @@ export function resolveLanguageProfile(
       if (!profile) return null;
       return {
         profileId: "yue",
-        researchVersion: RESEARCH_VERSION,
+        researchVersion: profile.researchVersion,
+        profileVersion: profile.profileVersion,
         cleanLanguage: normalizedLang,
         variantId: normalizedVariant || "cantonese-traditional",
         script: "Hant",
@@ -197,7 +206,8 @@ export function resolveLanguageProfile(
       if (!profile) return null;
       return {
         profileId: "zh-cmn",
-        researchVersion: RESEARCH_VERSION,
+        researchVersion: profile.researchVersion,
+        profileVersion: profile.profileVersion,
         cleanLanguage: normalizedLang,
         variantId: normalizedVariant || "mandarin-simplified",
         script: "Hans",
@@ -219,7 +229,8 @@ export function resolveLanguageProfile(
       if (!profile) return null;
       return {
         profileId: "zh-cmn",
-        researchVersion: RESEARCH_VERSION,
+        researchVersion: profile.researchVersion,
+        profileVersion: profile.profileVersion,
         cleanLanguage: normalizedLang,
         variantId: normalizedVariant || "mandarin-traditional",
         script: "Hant",
@@ -237,7 +248,8 @@ export function resolveLanguageProfile(
     if (!profile) return null;
     return {
       profileId: "tr",
-      researchVersion: RESEARCH_VERSION,
+      researchVersion: profile.researchVersion,
+      profileVersion: profile.profileVersion,
       cleanLanguage: normalizedLang,
       variantId: null,
       content: profile.content,
@@ -250,7 +262,8 @@ export function resolveLanguageProfile(
     if (!profile) return null;
     return {
       profileId: "it",
-      researchVersion: RESEARCH_VERSION,
+      researchVersion: profile.researchVersion,
+      profileVersion: profile.profileVersion,
       cleanLanguage: normalizedLang,
       variantId: null,
       content: profile.content,

@@ -9,7 +9,10 @@ import {
   resolveLanguageIntelligencePrompt,
   isLanguageIntelligenceKillSwitchActive,
 } from "./language-intelligence";
-import { buildLanguageIntelligenceProvenance } from "./language-intelligence/provenance.server";
+import {
+  buildLanguageIntelligenceProvenance,
+  resolveMasterPromptTemplate,
+} from "./language-intelligence/provenance.server";
 
 describe("V3 adaptive musical planning", () => {
   test("preserves V2 and adds phrasing rather than post-edit guidance", () => {
@@ -79,6 +82,7 @@ async function runFixture(version: string, revision = false) {
     resolveLanguageIntelligencePrompt,
     isLanguageIntelligenceKillSwitchActive,
     buildLanguageIntelligenceProvenance,
+    resolveMasterPromptTemplate,
     parseSections: JSON.parse,
     generationOutput: z.object({
       title: z.string(),

@@ -12,7 +12,9 @@ import { zhYueProfile } from "./profiles/zh-yue";
 import { trProfile } from "./profiles/tr";
 import { itProfile } from "./profiles/it";
 
-export const RESEARCH_VERSION = "1.2";
+export const RESEARCH_VERSION = "1.1";
+export const PROFILE_VERSION = "1.2";
+export const LANGUAGE_INTELLIGENCE_VERSION = "1.2";
 
 export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfileAsset>> =
   Object.freeze({
@@ -21,6 +23,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "English",
       name: "English",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: enProfile,
     },
     de: {
@@ -28,6 +31,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "German",
       name: "German",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: deProfile,
     },
     ru: {
@@ -35,6 +39,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Russian",
       name: "Russian",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: ruProfile,
     },
     el: {
@@ -42,6 +47,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Greek",
       name: "Greek",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: elProfile,
     },
     fr: {
@@ -49,6 +55,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "French",
       name: "French",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: frProfile,
     },
     es: {
@@ -56,6 +63,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Spanish",
       name: "Spanish",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: esProfile,
     },
     "pt-BR": {
@@ -63,6 +71,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Portuguese",
       name: "Portuguese (Brazil)",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: ptBRProfile,
     },
     "pt-PT": {
@@ -70,6 +79,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Portuguese",
       name: "Portuguese (Portugal)",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: ptPTProfile,
     },
     "zh-cmn": {
@@ -77,6 +87,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Chinese",
       name: "Chinese (Mandarin)",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: zhCmnProfile,
     },
     yue: {
@@ -84,6 +95,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Chinese",
       name: "Chinese (Cantonese)",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: zhYueProfile,
     },
     tr: {
@@ -91,6 +103,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Turkish",
       name: "Turkish",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: trProfile,
     },
     it: {
@@ -98,6 +111,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<LanguageProfileId, LanguageProfi
       languageKey: "Italian",
       name: "Italian",
       researchVersion: RESEARCH_VERSION,
+      profileVersion: PROFILE_VERSION,
       content: itProfile,
     },
   });

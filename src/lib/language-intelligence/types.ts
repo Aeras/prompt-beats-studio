@@ -24,12 +24,14 @@ export interface LanguageProfileAsset {
   readonly languageKey: string;
   readonly name: string;
   readonly researchVersion: string;
+  readonly profileVersion: string;
   readonly content: string;
 }
 
 export interface ResolvedLanguageProfile {
   readonly profileId: LanguageProfileId;
   readonly researchVersion: string;
+  readonly profileVersion: string;
   readonly cleanLanguage: string;
   readonly variantId: string | null;
   readonly script?: ChineseScript | undefined;
@@ -48,6 +50,7 @@ export interface LanguageIntelligenceResolution {
   readonly applied: boolean;
   readonly profileId: LanguageProfileId | null;
   readonly profileVersion: string | null;
+  readonly researchVersion: string | null;
   readonly cleanLanguage: string;
   readonly promptLanguageBlock: string;
   readonly script?: ChineseScript | undefined;
@@ -68,10 +71,12 @@ export interface LanguageIntelligenceExecutionMeta {
   readonly pairRole?: "control" | "treatment" | undefined;
   readonly profileId?: string | undefined;
   readonly profileVersion?: string | undefined;
+  readonly researchVersion?: string | undefined;
   readonly resolvedVariant?: string | undefined;
   readonly script?: string | undefined;
   readonly promptVersion: string;
   readonly promptDigest: string;
+  readonly masterPromptTemplate?: string | undefined;
   readonly masterPromptDigest: string;
   readonly provider: string;
   readonly model: string;

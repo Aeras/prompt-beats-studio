@@ -1,13 +1,29 @@
-## 2026-11-10 — Language Intelligence v1.2 — IN_PROGRESS
+## 2026-11-10 — Language Intelligence v1.2 — CODE_COMPLETE_RELEASE_PENDING
 
-- **Baseline:** `main` commit `d87c5ecc4597c0a7aa3af9f29462f1557ac5c712`. Local work isolated on branch `feat/language-intelligence-v1-2`.
+- **Baseline:** `main` commit `d87c5ecc4597c0a7aa3af9f29462f1557ac5c712`. Local work isolated on branch `feat/language-intelligence-v1-2`. Open PR #529.
 - **Scope & Architecture:**
-  1. Standalone domain engine in `src/lib/language-intelligence/` with 10 research-backed language profiles (v1.2): English (`en`), German (`de`), Russian (`ru`), Greek (`el`), French (`fr`), Spanish (`es`), Portuguese (`pt-BR` and `pt-PT` strictly isolated), Chinese (`zh-cmn` Mandarin with Hans/Hant script and `zh-yue` Cantonese), Turkish (`tr`), and Italian (`it`).
-  2. Pure composer and adapter that structure the transient prompt block (`promptLanguageBlock`) injected server-side during prompt assembly across V1, V2, V3, V4 Beta, V5 Beta 1, and Prompt Registry.
-  3. Clean Language Invariant strictly preserved: client and worker schemas (`data.language` max 40/80 chars, `inputSnapshot.language`, `input_payload`, saved prompts, project versions, history, QC, and library search) never store or leak enriched prompt text.
-  4. Triple-tier authorization and feature controls: Super Admin Advanced-only (off by default), server function validation, worker defense-in-depth recheck via `_has_role_internal`, and central emergency kill switch (`PROMPTBEATS_LANGUAGE_INTELLIGENCE_DISABLED`).
-  5. UI integration: Radix UI Switch ("Language Intelligence — Experimental Mode" / "Language Intelligence — Πειραματική Λειτουργία") inside the Language SectionHeader of Advanced Generator, visible only to Super Admins in non-revision Advanced mode, reset on mode/user switch.
-  6. Evaluation provenance: structured JSON diagnostic logging with SHA-256 digests of assembled and master prompt templates, model, provider, and pair role for non-intrusive A/B testing.
+  1. Standalone domain engine in `src/lib/language-intelligence/` covering:
+     - 10 logical target languages: English, German, Russian, Greek, French, Spanish, Portuguese, Chinese, Turkish, Italian.
+     - 12 isolated spoken/dialect profile assets in `LANGUAGE_PROFILES` (`en`, `de`, `ru`, `el`, `fr`, `es`, `pt-BR`, `pt-PT`, `zh-cmn`, `yue`, `tr`, `it`), backed by 12 profile source files in `profiles/`.
+     - 13 distinct resolvable runtime variant configurations (accounting for Chinese Mandarin `zh-cmn` supporting dual scripts `Hans` [Simplified] and `Hant` [Traditional], and Chinese Cantonese `yue` with script `Hant`).
+  2. Research version and profile implementation version are decoupled:
+     - `researchVersion = "1.1"`: identifies the underlying linguistic research document version (matching `**Research version:** 1.1` in all profile document headers).
+     - `profileVersion = "1.2"`: identifies the PromptBeats Language Intelligence phase v1.2 runtime implementation release.
+     - Both versions are propagated independently through `LanguageProfileAsset`, `ResolvedLanguageProfile`, `LanguageIntelligenceResolution`, and `LanguageIntelligenceExecutionMeta`.
+  3. Pure composer and adapter that structure the transient prompt block (`promptLanguageBlock`) injected server-side during prompt assembly across V1, V2, V3, V4 Beta, V5 Beta 1, and Prompt Registry.
+  4. Clean Language Invariant strictly preserved: client and worker schemas (`data.language` max 40/80 chars, `inputSnapshot.language`, `input_payload`, saved prompts, project versions, history, QC, and library search) never store or leak enriched prompt text.
+  5. Triple-tier authorization and feature controls: Super Admin Advanced-only (off by default), server function validation, worker defense-in-depth recheck via `_has_role_internal`, and central emergency kill switch (`PROMPTBEATS_LANGUAGE_INTELLIGENCE_DISABLED`).
+  6. UI integration: Radix UI Switch ("Language Intelligence — Experimental Mode" / "Language Intelligence — Πειραματική Λειτουργία") inside the Language SectionHeader of Advanced Generator, visible only to Super Admins in non-revision Advanced mode, reset on mode/user switch.
+  7. Evaluation provenance & template mapping:
+     - Authoritative master prompt template identity resolved deterministically via `resolveMasterPromptTemplate(promptVersion, isRevision)`:
+       - V1: `"advanced-generator-prompt-v1"`
+       - V2: `"advanced-generator-prompt-v2"`
+       - V3: `"advanced-generator-prompt-v2+v3-musical-planning"` (V2 baseline combined with V3 musical planning phrasing layer)
+       - V4 Beta: `"advanced-generator-prompt-v4-beta"`
+       - V5 Beta 1: `"advanced-generator-prompt-v5-beta-1"`
+       - Registry: `"registry-bound-template"`
+       - Revision: `"advanced-generator-revision-prompt"` (takes precedence when `isRevision === true`)
+     - Digest semantics: `masterPromptDigest` explicitly hashes the template identifier string (`sha256Digest(masterPromptTemplate)`), while `promptDigest` hashes the fully assembled prompt string (`sha256Digest(assembledPrompt)`).
 - **Browser Quality Gate Remediation & Verification:**
   - Root cause: `provenance.ts` had a top-level `import { createHash } from "node:crypto"`, which was re-exported through the shared facade `src/lib/language-intelligence/index.ts`. Because client routes (`/generate`, `/library`) import `ai.functions.ts` / `generation-jobs.functions.ts`, Vite pulled `node:crypto` into the browser bundle, throwing `Cannot access "node:crypto.createHash" in client code` and triggering the root Error Boundary (`This page didn't load`). This caused cascading 30.1s Playwright timeouts in `e2e/music-inspiration.pw.ts` (waiting for `button[data-generator-mode=advanced]`) and failures in `e2e/pb012-entry.pw.ts` (`project is unavailable` and Last Work writes).
   - Architectural fix: Renamed `provenance.ts` to `provenance.server.ts`, removed its re-export from `index.ts` so the shared facade remains 100% browser-safe, and used dynamic server-only import (`await import("@/lib/language-intelligence/provenance.server")`) inside `ai.functions.ts` `runSongGeneration`.
@@ -15,18 +31,44 @@
     - Test 28 updated: golden SHA-256 digest assertions for generated metadata.
     - Test 30 added: deterministic golden SHA-256 digest expectations for empty string, English, Greek, Russian, and Chinese UTF-8 strings.
     - Test 31 added: architectural boundary protection asserting that `buildLanguageIntelligenceProvenance` and `sha256Digest` are not exported by the shared facade.
-  - Verification results:
-    - Dedicated Language Intelligence suite (`src/lib/language-intelligence/__tests__/language-intelligence.test.ts`): 31/31 tests **PASS** (123 assertions).
-    - AST Sandbox suite (`src/lib/advanced-generator-v3-review.test.ts`): 4/4 tests **PASS** (22 assertions).
-    - Playwright `e2e/pb012-entry.pw.ts`: 4/4 tests **PASS** (20.6s).
-    - Playwright `e2e/music-inspiration.pw.ts` (Mirage and batch cases): 7/7 targeted tests **PASS** (15.4s + 29.5s).
-    - Full local repository test suite: 2,162 tests **PASS**, 1 skipped, 0 failed across all 241 test files (34,830 assertions).
-    - TypeScript strict check (`tsc --noEmit`): **PASS** (0 errors).
-    - ESLint on changed files: **PASS** (0 errors).
-    - Git whitespace check (`git diff --check`): **PASS** (clean).
-    - Production build (`bun run build`): **PASS** (.output built in 1.61s).
-    - Browser bundle inspection: verified 0 occurrences of `node:crypto` or `provenance.server` in `.output/public/**/*.js`.
-- **Status:** Browser Quality Gate remediation complete and locally verified on branch `feat/language-intelligence-v1-2`. Remote CI, merge and production deployment remain pending. Awaiting explicit user review and approval before any remote push or action.
+- **Audit Findings Remediation (Profile Metadata & Master Prompt Provenance):**
+  - Finding A — Profile Research Metadata:
+    - Root cause: `src/lib/language-intelligence/repository.ts` conflated the research document revision with the phase release version by declaring `RESEARCH_VERSION = "1.2"`, while all 12 profile documents in `profiles/` have header `**Research version:** 1.1` and footer `PromptBeats Language Intelligence phase (v1.2)`.
+    - Architectural resolution: Explicitly decoupled `researchVersion: "1.1"` (document research revision) from `profileVersion: "1.2"` (phase v1.2 release version) across `types.ts`, `repository.ts`, `resolver.ts`, `index.ts`, `provenance.server.ts`, and `ai.functions.ts`. Provenance logs now accurately record both `profileVersion: "1.2"` (preserving backwards compatibility) and `researchVersion: "1.1"`.
+    - Verification: Test 32 verifies that all 12 profiles in `LANGUAGE_PROFILES` have `researchVersion === "1.1"`, `profileVersion === "1.2"`, and match their respective markdown documentation headers and status footers.
+  - Finding B — Master Prompt Provenance:
+    - Root cause: In `src/lib/ai.functions.ts`, `masterPromptTemplate` erroneously fell back to `"advanced-generator-prompt-v1"` for both V2 and V3 dispatches.
+    - Architectural resolution: Introduced `resolveMasterPromptTemplate(promptVersion, isRevision)` in `src/lib/language-intelligence/provenance.server.ts` providing authoritative, deterministic identities.
+    - Provenance tracking: Both the exact template identity string (`masterPromptTemplate`) and its SHA-256 hash (`masterPromptDigest`) are recorded alongside the assembled prompt digest (`promptDigest`).
+    - Verification: Tests 33 and 34 verify deterministic template resolution across all generator versions and assert deterministic golden SHA-256 digests for all master templates.
+- **Independent Code Review Outcome:**
+  - Complete 9-file local diff inspected against pushed HEAD `f432b9b10d0cad278d796a16f49bdf4cf5de4070`.
+  - Verified:
+    1. Independent representation and propagation of `researchVersion` and `profileVersion` across all contracts.
+    2. Exact alignment of profile counts: 10 logical languages, 12 profile assets, 13 resolvable runtime configurations.
+    3. Correct master prompt template mapping across V1–V5, Registry, and Revisions (`isRevision` precedence).
+    4. V3 musical planning preserved without altering prompt construction.
+    5. `masterPromptDigest` explicitly hashes the template identifier string, not master prompt content.
+    6. Assembled prompt digest, profile metadata, and provenance are internally consistent.
+    7. Client bundle security verified: 0 occurrences of `node:crypto` or `provenance.server` in `.output/public`.
+    8. Clean Language Invariant verified: no prompt leaks into persisted data.
+    9. Feature flags, kill switch, and authorization controls verified intact.
+    10. Tests exercise real production paths without mocking out domain logic.
+- **Final Verification Evidence:**
+  - Dedicated Language Intelligence suite (`src/lib/language-intelligence/__tests__/language-intelligence.test.ts`): 34/34 tests **PASS** (248 assertions) [107ms] (Exit code: 0).
+  - AST Sandbox suite (`src/lib/advanced-generator-v3-review.test.ts`): 4/4 tests **PASS** (22 assertions) [283ms] (Exit code: 0).
+  - Core Generator regression suites (`song-languages.test.ts`, `advanced-generator-prompt-v2.test.ts`, `advanced-generator-prompt-v3.test.ts`, `advanced-generator-prompt-v4-beta.test.ts`, `advanced-generator-prompt-v5-beta-1.test.ts`, `prompt-registry.test.ts`): 48/48 tests **PASS** (1,411 assertions) [1.01s] (Exit code: 0).
+  - Full repository test suite (`bun test`): 2,165 tests **PASS**, 1 skipped, 0 failed across all 241 test files (34,955 assertions) [14.76s] (Exit code: 0).
+  - Playwright `e2e/pb012-entry.pw.ts`: 12/12 tests **PASS** across desktop, tablet, mobile (41.2s) (Exit code: 0).
+  - Playwright `e2e/music-inspiration.pw.ts` (Mirage direct apply): 3/3 tests **PASS** across desktop, tablet, mobile (23.5s) (Exit code: 0).
+  - Strict TypeScript check (`bun x tsc --noEmit`): **PASS** (0 errors) (Exit code: 0).
+  - ESLint on all changed source files: **PASS** (0 errors, 0 warnings) (Exit code: 0).
+  - Git whitespace check (`git diff --check`): **PASS** (clean) (Exit code: 0).
+  - Production build (`bun run build`): **PASS** (.output built in 1.46s) (Exit code: 0).
+  - Browser bundle audit: **0 matches** for `node:crypto`, `provenance.server`, `buildLanguageIntelligenceProvenance`, or `resolveMasterPromptTemplate` in `.output/public/**/*.js` (Exit code: 0).
+- **Status & Release Boundary:**
+  - `CODE_COMPLETE_RELEASE_PENDING`: Local pre-commit audit and documentation closure complete on branch `feat/language-intelligence-v1-2`.
+  - Next operational steps: Awaiting explicit owner authorization for single consolidated final commit and push to PR #529. All three mandatory CI gates (Regression, Browser Quality, Database Replay) must pass for the exact final HEAD before PR merge, followed by production rollout and verification.
 
 ## 2026-11-09 — Creative-direction history completion alignment and error transparency — CODE_COMPLETE_RELEASE_PENDING
 
