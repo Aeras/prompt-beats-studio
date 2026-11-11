@@ -39,6 +39,11 @@ import {
 } from "@/lib/generator-revision.shared";
 import { activeSongBlueprint, songBlueprintSchema } from "@/lib/song-blueprint.shared";
 import {
+  languageIntelligenceConfigSchema,
+  resolveLanguageIntelligencePrompt,
+  isLanguageIntelligenceKillSwitchActive,
+} from "@/lib/language-intelligence";
+import {
   lyricsSectionEditJobSchema,
   lyricsSectionEditOutputSchema,
   type LyricsSectionEditContext,
@@ -74,6 +79,7 @@ const generateInput = z.object({
   revision: revisionJobContextSchema.nullish(),
   inputSnapshot: generatorInputSnapshotSchema.nullish(),
   creativeDirectionHistory: creativeDirectionHistoryConfigSchema.optional(),
+  languageIntelligence: languageIntelligenceConfigSchema.optional(),
 });
 
 const savedInput = z.object({
@@ -203,7 +209,7 @@ BLUEPRINT EXECUTION RULES
 - Do not expose the user's raw Blueprint instruction text verbatim when a concise production direction communicates it better.
 `;
 }
-function buildPrompt(d: z.infer<typeof generateInput>) {
+export function buildPrompt(d: z.infer<typeof generateInput>) {
   const platformLabel = d.targetPlatform === "udio" ? "Udio" : "Suno";
   const promptLabel = d.targetPlatform === "udio" ? "Udio Prompt" : "Style Prompt";
   const blueprintBlock = buildSongBlueprintPrompt(d.songBlueprint, promptLabel);
@@ -2023,6 +2029,27 @@ export async function runSongGeneration(
   let generated: ModelResult;
   try {
     const isRevision = data.operation === "revision";
+    const isLIApplicable =
+      !isRevision &&
+      data.operation === "generate" &&
+      data.inputSnapshot?.generatorMode === "advanced" &&
+      Boolean(data.languageIntelligence?.enabled) &&
+      !isLanguageIntelligenceKillSwitchActive();
+
+    const liResolution = resolveLanguageIntelligencePrompt(
+      {
+        language: data.language,
+        variantId: data.inputSnapshot?.languageVariant ?? null,
+        promptVersion: data.promptVersion,
+        enabled: isLIApplicable,
+      },
+      isLIApplicable,
+    );
+
+    if (liResolution.applied) {
+      data = { ...data, language: liResolution.promptLanguageBlock };
+    }
+
     const basePrompt = isRevision
       ? buildRevisionPrompt(data)
       : data.promptVersion === "registry"
@@ -2041,6 +2068,36 @@ export async function runSongGeneration(
     const prompt = data.creativeDirectionHistory
       ? `${promptBase}\n\n${buildCreativeDirectionHistoryPrompt(executionContext?.creativeDirectionHistory ?? [])}\n\nINTERNAL METADATA OUTPUT RULE: Return the five JSON keys required by the system schema. The creativeDirection object is internal metadata only; the user-facing song result remains title, tags, lyrics and note.`
       : promptBase;
+
+    if (data.languageIntelligence?.enabled || data.languageIntelligence?.pairRole) {
+      const { buildLanguageIntelligenceProvenance, resolveMasterPromptTemplate } =
+        await import("@/lib/language-intelligence/provenance.server");
+      const masterPromptTemplate = resolveMasterPromptTemplate(data.promptVersion, isRevision);
+      const provMeta = buildLanguageIntelligenceProvenance({
+        enabled: Boolean(data.languageIntelligence?.enabled),
+        applied: liResolution.applied,
+        pairId: data.languageIntelligence?.pairId,
+        pairRole: data.languageIntelligence?.pairRole,
+        resolved:
+          liResolution.applied && liResolution.profileId
+            ? {
+                profileId: liResolution.profileId,
+                profileVersion: liResolution.profileVersion ?? "1.2",
+                researchVersion: liResolution.researchVersion ?? "1.1",
+                cleanLanguage: liResolution.cleanLanguage,
+                variantId: data.inputSnapshot?.languageVariant ?? null,
+                script: liResolution.script,
+                content: "",
+              }
+            : null,
+        promptVersion: data.promptVersion,
+        assembledPrompt: prompt,
+        masterPromptTemplate,
+        provider,
+        model,
+      });
+      console.info("[language-intelligence] provenance", JSON.stringify(provMeta));
+    }
     generated = await call({
       system: isRevision
         ? REVISION_SYSTEM_PROMPT

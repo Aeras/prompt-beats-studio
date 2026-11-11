@@ -11,6 +11,7 @@ import { generatorInputSnapshotSchema } from "./generator-revision.shared";
 import { AI_TARGET_PLATFORMS, DEFAULT_AI_TARGET_PLATFORM } from "./ai-target-platforms";
 import { getSafeExternalUrl } from "./safe-external-url";
 import { creativeDirectionHistoryConfigSchema } from "./creative-direction-history.shared";
+import { languageIntelligenceConfigSchema } from "./language-intelligence";
 import {
   compatibleUtcDateTimePattern,
   compatibleOffsetDateTimePattern,
@@ -58,6 +59,7 @@ const generation = evaluate<{ schema: z.ZodType<Record<string, unknown>> }>(
     generatorInputSnapshotSchema,
     atlasHandoffSchema,
     creativeDirectionHistoryConfigSchema,
+    languageIntelligenceConfigSchema,
   },
 ).schema;
 const createUniverse = evaluate<{ schema: z.ZodType<Record<string, unknown>> }>(

@@ -18,6 +18,7 @@ import { assertGenerationRequestBudget } from "@/lib/generator-input-limits";
  */
 import { durableAiJobInput, runLyricsSectionEdit, runSongGeneration } from "@/lib/ai.functions";
 import { withAdvancedSunoEnrichmentInstruction } from "@/lib/advanced-suno-enrichment";
+import { isLanguageIntelligenceKillSwitchActive } from "@/lib/language-intelligence";
 import { fitMusicStyleToPlatform } from "@/lib/music-style-limits";
 import { buildProjectRevisionVersionMetadata } from "@/lib/project-version-history.shared";
 import { creativeDirectionHistoryEntriesSchema } from "@/lib/creative-direction-history.shared";
@@ -241,7 +242,33 @@ export async function executeGenerationJob(jobId: string): Promise<{ ran: boolea
     // Suno creations only, add one internal runtime instruction through the
     // existing Additional Instructions channel so the same provider call is
     // explicitly told to enrich Music Style from useful Producer's Note cues.
-    const runtimeInput = withAdvancedSunoEnrichmentInstruction(input);
+    // Language Intelligence worker defense in depth:
+    // Re-verify Super Admin role, kill-switch, and operation mode before execution.
+    let validatedLanguageIntelligence = input.languageIntelligence;
+    if (validatedLanguageIntelligence?.enabled) {
+      if (
+        input.operation !== "generate" ||
+        input.inputSnapshot?.generatorMode !== "advanced" ||
+        isLanguageIntelligenceKillSwitchActive()
+      ) {
+        validatedLanguageIntelligence = { ...validatedLanguageIntelligence, enabled: false };
+      } else {
+        const { data: isSuperAdmin, error: roleError } = await db.rpc("_has_role_internal", {
+          _user_id: job.user_id,
+          _role: "super_admin",
+        });
+        if (roleError || isSuperAdmin !== true) {
+          validatedLanguageIntelligence = { ...validatedLanguageIntelligence, enabled: false };
+        }
+      }
+    }
+    const baseRuntimeInput = withAdvancedSunoEnrichmentInstruction(input);
+    const runtimeInput = {
+      ...baseRuntimeInput,
+      ...(validatedLanguageIntelligence
+        ? { languageIntelligence: validatedLanguageIntelligence }
+        : {}),
+    };
     let runContext: import("./ai-execution.server").ExecutionContext = executionContext;
     if (input.creativeDirectionHistory) {
       const { data: isSuperAdmin, error: roleError } = await db.rpc("_has_role_internal", {

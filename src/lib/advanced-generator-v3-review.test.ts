@@ -5,6 +5,14 @@ import ts from "typescript";
 import { z } from "zod";
 import { withV3MusicalPlanning } from "./advanced-generator-v3-review";
 import { assertGenerationRequestBudget } from "./generator-input-limits";
+import {
+  resolveLanguageIntelligencePrompt,
+  isLanguageIntelligenceKillSwitchActive,
+} from "./language-intelligence";
+import {
+  buildLanguageIntelligenceProvenance,
+  resolveMasterPromptTemplate,
+} from "./language-intelligence/provenance.server";
 
 describe("V3 adaptive musical planning", () => {
   test("preserves V2 and adds phrasing rather than post-edit guidance", () => {
@@ -71,6 +79,10 @@ async function runFixture(version: string, revision = false) {
     buildAdvancedGeneratorPromptV2: (prompt: string) => `${prompt} V2`,
     withV3MusicalPlanning,
     assertGenerationRequestBudget,
+    resolveLanguageIntelligencePrompt,
+    isLanguageIntelligenceKillSwitchActive,
+    buildLanguageIntelligenceProvenance,
+    resolveMasterPromptTemplate,
     parseSections: JSON.parse,
     generationOutput: z.object({
       title: z.string(),
